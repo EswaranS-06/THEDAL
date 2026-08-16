@@ -1,11 +1,11 @@
 # ==============================================================================
-# SOCForge — Makefile (Phase 1)
+# SOCForge — Makefile
 # ==============================================================================
 
 .DEFAULT_GOAL := help
 SHELL := /usr/bin/env bash
 
-.PHONY: help preflight health-check lint
+.PHONY: help preflight health-check lint tf-fmt tf-validate
 
 help: ## Show this help message
 	@echo "================================================================="
@@ -20,11 +20,23 @@ help: ## Show this help message
 preflight: ## Check control-machine prerequisite tools and resources
 	@./scripts/preflight.sh
 
-health-check: ## Verify local repository structure and integrity (Phase 1)
+health-check: ## Verify local repository structure and integrity
 	@./scripts/health-check.sh
 
-lint: ## Check shell scripts for syntax errors
+lint: ## Check shell scripts and Terraform for syntax errors
 	@echo "Linting shell scripts..."
 	@bash -n scripts/preflight.sh
 	@bash -n scripts/health-check.sh
 	@echo "Shell syntax verification: OK"
+	@if command -v terraform >/dev/null 2>&1; then \
+		echo "Validating Terraform formatting and syntax..."; \
+		terraform -chdir=terraform fmt -check -recursive && \
+		terraform -chdir=terraform validate && \
+		echo "Terraform verification: OK"; \
+	fi
+
+tf-fmt: ## Format Terraform configuration files
+	@terraform -chdir=terraform fmt -recursive
+
+tf-validate: ## Validate Terraform syntax and configuration
+	@terraform -chdir=terraform validate

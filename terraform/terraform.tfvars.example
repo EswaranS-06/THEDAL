@@ -1,0 +1,22 @@
+# ==============================================================================
+# SOCForge — Example Variable Configuration File
+# ==============================================================================
+# Copy this file to `terraform.tfvars` and adjust values as needed:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# NOTE: `terraform.tfvars` is ignored by Git to avoid tracking local overrides.
+# ==============================================================================
+
+# Target AWS Region
+aws_region = "ap-south-1"
+
+# Project and Environment Naming
+project_name = "SOCForge"
+environment  = "lab"
+
+# Network CIDR Blocks
+vpc_cidr               = "10.10.0.0/16"
+management_subnet_cidr = "10.10.1.0/24"
+soc_subnet_cidr        = "10.10.10.0/24"
+attack_subnet_cidr     = "10.10.20.0/24"
+web_subnet_cidr        = "10.10.30.0/24"
