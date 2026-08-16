@@ -76,3 +76,54 @@ variable "ssh_public_key" {
   description = "Public key material for the EC2 SSH Key Pair (e.g. 'ssh-ed25519 AAAA...'). If provided, Terraform registers the key pair in AWS."
   default     = ""
 }
+
+# ------------------------------------------------------------------------------
+# Compute & Sizing Variables (Phase 4)
+# ------------------------------------------------------------------------------
+variable "bastion_instance_type" {
+  type        = string
+  description = "EC2 instance type for the Management Bastion host"
+  default     = "t3.micro"
+}
+
+variable "wazuh_instance_type" {
+  type        = string
+  description = "EC2 instance type for the Wazuh SIEM server (t3.medium minimum for 1-25 agents; t3.xlarge for standard production)"
+  default     = "t3.medium"
+}
+
+variable "windows_instance_type" {
+  type        = string
+  description = "EC2 instance type for the Windows employee endpoint (t3.medium recommended for Windows Server)"
+  default     = "t3.medium"
+}
+
+variable "web_instance_type" {
+  type        = string
+  description = "EC2 instance type for the Linux Web server (Nginx + DVWA + Juice Shop)"
+  default     = "t3.micro"
+}
+
+variable "attack_instance_type" {
+  type        = string
+  description = "EC2 instance type for the Atomic Red Team attack simulation node"
+  default     = "t3.micro"
+}
+
+variable "wazuh_root_volume_size" {
+  type        = number
+  description = "Root EBS storage size in GB for the Wazuh SIEM server (requires more storage for index retention)"
+  default     = 50
+}
+
+variable "ubuntu_ami_id" {
+  type        = string
+  description = "Optional custom AMI ID for Ubuntu instances. If empty, latest Ubuntu 22.04 LTS AMI is queried dynamically."
+  default     = ""
+}
+
+variable "windows_ami_id" {
+  type        = string
+  description = "Optional custom AMI ID for Windows instance. If empty, latest Windows Server 2022 Base AMI is queried dynamically."
+  default     = ""
+}

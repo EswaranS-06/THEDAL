@@ -1,0 +1,40 @@
+# ==============================================================================
+# SOCForge — Example Ansible Inventory Template
+# ==============================================================================
+# Note: Do not edit `hosts.ini` directly. Generate it dynamically via:
+#   python3 scripts/generate-inventory.py
+# ==============================================================================
+
+[bastion]
+bastion ansible_host=203.0.113.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
+
+[wazuh]
+wazuh ansible_host=10.10.10.100 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
+
+[web]
+web ansible_host=10.10.30.50 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
+
+[attack]
+attack ansible_host=10.10.20.25 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
+
+[windows]
+windows ansible_host=10.10.10.200 ansible_user=Administrator ansible_connection=winrm ansible_winrm_server_cert_validation=ignore
+
+[linux:children]
+bastion
+wazuh
+web
+attack
+
+[soc_stack:children]
+wazuh
+web
+windows
+attack
+
+[soc_stack:vars]
+ansible_ssh_common_args='-o ProxyJump=ubuntu@203.0.113.10 -o StrictHostKeyChecking=no'
+
+[all:vars]
+bastion_public_ip=203.0.113.10
+ansible_python_interpreter=/usr/bin/python3

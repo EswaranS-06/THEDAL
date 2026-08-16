@@ -27,6 +27,10 @@ locals {
     Component = "iam"
   }
 
+  compute_tags = {
+    Component = "compute"
+  }
+
   # Standardized resource name prefix
   name_prefix = var.project_name
 }

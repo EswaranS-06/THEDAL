@@ -1,124 +1,68 @@
-# SOCForge — Terraform AWS Foundation (Phases 2 & 3)
+# SOCForge — Terraform AWS Infrastructure (Phases 2, 3 & 4)
 
-> **Current Scope**: This directory contains the Infrastructure-as-Code (IaC) configuration for the **AWS Network & Security Layers** of the SOCForge training lab.
+> **Current Scope**: This directory contains the complete Infrastructure-as-Code (IaC) configuration for the **AWS Network, Security, and EC2 Compute Layers** of the SOCForge training lab.
 
 ---
 
-## 1. Architecture & Provisioned Resources
+## 1. Provisioned Infrastructure Summary
 
 ### What is Implemented:
 * **Dedicated AWS VPC**: `10.10.0.0/16` with DNS hostnames and DNS resolution enabled.
-* **Single Availability Zone**: Discovered dynamically in target region.
+* **Single Availability Zone**: Discovered dynamically in the target region.
 * **4 Segregated Subnets**:
   * `SOCForge-management-subnet` (`10.10.1.0/24`) — Public tier (Bastion / Jumpbox).
-  * `SOCForge-soc-subnet` (`10.10.10.0/24`) — Private tier (Wazuh SIEM server).
+  * `SOCForge-soc-subnet` (`10.10.10.0/24`) — Private tier (Wazuh SIEM server & Windows endpoint).
   * `SOCForge-attack-subnet` (`10.10.20.0/24`) — Private tier (Atomic Red Team).
   * `SOCForge-web-subnet` (`10.10.30.0/24`) — Private tier (Nginx, DVWA, Juice Shop).
 * **Internet Gateway & Route Tables**: Public route table for Management; Private route table with local routing only for internal tiers.
-* **5 Dedicated Least-Privilege Security Groups**:
-  * `SOCForge-management-sg`: SSH (port 22) restricted strictly to `var.admin_cidr`.
-  * `SOCForge-soc-sg`: Wazuh agent telemetry (ports 1514, 1515) from endpoints/web/attack; API (55000) and Dashboard (443) from management/admin; SSH (22) from bastion.
-  * `SOCForge-windows-sg`: RDP (3389) and WinRM (5985/5986) from bastion; simulated attack vectors (SMB 445, RPC 135, WinRM 5985) from attack host; egress to Wazuh.
-  * `SOCForge-web-sg`: HTTP (80), DVWA (8000), and Juice Shop (3000) from attack host and bastion; **never exposed to 0.0.0.0/0**.
-  * `SOCForge-attack-sg`: SSH (22) from bastion; egress permitted to target subnets.
-* **IAM Foundation**:
-  * `SOCForge-ec2-base-role`: EC2 assume role with `AmazonSSMManagedInstanceCore` and custom CloudWatch metrics policy.
-  * `SOCForge-ec2-instance-profile`: Instance profile ready for future EC2 attachments.
-* **Access & SSH Key Management**:
-  * `aws_key_pair.main`: Registers user's public key (`var.ssh_public_key`) without generating or exposing private keys in Terraform.
+* **5 Dedicated Least-Privilege Security Groups**: `management-sg`, `soc-sg`, `windows-sg`, `web-sg`, `attack-sg`.
+* **IAM Foundation**: `SOCForge-ec2-base-role` and `SOCForge-ec2-instance-profile` with `AmazonSSMManagedInstanceCore` and CloudWatch logging policies.
+* **EC2 Compute Instances (Phase 4)**:
+  * **Bastion Host** (`aws_instance.bastion`): Public IP assigned, SSH Jumpbox, `t3.micro`.
+  * **Wazuh SIEM Server** (`aws_instance.wazuh`): Private IP only, `t3.medium` (or `t3.xlarge`), 50 GB root volume.
+  * **Windows Employee Endpoint** (`aws_instance.windows`): Private IP only, `t3.medium`, 50 GB root volume.
+  * **Linux Web Target** (`aws_instance.web`): Private IP only, `t3.micro`, 20 GB root volume.
+  * **Attack Simulation Node** (`aws_instance.attack`): Private IP only, `t3.micro`, 20 GB root volume.
+* **Automated Ansible Inventory Handoff**: `scripts/generate-inventory.py` converts `terraform output -json` into `ansible/inventory/hosts.ini`.
 
-### What is NOT Implemented in Phase 3:
-* **No EC2 Compute Instances** (Scheduled for Phase 4)
-* **No Software Deployments** (Wazuh, Sysmon, Nginx, Juice Shop scheduled for Phase 4/5)
-* **No Ansible Playbooks or Roles** (Scheduled for Phase 4)
-* **No NAT Gateways or Elastic IPs** (Omitted to keep lab costs near zero)
+### What is Intentionally NOT Implemented in Phase 4:
+* **No Software Provisioning**: Wazuh, Sysmon, Nginx, Juice Shop, and Atomic Red Team are installed via Ansible in Phase 5.
+* **No NAT Gateway or Load Balancer**: Omitted to keep lab operational costs near zero.
+* **No Public IPs on Private Hosts**: All internal instances are strictly private.
 
 ---
 
-## 2. Security Group Relationships
+## 2. Compute Sizing & Profile Guidelines
 
-```text
-                    Internet
-                       |
-                       | (Port 22 from admin_cidr only)
-                       v
-             +--------------------+
-             |   Management SG    |
-             |  (Bastion / Admin) |
-             +---------+----------+
-                       |
-        +--------------+--------------+
-        | (SSH 22,     | (WinRM /     | (SSH 22,
-        |  API 55000,  |  RDP 3389)   |  HTTP 80)
-        |  HTTPS 443)  |              |
-        v              v              v
-+---------------+ +---------------+ +---------------+
-|    SOC SG     | |  Windows SG   | |    Web SG     |
-| (Wazuh SIEM)  | |  (Endpoint)   | |  (Juice Shop  |
-+-------^-------+ +-------^-------+ |   & DVWA)     |
-        |                 |         +-------^-------+
-        | (Telemetry      | (Attack         | (Attack
-        |  1514/1515)     |  445/135)       |  8000/3000)
-        |                 +--------+--------+
-        |                          |
-        +--------------------------+
-                                   |
-                         +---------+---------+
-                         |     Attack SG     |
-                         | (Atomic Red Team) |
-                         +-------------------+
-```
+| Instance Name | Role | Subnet | Default Type | Recommended Sizing | Disk (GB) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `SOCForge-bastion` | SSH Jumpbox | Management (`10.10.1.0/24`) | `t3.micro` | 2 vCPU, 1 GB RAM | 20 (gp3) |
+| `SOCForge-wazuh` | Wazuh SIEM | SOC (`10.10.10.0/24`) | `t3.medium` | 4 vCPU, 16 GB RAM (`t3.xlarge`) | 50 (gp3) |
+| `SOCForge-windows` | Windows Workstation | SOC (`10.10.10.0/24`) | `t3.medium` | 2 vCPU, 8 GB RAM (`t3.large`) | 50 (gp3) |
+| `SOCForge-web` | Web Server | Web (`10.10.30.0/24`) | `t3.micro` | 2 vCPU, 1 GB RAM | 20 (gp3) |
+| `SOCForge-attack` | Attack Node | Attack (`10.10.20.0/24`) | `t3.micro` | 2 vCPU, 1 GB RAM | 20 (gp3) |
+
+> ⚠️ **Resource Note**: Wazuh's all-in-one indexer/manager deployment requires substantial memory under active log ingestion. The default `t3.medium` is suitable for minimal bootstrap testing, but `t3.xlarge` is recommended for standard multi-agent workloads.
 
 ---
 
-## 3. Management Architecture Decision
+## 3. Important Private Subnet Limitation (No NAT Gateway)
 
-Because the SOC, Attack, and Web subnets are completely private (no public IPs, no NAT Gateway), direct SSH/RDP connections from the internet to internal hosts are blocked by design.
-
-### Chosen Approach: Bastion Jumpbox with SSH ProxyJump
-* An operator connects from their control workstation (e.g. Debian 13 VM) to a lightweight bastion host in the Management subnet (`10.10.1.0/24`).
-* Inbound SSH to the bastion is strictly limited to the operator's IP (`admin_cidr`).
-* **Ansible Configuration Workflow**: Ansible uses native `ProxyJump` in `ansible.cfg` / `ssh_config`:
-  ```text
-  Host 10.10.*.*
-      ProxyJump bastion.socforge.internal
-      IdentityFile ~/.ssh/socforge_key
-      User debian
-  ```
-* **Benefits**: Zero NAT Gateway cost (~$32/month saved), zero exposed attack surface on vulnerable apps, and native compatibility with Ansible and Linux tooling.
+Because there is **no NAT Gateway** in the VPC:
+* Private instances (`Wazuh`, `Windows`, `Web`, `Attack`) cannot directly initiate outbound internet connections to download OS packages or container images.
+* **Phase 5 Design**: Phase 5 will implement the controlled bootstrap strategy (e.g. package caching / bastion forward proxying / ephemeral bootstrap attachment) without running an expensive permanent NAT Gateway (~$32/month).
 
 ---
 
-## 4. SSH Key Management & Safety
-
-1. **Generate Key Pair Locally**:
-   ```bash
-   ssh-keygen -t ed25519 -f ~/.ssh/socforge_key -C "socforge-operator"
-   ```
-2. **Supply Public Key to Terraform**:
-   Set `ssh_public_key` in `terraform.tfvars`:
-   ```hcl
-   ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."
-   ```
-3. **Private Key Safety**:
-   * The private key (`~/.ssh/socforge_key`) stays on the operator's local machine and is never shared, output, or committed to Git.
-
----
-
-## 5. Terraform Workflow
+## 4. Terraform to Ansible Handoff Workflow
 
 ```bash
-# 1. Prepare configuration
-cp terraform.tfvars.example terraform.tfvars
-# (Edit admin_cidr and ssh_public_key in terraform.tfvars)
+# 1. Apply Terraform infrastructure (when authorized)
+terraform apply
 
-# 2. Initialize
-terraform init
+# 2. Generate Ansible inventory directly from Terraform outputs
+python3 ../scripts/generate-inventory.py
 
-# 3. Format & Validate
-terraform fmt -check
-terraform validate
-
-# 4. Review Plan
-terraform plan
+# 3. Verify generated inventory
+cat ../ansible/inventory/hosts.ini
 ```

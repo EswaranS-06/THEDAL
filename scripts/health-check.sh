@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phase 1: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–4: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
-# NOTE: In Phase 1, this script does NOT connect to AWS or external services.
+# NOTE: In Phase 4, this script validates local configurations and files.
 # ==============================================================================
 
 set -euo pipefail
@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "================================================================="
-echo "                SOCForge Phase 1 Health Check                    "
+echo "                SOCForge Project Health Check                    "
 echo "================================================================="
 echo "Repository Root: ${REPO_ROOT}"
 echo ""
@@ -22,7 +22,7 @@ FAILURES=0
 # Helper functions
 check_dir() {
   local dir="$1"
-  printf "  Checking directory: %-25s " "${dir}"
+  printf "  Checking directory: %-30s " "${dir}"
   if [ -d "${REPO_ROOT}/${dir}" ]; then
     echo "[OK]"
   else
@@ -33,7 +33,7 @@ check_dir() {
 
 check_file() {
   local file="$1"
-  printf "  Checking file:      %-25s " "${file}"
+  printf "  Checking file:      %-30s " "${file}"
   if [ -f "${REPO_ROOT}/${file}" ]; then
     echo "[OK]"
   else
@@ -42,7 +42,7 @@ check_file() {
   fi
 }
 
-# 1. Git Repository Verification
+# 1. Version Control Integrity
 echo "1. Version Control Integrity:"
 printf "  Checking Git repository:                       "
 if git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -64,6 +64,7 @@ REQUIRED_DIRS=(
   "scripts"
   "terraform"
   "ansible"
+  "ansible/inventory"
   "detection"
   "attacks"
   "tests"
@@ -75,7 +76,7 @@ done
 echo ""
 
 # 3. Core Project & Documentation Files
-echo "3. Core Project & Documentation Files:"
+echo "3. Core Project & Configuration Files:"
 REQUIRED_FILES=(
   "README.md"
   "LICENSE"
@@ -87,8 +88,23 @@ REQUIRED_FILES=(
   "docs/networking.md"
   "docs/logging.md"
   "docs/learning-path.md"
+  "terraform/versions.tf"
+  "terraform/provider.tf"
+  "terraform/variables.tf"
+  "terraform/locals.tf"
+  "terraform/networking.tf"
+  "terraform/security_groups.tf"
+  "terraform/iam.tf"
+  "terraform/access.tf"
+  "terraform/compute.tf"
+  "terraform/outputs.tf"
+  "terraform/terraform.tfvars.example"
+  "terraform/README.md"
+  "ansible/ansible.cfg"
+  "ansible/inventory/hosts.ini.example"
   "scripts/preflight.sh"
   "scripts/health-check.sh"
+  "scripts/generate-inventory.py"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -98,8 +114,8 @@ echo ""
 
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
-for s in "scripts/preflight.sh" "scripts/health-check.sh"; do
-  printf "  Checking executable bit: %-20s " "${s}"
+for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py"; do
+  printf "  Checking executable bit: %-25s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
   else
@@ -113,7 +129,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "Phase 1 project foundation and file structure are fully intact."
+  echo "SOCForge project foundation, compute declarations, and inventory tools are intact."
   echo "================================================================="
   exit 0
 else

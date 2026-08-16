@@ -7,14 +7,16 @@
 # NOTE: `terraform.tfvars` is ignored by Git to avoid tracking local overrides.
 # ==============================================================================
 
-# Target AWS Region
-aws_region = "ap-south-1"
-
-# Project and Environment Naming
+# ------------------------------------------------------------------------------
+# Provider & Environment
+# ------------------------------------------------------------------------------
+aws_region   = "ap-south-1"
 project_name = "SOCForge"
 environment  = "lab"
 
+# ------------------------------------------------------------------------------
 # Network CIDR Blocks
+# ------------------------------------------------------------------------------
 vpc_cidr               = "10.10.0.0/16"
 management_subnet_cidr = "10.10.1.0/24"
 soc_subnet_cidr        = "10.10.10.0/24"
@@ -34,3 +36,30 @@ ssh_key_name = "SOCForge-key"
 # Paste your public key string here (e.g. from `cat ~/.ssh/id_ed25519.pub`)
 # If left empty, no aws_key_pair resource is created by Terraform.
 ssh_public_key = ""
+
+# ------------------------------------------------------------------------------
+# Compute Sizing & Profiles (Phase 4)
+# ------------------------------------------------------------------------------
+# Minimal profile (for initial lightweight lab testing):
+#   bastion_instance_type = "t3.micro"
+#   wazuh_instance_type   = "t3.medium"
+#   windows_instance_type = "t3.medium"
+#   web_instance_type     = "t3.micro"
+#   attack_instance_type  = "t3.micro"
+#
+# Standard profile (recommended for Wazuh multi-agent SIEM indexing):
+#   wazuh_instance_type   = "t3.xlarge"   (4 vCPU, 16 GB RAM)
+#   windows_instance_type = "t3.large"    (2 vCPU, 8 GB RAM)
+
+bastion_instance_type = "t3.micro"
+wazuh_instance_type   = "t3.medium"
+windows_instance_type = "t3.medium"
+web_instance_type     = "t3.micro"
+attack_instance_type  = "t3.micro"
+
+# Wazuh storage (GB)
+wazuh_root_volume_size = 50
+
+# Custom AMI overrides (optional; leave empty for dynamic discovery)
+ubuntu_ami_id  = ""
+windows_ami_id = ""
