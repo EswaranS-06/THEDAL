@@ -1,0 +1,127 @@
+# ==============================================================================
+# SOCForge — Git Ignore Configuration
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Terraform & Infrastructure State
+# ------------------------------------------------------------------------------
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform secret / variable definitions
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# ------------------------------------------------------------------------------
+# Secrets, Keys & Credentials
+# ------------------------------------------------------------------------------
+*.pem
+*.key
+*.priv
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.pubkey
+*.pfx
+*.p12
+.aws/
+credentials
+aws_access_key*
+.env
+.env.*
+*.env
+
+# ------------------------------------------------------------------------------
+# Ansible
+# ------------------------------------------------------------------------------
+*.retry
+.ansible/
+ansible-vault-pass*
+*.vault
+inventory/hosts.ini
+inventory/secrets.yml
+
+# ------------------------------------------------------------------------------
+# Python & Virtual Environments
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.env/
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ------------------------------------------------------------------------------
+# Logs & Diagnostic Outputs
+# ------------------------------------------------------------------------------
+*.log
+logs/
+*.out
+
+# ------------------------------------------------------------------------------
+# Test & Coverage Outputs
+# ------------------------------------------------------------------------------
+.cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+reports/
+results/
+
+# ------------------------------------------------------------------------------
+# OS & Editor Metadata
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+*.bak
+.history/
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ------------------------------------------------------------------------------
+# Preserved directory markers
+# ------------------------------------------------------------------------------
+!.gitkeep
