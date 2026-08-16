@@ -1,0 +1,13 @@
+---
+# ==============================================================================
+# SOCForge — Windows Base System Configuration Playbook (Phase 5)
+# ==============================================================================
+# Prepares the Windows employee workstation with WinHTTP proxy routing,
+# PowerShell execution policies, Time sync, and event log sizing.
+# ==============================================================================
+
+- name: Configure Windows Base System
+  hosts: windows
+  gather_facts: true
+  roles:
+    - role: windows-base

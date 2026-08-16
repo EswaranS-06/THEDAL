@@ -1,6 +1,6 @@
 # SOCForge — Networking & Security Group Architecture
 
-> **Phase 4 Status**: The AWS network foundation (VPC, subnets, routing), Security Access Layer (security groups, IAM, key pairs), and **EC2 Compute Infrastructure** (5 instances) are defined in Terraform.
+> **Phase 5 Status**: The AWS network foundation (VPC, subnets, routing), Security Access Layer (security groups, IAM, key pairs), EC2 Compute Infrastructure (5 instances), and **Bootstrap Provisioning Channel (Bastion Proxy :3128)** are fully configured.
 
 ---
 
@@ -16,10 +16,11 @@ The SOCForge compute topology enforces strict boundary isolation: only the Basti
              +--------------------+
              |   Management SG    |
              | [SOCForge-bastion] |
+             |  (Tinyproxy :3128) |
              |   (10.10.1.0/24)   |
              |   PUBLIC + PRIVATE |
              +---------+----------+
-                       | (SSH ProxyJump / WinRM)
+                       | (SSH ProxyJump / WinRM & Proxy :3128)
         +--------------+--------------+
         |                             |
         v                             v
@@ -65,11 +66,17 @@ The SOCForge compute topology enforces strict boundary isolation: only the Basti
 
 ---
 
-## 3. Known Private Subnet Limitation (No NAT Gateway)
+## 3. Provisioning Channel & Port Matrix
 
-> ⚠️ **Outbound Internet Limitation**
->
-> To eliminate recurring cloud costs (~$32/month per AWS Managed NAT Gateway), the private subnets (`SOC`, `Web`, `Attack`) have **no NAT Gateway** attached.
->
-> * Private instances cannot directly download public internet resources on their own.
-> * In Phase 5, package installation will be orchestrated using controlled bootstrap mechanisms (e.g. forward proxying via the Bastion, local caching, or ephemeral bootstrap access) rather than leaving an expensive permanent NAT Gateway running.
+| Security Group | Port / Protocol | Source CIDR / SG | Purpose |
+| :--- | :--- | :--- | :--- |
+| `SOCForge-management-sg` | TCP 22 | `admin_cidr` | Operator SSH Jumpbox Access |
+| `SOCForge-management-sg` | **TCP 3128** | `10.10.0.0/16` (VPC) | **Bastion Forward Proxy for Package Bootstrapping** |
+| `SOCForge-soc-sg` | TCP 22 | `management-sg` | Management SSH access to Wazuh SIEM |
+| `SOCForge-soc-sg` | TCP 1514, 1515 | `windows-sg`, `web-sg`, `attack-sg` | Wazuh Agent Event Telemetry & Registration |
+| `SOCForge-soc-sg` | TCP 443, 9200 | `management-sg` | Wazuh Dashboard & Indexer API management |
+| `SOCForge-windows-sg` | TCP 5985, 5986, 3389 | `management-sg` | WinRM / RDP Management from Bastion |
+| `SOCForge-windows-sg` | TCP 445, 135, 3389 | `attack-sg` | Atomic Red Team Lateral Movement Simulation |
+| `SOCForge-web-sg` | TCP 22 | `management-sg` | Management SSH access to Web target |
+| `SOCForge-web-sg` | TCP 80, 443, 8000, 3000 | `attack-sg`, `management-sg` | Web Application Simulation (DVWA, Juice Shop) |
+| `SOCForge-attack-sg` | TCP 22 | `management-sg` | Management SSH access to Attack node |

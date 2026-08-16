@@ -1,0 +1,17 @@
+---
+# ==============================================================================
+# SOCForge — Windows Group Variables
+# ==============================================================================
+
+ansible_user: Administrator
+ansible_connection: winrm
+ansible_winrm_server_cert_validation: ignore
+ansible_winrm_transport: ntlm
+ansible_port: 5985
+ansible_winrm_scheme: http
+ansible_winrm_operation_timeout_sec: 60
+ansible_winrm_read_timeout_sec: 90
+
+# Windows Environment Settings
+windows_timezone: "UTC"
+windows_powershell_execution_policy: "RemoteSigned"

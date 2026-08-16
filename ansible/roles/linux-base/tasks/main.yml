@@ -1,0 +1,94 @@
+---
+# ==============================================================================
+# SOCForge — Tasks for role: linux-base
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Forward Proxy Client Configuration (Internal Private Nodes)
+# ------------------------------------------------------------------------------
+- name: Configure system-wide proxy environment variables for private nodes
+  ansible.builtin.blockinfile:
+    path: /etc/environment
+    block: |
+      http_proxy="{{ http_proxy_url }}"
+      https_proxy="{{ https_proxy_url }}"
+      HTTP_PROXY="{{ http_proxy_url }}"
+      HTTPS_PROXY="{{ https_proxy_url }}"
+      no_proxy="{{ no_proxy_list }}"
+      NO_PROXY="{{ no_proxy_list }}"
+    marker: "# {mark} ANSIBLE MANAGED PROXY BLOCK"
+    create: true
+    mode: "0644"
+  when:
+    - enable_forward_proxy_client | bool
+    - inventory_hostname != 'bastion'
+
+- name: Configure APT proxy configuration for private nodes
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/01proxy
+    content: |
+      Acquire::http::Proxy "{{ http_proxy_url }}";
+      Acquire::https::Proxy "{{ https_proxy_url }}";
+    mode: "0644"
+    owner: root
+    group: root
+  when:
+    - enable_forward_proxy_client | bool
+    - inventory_hostname != 'bastion'
+
+# ------------------------------------------------------------------------------
+# 2. Package Management & Core Prerequisite Tooling
+# ------------------------------------------------------------------------------
+- name: Update APT package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  register: apt_cache_status
+  until: apt_cache_status is success
+  retries: 3
+  delay: 5
+
+- name: Install foundational Linux packages
+  ansible.builtin.apt:
+    name: "{{ linux_base_packages }}"
+    state: present
+  register: apt_install_status
+  until: apt_install_status is success
+  retries: 3
+  delay: 5
+
+# ------------------------------------------------------------------------------
+# 3. Kernel & Sysctl Optimization (Elasticsearch / Wazuh Indexer readiness)
+# ------------------------------------------------------------------------------
+- name: Configure Linux sysctl parameters
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-socforge.conf
+    content: |
+      # SOCForge Kernel Optimization
+      vm.max_map_count=262144
+      fs.file-max=65536
+      net.core.somaxconn=1024
+    mode: "0644"
+    owner: root
+    group: root
+  when: manage_sysctl | bool
+  notify: Reload sysctl
+
+# ------------------------------------------------------------------------------
+# 4. Time Synchronization (Chrony / Amazon Time Sync)
+# ------------------------------------------------------------------------------
+- name: Configure Chrony NTP sources
+  ansible.builtin.lineinfile:
+    path: /etc/chrony/chrony.conf
+    line: "server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4"
+    insertbefore: "^pool"
+    state: present
+  when: manage_ntp | bool
+  notify: Restart chrony
+
+- name: Ensure Chrony service is enabled and running
+  ansible.builtin.service:
+    name: chrony
+    state: started
+    enabled: true
+  when: manage_ntp | bool

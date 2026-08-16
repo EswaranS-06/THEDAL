@@ -1,0 +1,6 @@
+---
+# Handlers for role: windows-base
+- name: Restart W32Time
+  ansible.windows.win_service:
+    name: W32Time
+    state: restarted

@@ -1,0 +1,15 @@
+---
+# ==============================================================================
+# SOCForge — Linux Base System Configuration Playbook (Phase 5)
+# ==============================================================================
+# Applies foundational system packages, time sync, kernel sysctl parameters,
+# and proxy routing across all Linux hosts (Bastion, Wazuh, Web, Attack).
+# ==============================================================================
+
+- name: Configure Linux Base Systems
+  hosts: linux
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+    - role: linux-base

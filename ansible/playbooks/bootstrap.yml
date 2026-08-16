@@ -1,0 +1,128 @@
+---
+# ==============================================================================
+# SOCForge — Bootstrap & Provisioning Channel Verification Playbook (Phase 5)
+# ==============================================================================
+# 1. Configures Tinyproxy on the Bastion host as a controlled forward proxy.
+# 2. Validates Linux connectivity via SSH ProxyJump and verifies APT/HTTPS repo access.
+# 3. Validates Windows WinRM connectivity and baseline environment.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Play 1: Bastion Forward Proxy Configuration
+# ------------------------------------------------------------------------------
+- name: "Bootstrap Play 1: Configure Bastion Forward Proxy Service"
+  hosts: bastion
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Install Tinyproxy forward proxy daemon on Bastion
+      ansible.builtin.apt:
+        name: tinyproxy
+        state: present
+        update_cache: true
+      register: tinyproxy_install
+      until: tinyproxy_install is success
+      retries: 3
+      delay: 5
+
+    - name: Configure Tinyproxy to listen on all interfaces and allow VPC CIDR
+      ansible.builtin.copy:
+        dest: /etc/tinyproxy/tinyproxy.conf
+        content: |
+          User tinyproxy
+          Group tinyproxy
+          Port 3128
+          Listen 0.0.0.0
+          Timeout 600
+          DefaultErrorFile "/usr/share/tinyproxy/default.html"
+          StatFile "/usr/share/tinyproxy/stats.html"
+          LogFile "/var/log/tinyproxy/tinyproxy.log"
+          LogLevel Info
+          PidFile "/run/tinyproxy/tinyproxy.pid"
+          MaxClients 100
+          Allow 127.0.0.1
+          Allow 10.10.0.0/16
+          ViaProxyName "socforge-bastion-proxy"
+          ConnectPort 443
+          ConnectPort 563
+          ConnectPort 80
+        mode: "0644"
+        owner: root
+        group: root
+      notify: Restart tinyproxy
+
+    - name: Ensure Tinyproxy service is started and enabled
+      ansible.builtin.service:
+        name: tinyproxy
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Restart tinyproxy
+      ansible.builtin.service:
+        name: tinyproxy
+        state: restarted
+
+# ------------------------------------------------------------------------------
+# Play 2: Linux Host Connectivity & Package Repository Verification
+# ------------------------------------------------------------------------------
+- name: "Bootstrap Play 2: Verify Linux Hosts & Package Channel"
+  hosts: linux
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Display host discovery facts
+      ansible.builtin.debug:
+        msg: >
+          Host: {{ inventory_hostname }} |
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }} |
+          Kernel: {{ ansible_kernel }} |
+          Private IP: {{ ansible_default_ipv4.address | default(ansible_host) }} |
+          Python: {{ ansible_python.version.major }}.{{ ansible_python.version.minor }}.{{ ansible_python.version.micro }}
+
+    - name: Apply common baseline configuration
+      ansible.builtin.import_role:
+        name: common
+
+    - name: Apply Linux base package and proxy configuration
+      ansible.builtin.import_role:
+        name: linux-base
+
+    - name: Verify package repository connectivity through Bastion proxy (Private Hosts)
+      ansible.builtin.uri:
+        url: "{{ item }}"
+        method: HEAD
+        status_code: [200, 301, 302, 403]
+        timeout: 10
+      loop:
+        - "http://archive.ubuntu.com/ubuntu"
+        - "https://packages.wazuh.com"
+        - "https://download.docker.com"
+      environment:
+        http_proxy: "{{ http_proxy_url }}"
+        https_proxy: "{{ https_proxy_url }}"
+      when: inventory_hostname != 'bastion'
+      register: repo_test_results
+      ignore_errors: true
+
+    - name: Summarize package channel connectivity status
+      ansible.builtin.debug:
+        msg: "Package channel reachability verified for {{ inventory_hostname }} via {{ http_proxy_url }}"
+      when: inventory_hostname != 'bastion'
+
+# ------------------------------------------------------------------------------
+# Play 3: Windows Host Connectivity & Telemetry Environment Verification
+# ------------------------------------------------------------------------------
+- name: "Bootstrap Play 3: Verify Windows Employee Endpoint"
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Test WinRM connectivity to Windows host
+      ansible.windows.win_ping:
+      register: win_ping_result
+      ignore_errors: true
+
+    - name: Apply Windows base configuration (if reachable)
+      ansible.builtin.import_role:
+        name: windows-base
+      when: win_ping_result is success

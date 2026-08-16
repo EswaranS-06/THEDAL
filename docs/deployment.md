@@ -1,109 +1,117 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Instances, and Dynamic Inventory Generation (Phases 1–4) are implemented. Software provisioning will follow in Phase 5.
+> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, and **Bootstrap & Provisioning Channels (Phases 1–5)** are implemented. Individual SOC software components will follow in Phase 6.
 
 ---
 
 ## 1. Deployment Pipeline Overview
 
 ```text
-Debian 13 Control Machine
-|
-+--> 1. Terraform (Infrastructure as Code)
-|       |
-|       +--> AWS VPC & 4 Subnets (Phase 2)
-|       +--> Route Tables & Internet Gateway (Phase 2)
-|       +--> 5 Security Groups & Inter-Group Rules (Phase 3)
-|       +--> EC2 IAM Instance Profile & Base Role (Phase 3)
-|       +--> EC2 Key Pair Registration (Phase 3)
-|       +--> 5 EC2 Compute Instances (Phase 4)
-|
-+--> 2. Dynamic Inventory Generation (Phase 4)
-|       |
-|       +--> `terraform output -json`
-|       +--> `scripts/generate-inventory.py`
-|       +--> `ansible/inventory/hosts.ini`
-|
-+--> 3. Ansible Automation (Phase 5)
-|       |
-|       +--> Bootstrap Package Channel
-|       +--> Provision Wazuh SIEM & Agents
-|       +--> Configure Windows Sysmon & Event Forwarding
-|       +--> Deploy Nginx & OWASP Juice Shop
-|       +--> Setup Atomic Red Team Simulation
-|
-+--> 4. Telemetry Verification & Detection Testing (Phase 5)
+                    Debian 13
+                  Control Machine
+                        |
+                        | (1. Terraform Plan / Apply)
+                        v
+                 AWS VPC & 5 EC2s
+         (Bastion Public + 4 Private Nodes)
+                        |
+                        | (2. python3 scripts/generate-inventory.py)
+                        v
+               ansible/inventory/hosts.ini
+                        |
+                        | (3. ansible-playbook playbooks/bootstrap.yml)
+                        v
+       +-----------------------------------------------+
+       | Bastion Forward Proxy Configured (Port 3128)  |
+       | ProxyJump & WinRM Connectivity Verified       |
+       | APT & HTTPS Package Reachability Tested       |
+       +-----------------------------------------------+
+                        |
+                        | (4. ansible-playbook playbooks/linux-base.yml)
+                        | (5. ansible-playbook playbooks/windows-base.yml)
+                        v
+       +-----------------------------------------------+
+       | Base Operating System Prerequisites Applied   |
+       | (Time Sync, Packages, Sysctl, Event Logs)     |
+       +-----------------------------------------------+
 ```
 
 ---
 
-## 2. Dynamic Ansible Inventory Generation Workflow
+## 2. Bootstrap & Provisioning Channel Design
 
-After provisioning or updating Terraform infrastructure, generate the Ansible inventory with a single command:
+### The Challenge: No NAT Gateway
+To keep lab operational costs near zero and eliminate recurring AWS Managed NAT Gateway charges (~$32/month), the private subnets (`SOC`, `Web`, `Attack`) have no NAT Gateway.
+
+### The Solution: Bastion Forward Proxy (Tinyproxy on Port 3128)
+* **Bastion Role**: Runs a lightweight forward proxy daemon (`tinyproxy`) listening on internal port `3128`, restricted via Security Groups to the VPC CIDR `10.10.0.0/16`.
+* **Client Configuration**: Private Linux and Windows instances configure their HTTP/HTTPS proxy environment variables and APT configs (`/etc/apt/apt.conf.d/01proxy`) to route package downloads through `http://10.10.1.x:3128`.
+
+```text
+               +-----------------------------+
+               |        Public Internet      |
+               | (Ubuntu / Wazuh / Docker)   |
+               +--------------+--------------+
+                              ^
+                              | (Outbound HTTPS / APT)
+               +--------------+--------------+
+               |      SOCForge Bastion       |
+               |   (Tinyproxy Port 3128)     |
+               |     (Management Subnet)     |
+               +--------------+--------------+
+                              ^
+       +----------------------+----------------------+
+       | (HTTP_PROXY          | (HTTP_PROXY          | (WinHTTP Proxy
+       |  :3128)              |  :3128)              |  :3128)
++------+------+        +------+------+        +------+------+
+|  Wazuh SIEM |        |  Web Target |        |   Windows   |
+| (Private)   |        | (Private)   |        | (Private)   |
++-------------+        +-------------+        +-------------+
+```
+
+### What is Supported:
+* Ubuntu APT package repositories (`archive.ubuntu.com`, `security.ubuntu.com`).
+* Wazuh HTTPS repositories (`packages.wazuh.com`).
+* Docker container registry pulls (`download.docker.com` and Docker Hub).
+* Python PyPI packages (`pypi.org`).
+* Windows WinHTTP package downloads.
+
+### Known Limitation:
+* Non-proxied protocols (e.g. raw ICMP ping to internet or arbitrary non-HTTP ports) are blocked from private subnets by design.
+
+---
+
+## 3. Host Connectivity & Management Paths
+
+### Linux Hosts: SSH ProxyJump
+Ansible connects from the control machine to internal Linux instances by bouncing through the Bastion host via native SSH `ProxyJump`:
+
+```text
+Debian Control VM ----(SSH:22)----> Bastion (10.10.1.x) ----(ProxyJump:22)----> Internal Linux Host (10.10.x.x)
+```
+
+Configuration in `ansible.cfg` / inventory:
+```ini
+[soc_stack:vars]
+ansible_ssh_common_args='-o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> -o StrictHostKeyChecking=no'
+```
+
+### Windows Host: WinRM over Bastion
+* WinRM is configured on Windows Server (`5985/5986`) and accessible from the Bastion security group.
+* Operators and Ansible tunnel WinRM connections through the Bastion via SSH port forwarding (`ssh -L 5985:10.10.10.x:5985 ubuntu@<BASTION_PUBLIC_IP>`) or native WinRM ProxyJump.
+
+---
+
+## 4. Execution Workflow
 
 ```bash
-# Generate inventory directly from Terraform outputs
+# 1. Generate inventory from Terraform outputs
 python3 scripts/generate-inventory.py
 
-# Or use the Make target
-make inventory
-```
+# 2. Run bootstrap verification (starts Tinyproxy, tests connectivity)
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/bootstrap.yml
 
-This automatically extracts the dynamic public IP of the Bastion and the private IPs of the internal hosts, populating `ansible/inventory/hosts.ini`:
-
-```ini
-[bastion]
-bastion ansible_host=203.0.113.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-
-[wazuh]
-wazuh ansible_host=10.10.10.15 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-
-[web]
-web ansible_host=10.10.30.50 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-
-[attack]
-attack ansible_host=10.10.20.75 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-
-[windows]
-windows ansible_host=10.10.10.20 ansible_user=Administrator ansible_connection=winrm ansible_winrm_server_cert_validation=ignore
-
-[linux:children]
-bastion
-wazuh
-web
-attack
-
-[soc_stack:children]
-wazuh
-web
-windows
-attack
-
-[soc_stack:vars]
-ansible_ssh_common_args='-o ProxyJump=ubuntu@203.0.113.10 -o StrictHostKeyChecking=no'
-```
-
----
-
-## 3. SSH ProxyJump Configuration & Access
-
-Because internal instances reside in private subnets without public IPs, all connections route seamlessly through the Bastion:
-
-```bash
-# Manual SSH into internal Wazuh server via Bastion
-ssh -J ubuntu@<BASTION_PUBLIC_IP> -i ~/.ssh/socforge_key ubuntu@10.10.10.15
-
-# Manual SSH into internal Web server via Bastion
-ssh -J ubuntu@<BASTION_PUBLIC_IP> -i ~/.ssh/socforge_key ubuntu@10.10.30.50
-```
-
----
-
-## 4. Teardown & Cost Management
-
-When training or testing is complete, destroy all provisioned AWS assets to stop billing:
-
-```bash
-cd terraform/
-terraform destroy
+# 3. Apply base system configurations
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/linux-base.yml
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/windows-base.yml
 ```

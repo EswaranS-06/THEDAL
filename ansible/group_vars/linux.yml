@@ -1,0 +1,33 @@
+---
+# ==============================================================================
+# SOCForge — Linux Group Variables
+# ==============================================================================
+
+ansible_user: ubuntu
+ansible_ssh_private_key_file: "~/.ssh/socforge_key"
+ansible_python_interpreter: /usr/bin/python3
+ansible_become: true
+ansible_become_method: sudo
+
+# Linux Base Packages for Initial Bootstrap
+linux_base_packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - software-properties-common
+  - python3
+  - python3-pip
+  - chrony
+  - jq
+  - unzip
+  - tar
+  - htop
+  - net-tools
+  - ufw
+
+# Sysctl parameters required for Elasticsearch/Wazuh Indexer and system performance
+linux_sysctl_settings:
+  vm.max_map_count: 262144
+  fs.file-max: 65536
+  net.core.somaxconn: 1024

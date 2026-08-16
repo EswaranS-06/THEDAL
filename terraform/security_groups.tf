@@ -32,6 +32,17 @@ resource "aws_security_group_rule" "mgmt_ingress_ssh" {
   description       = "Allow SSH management ingress from authorized admin CIDR"
 }
 
+# Ingress: Forward Proxy (TCP 3128) from Internal VPC for package bootstrapping
+resource "aws_security_group_rule" "mgmt_ingress_proxy_vpc" {
+  type              = "ingress"
+  from_port         = 3128
+  to_port           = 3128
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr]
+  security_group_id = aws_security_group.management.id
+  description       = "Allow internal VPC instances to route HTTP/HTTPS package downloads via Bastion forward proxy"
+}
+
 # Egress: Allow all outbound from bastion to internal VPC subnets & external internet
 resource "aws_security_group_rule" "mgmt_egress_all" {
   type              = "egress"

@@ -78,7 +78,7 @@ for tool_entry in "${REQUIRED_TOOLS[@]}"; do
         VERSION_INFO=$(terraform version 2>/dev/null | head -n 1)
         ;;
       ansible)
-        VERSION_INFO=$(ansible --version 2>/dev/null | head -n 1)
+        VERSION_INFO=$(LC_ALL=C.UTF-8 ansible --version 2>/dev/null | head -n 1)
         ;;
       aws)
         VERSION_INFO=$(aws --version 2>/dev/null | head -n 1)

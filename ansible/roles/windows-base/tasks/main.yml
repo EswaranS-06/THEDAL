@@ -1,0 +1,64 @@
+---
+# ==============================================================================
+# SOCForge — Tasks for role: windows-base
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Forward Proxy Configuration (WinHTTP & PowerShell environment)
+# ------------------------------------------------------------------------------
+- name: Configure WinHTTP proxy for outbound package/update downloads
+  ansible.windows.win_shell: |
+    netsh winhttp set proxy "{{ http_proxy_url }}" bypass-list="<local>;10.10.*;169.254.169.254"
+  when: manage_windows_proxy | bool
+
+- name: Set system-wide HTTP_PROXY environment variables
+  ansible.windows.win_environment:
+    state: present
+    name: "{{ item.name }}"
+    value: "{{ item.val }}"
+    level: machine
+  loop:
+    - { name: "HTTP_PROXY", val: "{{ http_proxy_url }}" }
+    - { name: "HTTPS_PROXY", val: "{{ https_proxy_url }}" }
+    - { name: "NO_PROXY", val: "{{ no_proxy_list }}" }
+  when: manage_windows_proxy | bool
+
+# ------------------------------------------------------------------------------
+# 2. Base Directories & PowerShell Execution Policy
+# ------------------------------------------------------------------------------
+- name: Ensure SOCForge root working directory exists
+  ansible.windows.win_file:
+    path: "C:\\SOCForge"
+    state: directory
+
+- name: Set PowerShell Execution Policy to RemoteSigned
+  ansible.windows.win_shell: |
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+  changed_when: false
+
+# ------------------------------------------------------------------------------
+# 3. Windows Time Service (NTP synchronization via Amazon Time Sync)
+# ------------------------------------------------------------------------------
+- name: Configure Windows Time service for AWS NTP
+  ansible.windows.win_shell: |
+    w32tm /config /syncfromflags:manual /manualpeerlist:"169.254.169.123,0x1" /reliable:yes /update
+  when: manage_windows_time | bool
+  changed_when: false
+
+- name: Ensure Windows Time service is running
+  ansible.windows.win_service:
+    name: W32Time
+    state: started
+    start_mode: auto
+  when: manage_windows_time | bool
+
+# ------------------------------------------------------------------------------
+# 4. Windows Event Log Retention & Sizing (Telemetry Preparation)
+# ------------------------------------------------------------------------------
+- name: Configure Security Event Log maximum size to 1 GB
+  ansible.windows.win_shell: |
+    wevtutil sl Security /ms:1073741824
+    wevtutil sl System /ms:536870912
+    wevtutil sl Application /ms:536870912
+  when: manage_windows_eventlogs | bool
+  changed_when: false

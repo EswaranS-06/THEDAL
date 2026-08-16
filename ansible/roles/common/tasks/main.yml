@@ -1,0 +1,22 @@
+---
+# Tasks for role: common
+- name: Log host initialization details
+  ansible.builtin.debug:
+    msg: "Initializing base configuration on {{ inventory_hostname }} (OS Family: {{ ansible_os_family | default('unknown') }})"
+
+- name: Ensure SOCForge metadata directory exists on Linux
+  ansible.builtin.file:
+    path: "{{ socforge_base_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  when: ansible_os_family != 'Windows'
+
+- name: Set timezone to UTC on Linux hosts via localtime symlink
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ system_timezone }}"
+    dest: /etc/localtime
+    state: link
+    force: true
+  when: ansible_os_family != 'Windows'

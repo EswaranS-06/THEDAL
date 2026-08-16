@@ -1,0 +1,4 @@
+---
+# Defaults for role: common
+system_timezone: "UTC"
+socforge_base_dir: "/opt/socforge"

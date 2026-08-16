@@ -1,0 +1,6 @@
+---
+# Defaults for role: windows-base
+manage_windows_proxy: true
+manage_windows_eventlogs: true
+manage_windows_time: true
+windows_security_log_size_bytes: 1073741824 # 1 GB

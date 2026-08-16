@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–4: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–5: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
-# NOTE: In Phase 4, this script validates local configurations and files.
 # ==============================================================================
 
 set -euo pipefail
@@ -22,7 +21,7 @@ FAILURES=0
 # Helper functions
 check_dir() {
   local dir="$1"
-  printf "  Checking directory: %-30s " "${dir}"
+  printf "  Checking directory: %-35s " "${dir}"
   if [ -d "${REPO_ROOT}/${dir}" ]; then
     echo "[OK]"
   else
@@ -33,7 +32,7 @@ check_dir() {
 
 check_file() {
   local file="$1"
-  printf "  Checking file:      %-30s " "${file}"
+  printf "  Checking file:      %-35s " "${file}"
   if [ -f "${REPO_ROOT}/${file}" ]; then
     echo "[OK]"
   else
@@ -65,6 +64,12 @@ REQUIRED_DIRS=(
   "terraform"
   "ansible"
   "ansible/inventory"
+  "ansible/group_vars"
+  "ansible/playbooks"
+  "ansible/roles"
+  "ansible/roles/common"
+  "ansible/roles/linux-base"
+  "ansible/roles/windows-base"
   "detection"
   "attacks"
   "tests"
@@ -75,7 +80,7 @@ for d in "${REQUIRED_DIRS[@]}"; do
 done
 echo ""
 
-# 3. Core Project & Documentation Files
+# 3. Core Project & Configuration Files
 echo "3. Core Project & Configuration Files:"
 REQUIRED_FILES=(
   "README.md"
@@ -102,6 +107,15 @@ REQUIRED_FILES=(
   "terraform/README.md"
   "ansible/ansible.cfg"
   "ansible/inventory/hosts.ini.example"
+  "ansible/group_vars/all.yml"
+  "ansible/group_vars/linux.yml"
+  "ansible/group_vars/windows.yml"
+  "ansible/playbooks/bootstrap.yml"
+  "ansible/playbooks/linux-base.yml"
+  "ansible/playbooks/windows-base.yml"
+  "ansible/roles/common/tasks/main.yml"
+  "ansible/roles/linux-base/tasks/main.yml"
+  "ansible/roles/windows-base/tasks/main.yml"
   "scripts/preflight.sh"
   "scripts/health-check.sh"
   "scripts/generate-inventory.py"
@@ -115,7 +129,7 @@ echo ""
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
 for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py"; do
-  printf "  Checking executable bit: %-25s " "${s}"
+  printf "  Checking executable bit: %-30s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
   else
@@ -129,7 +143,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, and inventory tools are intact."
+  echo "SOCForge project foundation, compute declarations, and Ansible provisioning channel are intact."
   echo "================================================================="
   exit 0
 else

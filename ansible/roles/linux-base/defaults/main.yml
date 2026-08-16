@@ -1,0 +1,5 @@
+---
+# Defaults for role: linux-base
+enable_forward_proxy_client: true
+manage_sysctl: true
+manage_ntp: true

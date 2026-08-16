@@ -1,11 +1,11 @@
 # ==============================================================================
-# SOCForge — Makefile (Phases 1–4)
+# SOCForge — Makefile (Phases 1–5)
 # ==============================================================================
 
 .DEFAULT_GOAL := help
 SHELL := /usr/bin/env bash
 
-.PHONY: help preflight health-check lint tf-fmt tf-validate inventory
+.PHONY: help preflight health-check lint tf-fmt tf-validate inventory ansible-syntax
 
 help: ## Show this help message
 	@echo "================================================================="
@@ -23,7 +23,7 @@ preflight: ## Check control-machine prerequisite tools and resources
 health-check: ## Verify local repository structure and integrity
 	@./scripts/health-check.sh
 
-lint: ## Check shell scripts, Python, and Terraform for syntax errors
+lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 	@echo "Linting shell scripts..."
 	@bash -n scripts/preflight.sh
 	@bash -n scripts/health-check.sh
@@ -37,6 +37,13 @@ lint: ## Check shell scripts, Python, and Terraform for syntax errors
 		terraform -chdir=terraform validate && \
 		echo "Terraform verification: OK"; \
 	fi
+	@if command -v ansible-playbook >/dev/null 2>&1; then \
+		echo "Validating Ansible playbooks syntax..."; \
+		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/bootstrap.yml --syntax-check && \
+		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/linux-base.yml --syntax-check && \
+		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-base.yml --syntax-check && \
+		echo "Ansible syntax verification: OK"; \
+	fi
 
 tf-fmt: ## Format Terraform configuration files
 	@terraform -chdir=terraform fmt -recursive
@@ -46,3 +53,8 @@ tf-validate: ## Validate Terraform syntax and configuration
 
 inventory: ## Generate Ansible hosts.ini from Terraform outputs
 	@python3 scripts/generate-inventory.py
+
+ansible-syntax: ## Validate syntax of all Ansible playbooks
+	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/bootstrap.yml --syntax-check
+	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/linux-base.yml --syntax-check
+	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-base.yml --syntax-check

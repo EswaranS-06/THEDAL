@@ -1,6 +1,6 @@
 # SOCForge — Architectural Blueprint
 
-> **Notice**: This document details the architectural blueprint for SOCForge. It clearly delineates components **implemented in Phases 1–4** versus components **planned for future phases**.
+> **Notice**: This document details the architectural blueprint for SOCForge. It clearly delineates components **implemented in Phases 1–5** versus components **planned for future phases**.
 
 ---
 
@@ -17,9 +17,10 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
              |   Management SG    |
              |  (Bastion Jumpbox) |
              |  [SOCForge-bastion]|
+             |  (Tinyproxy :3128) |
              |   (10.10.1.0/24)   |
              +---------+----------+
-                       | (SSH ProxyJump / WinRM)
+                       | (SSH ProxyJump / WinRM & Proxy :3128)
         +--------------+--------------+
         |                             |
         v                             v
@@ -52,7 +53,7 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
 
 ## 2. Implementation Status by Phase
 
-### ✅ IMPLEMENTED IN PHASES 1–4
+### ✅ IMPLEMENTED IN PHASES 1–5
 * **Phase 1: Project Foundation**: Directory structure, standards (`.editorconfig`, `.gitignore`, `LICENSE`), developer CLI (`Makefile`), preflight checker (`scripts/preflight.sh`), and health check (`scripts/health-check.sh`).
 * **Phase 2: AWS Network Foundation**: Dedicated VPC (`10.10.0.0/16`), single-AZ dynamic discovery, four segregated subnets (Management, SOC, Attack, Web), Internet Gateway (`SOCForge-igw`), and public/private route tables.
 * **Phase 3: Security Groups, IAM & Access Control**:
@@ -60,32 +61,31 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
   * **IAM Foundation**: `SOCForge-ec2-base-role` and `SOCForge-ec2-instance-profile` with `AmazonSSMManagedInstanceCore` and CloudWatch logging policies.
   * **EC2 Access & Key Management**: `aws_key_pair` registration from user-provided public key material (`ssh_public_key`).
 * **Phase 4: EC2 Compute Infrastructure & Dynamic Inventory Handoff**:
-  * **5 EC2 Compute Instances**:
-    * `SOCForge-bastion` (`t3.micro` in Management subnet, public IP assigned).
-    * `SOCForge-wazuh` (`t3.medium`/`t3.xlarge` in SOC subnet, private IP only, 50 GB gp3 root disk).
-    * `SOCForge-windows` (`t3.medium`/`t3.large` in SOC subnet, private IP only, 50 GB gp3 root disk).
-    * `SOCForge-web` (`t3.micro` in Web subnet, private IP only, 20 GB gp3 root disk).
-    * `SOCForge-attack` (`t3.micro` in Attack subnet, private IP only, 20 GB gp3 root disk).
-  * **Dynamic AMI Discovery**: Automated lookup of latest Canonical Ubuntu 22.04 LTS and Amazon Windows Server 2022 Full Base AMIs with x86_64 architecture.
+  * **5 EC2 Compute Instances**: `SOCForge-bastion`, `SOCForge-wazuh`, `SOCForge-windows`, `SOCForge-web`, and `SOCForge-attack`.
+  * **Dynamic AMI Discovery**: Ubuntu 22.04 LTS and Windows Server 2022 Full Base (x86_64).
   * **Automated Ansible Inventory Pipeline**: `scripts/generate-inventory.py` converts `terraform output -json` into `ansible/inventory/hosts.ini`.
-  * **Ansible Configuration**: `ansible/ansible.cfg` configured for SSH ProxyJump through the Bastion.
+* **Phase 5: Bootstrap & Provisioning Channel**:
+  * **Bastion Forward Proxy Architecture**: `tinyproxy` configured on Bastion port `3128` allowing internal private instances to download packages over HTTP/HTTPS without an expensive NAT Gateway.
+  * **Ansible Roles**: `roles/common`, `roles/linux-base`, `roles/windows-base`.
+  * **Playbooks**: `playbooks/bootstrap.yml` (connectivity & repo reachability tests), `playbooks/linux-base.yml`, `playbooks/windows-base.yml`.
+  * **Baseline Configurations**: Kernel sysctl tuning (`vm.max_map_count=262144`), Amazon Time Sync NTP, foundational packages, and Windows event log buffer expansion.
 
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 5+)
-* **Phase 5: Ansible Bootstrap, Software Provisioning & Detection Engineering**:
-  * Private instance package bootstrap strategy.
-  * Automated installation and configuration of Wazuh Manager, Indexer, Dashboard, and Agents.
-  * Sysmon configuration on Windows employee workstation.
-  * Nginx reverse proxy, DVWA, and containerized OWASP Juice Shop.
-  * Atomic Red Team test suites, custom Wazuh detection rules, and MITRE ATT&CK validation scenarios.
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 6+)
+* **Phase 6: Wazuh SIEM Platform Deployment**:
+  * Deployment and configuration of Wazuh Manager, Wazuh Indexer, and Wazuh Dashboard on the SOC server.
+* **Phase 7: Endpoint Telemetry & Application Targets**:
+  * Wazuh Agent deployment on Windows, Web, and Attack instances.
+  * Microsoft Sysmon configuration on Windows.
+  * Nginx reverse proxy, DVWA, and Docker containerized OWASP Juice Shop.
+* **Phase 8: Attack Simulation & Detection Engineering**:
+  * Atomic Red Team simulation playbooks and custom Wazuh detection rules mapped to MITRE ATT&CK.
 
 ---
 
-## 3. Compute Specifications
+## 3. Provisioning Channel Comparison
 
-| Instance Name | Role | Subnet | IP Assignment | Default Size | Recommended |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `SOCForge-bastion` | Management Jumpbox | Management (`10.10.1.0/24`) | **Public + Private** | `t3.micro` | 1 vCPU, 1 GB RAM |
-| `SOCForge-wazuh` | Wazuh SIEM Server | SOC (`10.10.10.0/24`) | **Private Only** | `t3.medium` | 4 vCPU, 16 GB RAM (`t3.xlarge`) |
-| `SOCForge-windows` | Windows Workstation | SOC (`10.10.10.0/24`) | **Private Only** | `t3.medium` | 2 vCPU, 8 GB RAM (`t3.large`) |
-| `SOCForge-web` | Web Target Server | Web (`10.10.30.0/24`) | **Private Only** | `t3.micro` | 1 vCPU, 1 GB RAM |
-| `SOCForge-attack` | Attack Node | Attack (`10.10.20.0/24`) | **Private Only** | `t3.micro` | 1 vCPU, 1 GB RAM |
+| Strategy | Cost | Security | Protocol Support | Selected? |
+| :--- | :--- | :--- | :--- | :--- |
+| **AWS NAT Gateway** | ~$32.40/month + data fees | High | All TCP/UDP outbound | ❌ Rejected (Violates low-cost educational goal) |
+| **Public IPs on Private Nodes** | Free | ⚠️ Unsafe (Exposes vulnerable targets) | All outbound | ❌ Rejected (Breaches least-privilege isolation) |
+| **Bastion Forward Proxy (Tinyproxy)** | **$0 additional** | **High (Internal VPC only)** | **HTTP/HTTPS (APT, Wazuh, Docker)** | **✅ SELECTED** |
