@@ -1,0 +1,39 @@
+---
+# ==============================================================================
+# Tasks: Nginx Reverse Proxy Configuration (:{{ nginx_port }})
+# ==============================================================================
+
+- name: Deploy Nginx DVWA site configuration
+  ansible.builtin.template:
+    src: nginx-dvwa.conf.j2
+    dest: /etc/nginx/sites-available/dvwa.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart nginx
+
+- name: Enable DVWA site in Nginx
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/dvwa.conf
+    dest: /etc/nginx/sites-enabled/dvwa.conf
+    state: link
+  notify: Restart nginx
+
+- name: Remove default Nginx site configuration
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Restart nginx
+
+- name: Ensure Nginx service is enabled and started
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Wait for Nginx port {{ nginx_port }} to be listening
+  ansible.builtin.wait_for:
+    port: "{{ nginx_port }}"
+    host: 0.0.0.0
+    timeout: 30
+    state: started

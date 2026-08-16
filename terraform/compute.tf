@@ -37,7 +37,7 @@ data "aws_ami" "ubuntu" {
 # Latest Amazon Windows Server 2022 Full Base
 data "aws_ami" "windows" {
   most_recent = true
-  owners      = ["80111966130"] # Amazon
+  owners      = ["801119661308"] # Amazon
 
   filter {
     name   = "name"

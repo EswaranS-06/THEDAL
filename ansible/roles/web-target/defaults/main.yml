@@ -1,0 +1,45 @@
+---
+# Defaults for role: web-target
+# ==============================================================================
+# SOCForge — Linux Web Target (Nginx + DVWA + MariaDB + Wazuh + auditd) Defaults
+# ==============================================================================
+
+# Web Server & Reverse Proxy Settings
+nginx_port: 8000
+nginx_server_name: "_"
+nginx_access_log: "/var/log/nginx/access.log"
+nginx_error_log: "/var/log/nginx/error.log"
+
+# DVWA Application Configuration
+dvwa_install_dir: "/var/www/dvwa"
+dvwa_repo_url: "https://github.com/digininja/DVWA.git"
+dvwa_version: "master"
+dvwa_default_security_level: "low"
+dvwa_php_ids: "disabled"
+
+# Database Configuration (MariaDB)
+dvwa_db_host: "127.0.0.1"
+dvwa_db_port: 3306
+dvwa_db_name: "dvwa"
+dvwa_db_user: "dvwa_user"
+dvwa_db_password: "{{ lookup('env', 'DVWA_DB_PASSWORD') | default('SOCForgeDvwaPass2026!', true) }}"
+
+# PHP-FPM Socket Settings
+php_fpm_socket: "/run/php/php-fpm.sock"
+
+# Wazuh Agent Integration
+wazuh_version: "4.14.7"
+wazuh_major_version: "4.x"
+wazuh_manager_ip: "10.10.10.10"
+wazuh_manager_address: "{{ hostvars['wazuh']['ansible_default_ipv4']['address'] | default(hostvars['wazuh']['ansible_host'] | default(wazuh_manager_ip)) }}"
+wazuh_manager_port: 1514
+wazuh_registration_port: 1515
+wazuh_agent_name: "{{ inventory_hostname }}"
+wazuh_agent_group: "web-servers"
+
+# FIM & Auditd Configuration
+fim_monitored_paths:
+  - "/var/www/dvwa"
+  - "/etc/nginx"
+  - "/etc/php"
+  - "/etc/systemd/system"

@@ -1,0 +1,48 @@
+---
+# ==============================================================================
+# Tasks: MariaDB Database Configuration for DVWA
+# ==============================================================================
+
+- name: Ensure MariaDB service is started and enabled
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Ensure MariaDB listens strictly on localhost
+  ansible.builtin.lineinfile:
+    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    regexp: "^#?bind-address"
+    line: "bind-address = 127.0.0.1"
+    state: present
+  notify: Restart mariadb
+
+- name: Create DVWA database in MariaDB
+  community.mysql.mysql_db:
+    name: "{{ dvwa_db_name }}"
+    state: present
+    login_unix_socket: /run/mysqld/mysqld.sock
+  ignore_errors: true
+
+- name: Create DVWA database user with appropriate privileges
+  community.mysql.mysql_user:
+    name: "{{ dvwa_db_user }}"
+    password: "{{ dvwa_db_password }}"
+    priv: "{{ dvwa_db_name }}.*:ALL"
+    host: "{{ item }}"
+    state: present
+    login_unix_socket: /run/mysqld/mysqld.sock
+  loop:
+    - "localhost"
+    - "127.0.0.1"
+  ignore_errors: true
+
+- name: Fallback database creation via MySQL shell if module fails
+  ansible.builtin.shell: |
+    mysql -e "CREATE DATABASE IF NOT EXISTS {{ dvwa_db_name }};"
+    mysql -e "CREATE USER IF NOT EXISTS '{{ dvwa_db_user }}'@'localhost' IDENTIFIED BY '{{ dvwa_db_password }}';"
+    mysql -e "CREATE USER IF NOT EXISTS '{{ dvwa_db_user }}'@'127.0.0.1' IDENTIFIED BY '{{ dvwa_db_password }}';"
+    mysql -e "GRANT ALL PRIVILEGES ON {{ dvwa_db_name }}.* TO '{{ dvwa_db_user }}'@'localhost';"
+    mysql -e "GRANT ALL PRIVILEGES ON {{ dvwa_db_name }}.* TO '{{ dvwa_db_user }}'@'127.0.0.1';"
+    mysql -e "FLUSH PRIVILEGES;"
+  changed_when: false

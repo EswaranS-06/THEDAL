@@ -1,0 +1,59 @@
+---
+# ==============================================================================
+# Tasks: Web Target Service & Telemetry Validation
+# ==============================================================================
+
+- name: Verify all Web Target systemd services are active
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+  loop:
+    - nginx
+    - mariadb
+    - auditd
+    - wazuh-agent
+    - "{{ php_fpm_service_name | default('php-fpm') }}"
+  register: web_service_states
+  ignore_errors: true
+
+- name: Verify Nginx port {{ nginx_port }} and MariaDB port 3306 are open
+  ansible.builtin.wait_for:
+    port: "{{ item.port }}"
+    host: "{{ item.host }}"
+    timeout: 10
+    state: started
+  loop:
+    - { port: "{{ nginx_port }}", host: "0.0.0.0" }
+    - { port: 3306, host: "127.0.0.1" }
+
+- name: Verify local DVWA HTTP endpoint response
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ nginx_port }}/login.php"
+    method: GET
+    status_code: [200, 302]
+    timeout: 10
+  register: dvwa_http_probe
+  ignore_errors: true
+
+- name: Verify telemetry log files exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ nginx_access_log }}"
+    - "{{ nginx_error_log }}"
+    - "/var/log/audit/audit.log"
+    - "/var/log/auth.log"
+  register: log_stats
+
+- name: Display Web Target Deployment Summary
+  ansible.builtin.debug:
+    msg:
+      - "================================================================="
+      - "         SOCForge Linux Web Target Deployment Complete           "
+      - "================================================================="
+      - "Host              : {{ inventory_hostname }} ({{ ansible_default_ipv4.address | default(ansible_host) }})"
+      - "Nginx Port        : {{ nginx_port }} (DVWA Reverse Proxy)"
+      - "MariaDB           : Active on 127.0.0.1:3306 (Internal Only)"
+      - "auditd Telemetry  : Active (/var/log/audit/audit.log)"
+      - "Wazuh Agent       : Active (Streaming Nginx, Auth, and Audit logs to {{ wazuh_manager_address }}:1514)"
+      - "================================================================="

@@ -1,0 +1,29 @@
+---
+# ==============================================================================
+# Tasks: Web Target Prerequisites & Package Installation
+# ==============================================================================
+
+- name: Install Nginx, PHP, MariaDB, and auditd packages
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - mariadb-server
+      - php-fpm
+      - php-mysql
+      - php-gd
+      - php-curl
+      - php-xml
+      - php-mbstring
+      - python3-pymysql
+      - git
+      - auditd
+      - audispd-plugins
+      - net-tools
+      - curl
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  register: web_pkg_install
+  until: web_pkg_install is success
+  retries: 3
+  delay: 5

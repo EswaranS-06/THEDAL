@@ -1,0 +1,45 @@
+---
+# ==============================================================================
+# Tasks: DVWA Deployment & File Permissions
+# ==============================================================================
+
+- name: Clone official DVWA repository
+  ansible.builtin.git:
+    repo: "{{ dvwa_repo_url }}"
+    dest: "{{ dvwa_install_dir }}"
+    version: "{{ dvwa_version }}"
+    force: true
+  environment:
+    http_proxy: "{{ http_proxy_url }}"
+    https_proxy: "{{ https_proxy_url }}"
+
+- name: Deploy DVWA configuration file (config.inc.php)
+  ansible.builtin.template:
+    src: dvwa-config.inc.php.j2
+    dest: "{{ dvwa_install_dir }}/config/config.inc.php"
+    mode: "0644"
+    owner: www-data
+    group: www-data
+
+- name: Ensure DVWA directory ownership is set to www-data
+  ansible.builtin.file:
+    path: "{{ dvwa_install_dir }}"
+    owner: www-data
+    group: www-data
+    recurse: true
+
+- name: Ensure DVWA uploads directory is writable
+  ansible.builtin.file:
+    path: "{{ dvwa_install_dir }}/hackable/uploads"
+    state: directory
+    mode: "0777"
+    owner: www-data
+    group: www-data
+
+- name: Ensure PHPIDS log directory and file are writable
+  ansible.builtin.file:
+    path: "{{ dvwa_install_dir }}/external/phpids/0.6/lib/IDS/tmp"
+    state: directory
+    mode: "0777"
+    owner: www-data
+    group: www-data

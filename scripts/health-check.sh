@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–7: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–8: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
 # ==============================================================================
@@ -77,6 +77,9 @@ REQUIRED_DIRS=(
   "ansible/roles/wazuh-agent"
   "ansible/roles/wazuh-agent/tasks"
   "ansible/roles/wazuh-agent/templates"
+  "ansible/roles/web-target"
+  "ansible/roles/web-target/tasks"
+  "ansible/roles/web-target/templates"
   "detection"
   "attacks"
   "tests"
@@ -100,6 +103,7 @@ REQUIRED_FILES=(
   "docs/networking.md"
   "docs/logging.md"
   "docs/learning-path.md"
+  "docs/phase-8-linux-web-target.md"
   "terraform/versions.tf"
   "terraform/provider.tf"
   "terraform/variables.tf"
@@ -123,6 +127,7 @@ REQUIRED_FILES=(
   "ansible/playbooks/windows-base.yml"
   "ansible/playbooks/windows-agent.yml"
   "ansible/playbooks/wazuh.yml"
+  "ansible/playbooks/web-target.yml"
   "ansible/roles/common/tasks/main.yml"
   "ansible/roles/linux-base/tasks/main.yml"
   "ansible/roles/windows-base/tasks/main.yml"
@@ -154,12 +159,29 @@ REQUIRED_FILES=(
   "ansible/roles/wazuh-agent/tasks/registration-windows.yml"
   "ansible/roles/wazuh-agent/tasks/validation-windows.yml"
   "ansible/roles/wazuh-agent/templates/ossec.conf.j2"
+  "ansible/roles/web-target/README.md"
+  "ansible/roles/web-target/defaults/main.yml"
+  "ansible/roles/web-target/handlers/main.yml"
+  "ansible/roles/web-target/tasks/main.yml"
+  "ansible/roles/web-target/tasks/prerequisites.yml"
+  "ansible/roles/web-target/tasks/mariadb.yml"
+  "ansible/roles/web-target/tasks/php.yml"
+  "ansible/roles/web-target/tasks/dvwa.yml"
+  "ansible/roles/web-target/tasks/nginx.yml"
+  "ansible/roles/web-target/tasks/auditd.yml"
+  "ansible/roles/web-target/tasks/wazuh-agent.yml"
+  "ansible/roles/web-target/tasks/validation.yml"
+  "ansible/roles/web-target/templates/nginx-dvwa.conf.j2"
+  "ansible/roles/web-target/templates/dvwa-config.inc.php.j2"
+  "ansible/roles/web-target/templates/audit.rules.j2"
+  "ansible/roles/web-target/templates/ossec-web.conf.j2"
   "scripts/preflight.sh"
   "scripts/health-check.sh"
   "scripts/generate-inventory.py"
   "scripts/wazuh-tunnel.sh"
   "scripts/wazuh-health-check.sh"
   "scripts/windows-agent-health-check.sh"
+  "scripts/linux-web-health-check.sh"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -169,7 +191,7 @@ echo ""
 
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
-for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/windows-agent-health-check.sh"; do
+for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/windows-agent-health-check.sh" "scripts/linux-web-health-check.sh"; do
   printf "  Checking executable bit: %-35s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
@@ -184,7 +206,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, and Windows endpoint telemetry are intact."
+  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, and Linux Web Target are intact."
   echo "================================================================="
   exit 0
 else

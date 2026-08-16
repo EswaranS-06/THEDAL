@@ -58,7 +58,7 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
 
 ## 2. Implementation Status by Phase
 
-### ✅ IMPLEMENTED IN PHASES 1–7
+### ✅ IMPLEMENTED IN PHASES 1–8
 * **Phase 1: Project Foundation**: Directory structure, standards (`.editorconfig`, `.gitignore`, `LICENSE`), developer CLI (`Makefile`), preflight checker (`scripts/preflight.sh`), and health check (`scripts/health-check.sh`).
 * **Phase 2: AWS Network Foundation**: Dedicated VPC (`10.10.0.0/16`), single-AZ dynamic discovery, four segregated subnets (Management, SOC, Attack, Web), Internet Gateway (`SOCForge-igw`), and public/private route tables.
 * **Phase 3: Security Groups, IAM & Access Control**:
@@ -80,13 +80,15 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
   * **PowerShell Telemetry**: ScriptBlock Logging (Event 4104) and Module Logging (Event 4103).
   * **Microsoft Sysmon**: Deployed official Sysmon with curated SOCForge XML capturing Process Create (1), Network Connect (3), DLL Load (7), ProcessAccess/LSASS (10), FileCreate (11), Registry (12-14), DNS (22).
   * **Wazuh Agent Deployment & Enrollment**: Automated installation of Wazuh Agent `v4.14.7`, registration against Wazuh Manager (`1515/TCP`), and telemetry streaming (`1514/TCP`).
-
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 8+)
 * **Phase 8: Linux Web Target Server + Deliberately Vulnerable Web Application (DVWA)**:
-  * Nginx reverse proxy configuration on port `8000`.
-  * Deployment and instrumentation of DVWA (PHP/MySQL) with Wazuh Agent log analysis.
+  * **Nginx Reverse Proxy on Port 8000**: Controlled HTTP entry point with standard combined access and error logging.
+  * **DVWA Deployment**: Official PHP-FPM application with isolated MariaDB backend on `127.0.0.1:3306`.
+  * **Kernel Auditd Telemetry**: Focused audit rules tracking web directory modifications, Nginx/PHP config tampering, and execution of reconnaissance/staging binaries.
+  * **Wazuh Web Agent & FIM**: Automated agent enrollment (`1515/TCP`), real-time FIM on `/var/www/dvwa`, `/etc/nginx`, `/etc/php`, and streaming of Nginx, auth, and audit logs.
+
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 9+)
 * **Phase 9: Containerized OWASP Juice Shop**:
-  * Docker-based Juice Shop deployment on port `3000` with container logging.
+  * Docker-based Juice Shop deployment on port `3000` with dedicated container logging architecture.
 * **Phase 10: Adversary Emulation & MITRE ATT&CK Detection Engineering**:
   * Atomic Red Team simulation harness on `SOCForge-attack` targeting Windows and Web nodes.
   * Custom Wazuh rules and detection alert mapping.

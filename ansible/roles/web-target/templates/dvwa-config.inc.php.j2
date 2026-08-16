@@ -1,0 +1,28 @@
+<?php
+
+# ==============================================================================
+# SOCForge — DVWA Configuration
+# ==============================================================================
+
+# Database variables
+$_DVWA = array();
+$_DVWA[ 'db_server' ]   = '{{ dvwa_db_host }}';
+$_DVWA[ 'db_database' ] = '{{ dvwa_db_name }}';
+$_DVWA[ 'db_user' ]     = '{{ dvwa_db_user }}';
+$_DVWA[ 'db_password' ] = '{{ dvwa_db_password }}';
+$_DVWA[ 'db_port' ]     = '{{ dvwa_db_port }}';
+
+# ReCAPTCHA settings (disabled for local training)
+$_DVWA[ 'recaptcha_public_key' ]  = '';
+$_DVWA[ 'recaptcha_private_key' ] = '';
+
+# Default security level: 'low', 'medium', 'high', 'impossible'
+$_DVWA[ 'default_security_level' ] = '{{ dvwa_default_security_level }}';
+
+# Default PHPIDS level: 'disabled', 'low', 'medium', 'high'
+$_DVWA[ 'default_phpids_level' ] = '{{ dvwa_php_ids }}';
+
+# Verbosity settings
+$_DVWA[ 'default_phpids_verbose' ] = 'false';
+
+?>

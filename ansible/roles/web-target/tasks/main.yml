@@ -1,0 +1,28 @@
+---
+# ==============================================================================
+# SOCForge — Main Tasks for role: web-target
+# ==============================================================================
+
+- name: 1. Install prerequisites and package dependencies
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: 2. Configure and secure MariaDB database
+  ansible.builtin.include_tasks: mariadb.yml
+
+- name: 3. Configure PHP-FPM runtime
+  ansible.builtin.include_tasks: php.yml
+
+- name: 4. Deploy and initialize DVWA web application
+  ansible.builtin.include_tasks: dvwa.yml
+
+- name: 5. Configure Nginx reverse proxy on port 8000
+  ansible.builtin.include_tasks: nginx.yml
+
+- name: 6. Deploy focused Linux auditd telemetry rules
+  ansible.builtin.include_tasks: auditd.yml
+
+- name: 7. Deploy and enroll Wazuh Agent for web telemetry
+  ansible.builtin.include_tasks: wazuh-agent.yml
+
+- name: 8. Validate web target services and telemetry pipeline
+  ansible.builtin.include_tasks: validation.yml

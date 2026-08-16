@@ -1,0 +1,54 @@
+# ==============================================================================
+# SOCForge — Focused Linux Web Target Audit Rules
+# ==============================================================================
+# Configures targeted auditd telemetry for web application integrity,
+# configuration tampering, and command execution monitoring.
+# ==============================================================================
+
+# Delete all existing rules
+-D
+
+# Buffer size & failure mode
+-b 8192
+-f 1
+
+# ------------------------------------------------------------------------------
+# 1. File Integrity & Configuration Monitoring
+# ------------------------------------------------------------------------------
+# Web application root modifications (e.g. web shell uploads)
+-w /var/www/dvwa/ -p wa -k socforge_web_file_mod
+
+# Nginx web server configuration changes
+-w /etc/nginx/ -p wa -k socforge_nginx_config_mod
+
+# PHP runtime configuration changes
+-w /etc/php/ -p wa -k socforge_php_config_mod
+
+# Systemd service unit modifications (persistence)
+-w /etc/systemd/system/ -p wa -k socforge_systemd_mod
+
+# Authentication & credential file monitoring
+-w /etc/passwd -p wa -k socforge_user_mod
+-w /etc/shadow -p wa -k socforge_shadow_mod
+-w /etc/sudoers -p wa -k socforge_sudoers_mod
+-w /etc/sudoers.d/ -p wa -k socforge_sudoers_mod
+
+# ------------------------------------------------------------------------------
+# 2. Execution Monitoring for Reconnaissance & Suspicious Binaries
+# ------------------------------------------------------------------------------
+# System reconnaissance commands
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/whoami -k socforge_recon_cmd
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/id -k socforge_recon_cmd
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/uname -k socforge_recon_cmd
+
+# Network transfer & staging tools
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/curl -k socforge_download_cmd
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/wget -k socforge_download_cmd
+
+# Reverse shell utilities
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/nc -k socforge_shell_cmd
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/ncat -k socforge_shell_cmd
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/netcat -k socforge_shell_cmd
+
+# Privilege escalation
+-a always,exit -F arch=b64 -S execve -F path=/usr/bin/sudo -k socforge_priv_esc

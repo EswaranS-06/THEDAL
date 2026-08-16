@@ -1,0 +1,71 @@
+<!--
+  SOCForge — Wazuh Linux Web Target Agent Configuration
+  ==============================================================================
+-->
+<ossec_config>
+  <client>
+    <server>
+      <address>{{ wazuh_manager_address }}</address>
+      <port>{{ wazuh_manager_port }}</port>
+      <protocol>tcp</protocol>
+    </server>
+    <config-profile>ubuntu, debian, {{ wazuh_agent_group }}</config-profile>
+    <notify_time>10</notify_time>
+    <time-reconnect>60</time-reconnect>
+    <auto_restart>yes</auto_restart>
+  </client>
+
+  <!-- Client Event Buffer -->
+  <client_buffer>
+    <disabled>no</disabled>
+    <queue_size>5000</queue_size>
+    <events_per_second>500</events_per_second>
+  </client_buffer>
+
+  <!-- File Integrity Monitoring (FIM) -->
+  <syscheck>
+    <disabled>no</disabled>
+    <frequency>21600</frequency>
+    <scan_on_start>yes</scan_on_start>
+    {% for path in fim_monitored_paths %}
+    <directories check_all="yes" realtime="yes">{{ path }}</directories>
+    {% endfor %}
+    <ignore>/var/www/dvwa/hackable/uploads</ignore>
+    <skip_nfs>yes</skip_nfs>
+  </syscheck>
+
+  <!-- System Log Collection -->
+  <localfile>
+    <location>/var/log/auth.log</location>
+    <log_format>syslog</log_format>
+  </localfile>
+
+  <localfile>
+    <location>/var/log/syslog</location>
+    <log_format>syslog</log_format>
+  </localfile>
+
+  <!-- Nginx Web Access & Error Logs (Apache Combined Format) -->
+  <localfile>
+    <location>{{ nginx_access_log }}</location>
+    <log_format>apache</log_format>
+  </localfile>
+
+  <localfile>
+    <location>{{ nginx_error_log }}</location>
+    <log_format>apache</log_format>
+  </localfile>
+
+  <!-- Linux Auditd Telemetry (Format: audit) -->
+  <localfile>
+    <location>/var/log/audit/audit.log</location>
+    <log_format>audit</log_format>
+  </localfile>
+
+  <!-- Active Response -->
+  <active-response>
+    <disabled>no</disabled>
+    <ca_store>/var/ossec/etc/wpk_root.pem</ca_store>
+    <ca_verification>yes</ca_verification>
+  </active-response>
+</ossec_config>

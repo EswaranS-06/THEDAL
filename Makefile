@@ -1,11 +1,11 @@
 # ==============================================================================
-# SOCForge — Makefile (Phases 1–7)
+# SOCForge — Makefile (Phases 1–8)
 # ==============================================================================
 
 .DEFAULT_GOAL := help
 SHELL := /usr/bin/env bash
 
-.PHONY: help preflight health-check lint tf-fmt tf-validate inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check windows-agent-deploy windows-check
+.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check windows-agent-deploy windows-check web-target-deploy web-check
 
 help: ## Show this help message
 	@echo "================================================================="
@@ -30,6 +30,7 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 	@bash -n scripts/wazuh-tunnel.sh
 	@bash -n scripts/wazuh-health-check.sh
 	@bash -n scripts/windows-agent-health-check.sh
+	@bash -n scripts/linux-web-health-check.sh
 	@echo "Shell syntax verification: OK"
 	@echo "Validating Python scripts..."
 	@python3 -m py_compile scripts/generate-inventory.py
@@ -47,6 +48,7 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-base.yml --syntax-check && \
 		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/wazuh.yml --syntax-check && \
 		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-agent.yml --syntax-check && \
+		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/web-target.yml --syntax-check && \
 		echo "Ansible syntax verification: OK"; \
 	fi
 
@@ -55,6 +57,9 @@ tf-fmt: ## Format Terraform configuration files
 
 tf-validate: ## Validate Terraform syntax and configuration
 	@terraform -chdir=terraform validate
+
+tf-plan: ## Run Terraform dry-run execution plan
+	@terraform -chdir=terraform plan
 
 inventory: ## Generate Ansible hosts.ini from Terraform outputs
 	@python3 scripts/generate-inventory.py
@@ -65,6 +70,7 @@ ansible-syntax: ## Validate syntax of all Ansible playbooks
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-base.yml --syntax-check
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/wazuh.yml --syntax-check
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-agent.yml --syntax-check
+	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/web-target.yml --syntax-check
 
 wazuh-deploy: ## Deploy the Wazuh SIEM platform via Ansible
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/wazuh.yml
@@ -80,3 +86,9 @@ windows-agent-deploy: ## Deploy Windows baseline, Sysmon, and Wazuh Agent
 
 windows-check: ## Check Windows endpoint telemetry and Wazuh Agent registration
 	@./scripts/windows-agent-health-check.sh
+
+web-target-deploy: ## Deploy Linux Web Target (Nginx :8000 + DVWA + MariaDB + Wazuh + auditd)
+	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/web-target.yml
+
+web-check: ## Check Linux Web Target and DVWA health status
+	@./scripts/linux-web-health-check.sh

@@ -1,6 +1,6 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, and **Windows Endpoint Telemetry (Phases 1–7)** are implemented. Web target provisioning follows in Phase 8.
+> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, and **Linux Web Target + DVWA (Phases 1–8)** are implemented. OWASP Juice Shop containerization follows in Phase 9.
 
 ---
 
@@ -50,29 +50,28 @@
        | - Microsoft Sysmon (Sysmon64 Service)         |
        | - Wazuh Agent Registered & Streaming (1514)   |
        +-----------------------------------------------+
+                        |
+                        | (8. ansible-playbook playbooks/web-target.yml)
+                        v
+       +-----------------------------------------------+
+       | Linux Web Target Live (DVWA on Port 8000)     |
+       | - Nginx Reverse Proxy (:8000) + PHP-FPM       |
+       | - MariaDB Database (127.0.0.1:3306)           |
+       | - Linux auditd Telemetry (/var/log/audit)     |
+       | - Wazuh Agent Registered & Streaming (1514)   |
+       +-----------------------------------------------+
 ```
 
 ---
 
 ## 2. Windows Endpoint & Telemetry Deployment Workflow (Phase 7)
 
-### Step 1: Deploy Windows Baseline, Sysmon & Wazuh Agent
-Execute the Windows agent playbook:
-
 ```bash
 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/windows-agent.yml
 # Or: make windows-agent-deploy
 ```
 
-This automates:
-1. **Security Audit Policies**: Configures `auditpol.exe` for Process Creation (Event 4688 with CLI), Logon/Logoff, and Account Management.
-2. **PowerShell Logging**: Enables ScriptBlock Logging (Event 4104) and Module Logging (Event 4103).
-3. **Microsoft Sysmon**: Installs official Sysinternals Sysmon `Sysmon64.exe` with curated SOCForge configuration.
-4. **Wazuh Agent**: Downloads and installs MSI package via Bastion proxy, registers the agent with Wazuh Manager on port `1515`, and starts `WazuhSvc`.
-
-### Step 2: Verify Windows Telemetry Pipeline
-Run the automated Windows health check:
-
+Verify status:
 ```bash
 ./scripts/windows-agent-health-check.sh
 # Or: make windows-check
@@ -80,7 +79,34 @@ Run the automated Windows health check:
 
 ---
 
-## 3. Web Dashboard SSH Tunnel
+## 3. Linux Web Target & DVWA Deployment Workflow (Phase 8)
+
+### Step 1: Deploy Web Target Stack
+Execute the web target playbook:
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/web-target.yml
+# Or: make web-target-deploy
+```
+
+This automates:
+1. **Nginx Reverse Proxy**: Configured to listen on port `8000/TCP` with standard combined access logging.
+2. **DVWA Application**: Cloned from official Git repo, configured with PHP-FPM runtime and database parameters.
+3. **MariaDB Database**: Initialized and bound to `127.0.0.1:3306` with isolated database and user permissions.
+4. **Linux Auditd**: Deploys focused audit rules for web file modifications, configuration tampering, and command execution.
+5. **Wazuh Agent**: Installs and enrolls agent against `SOCForge-wazuh:1515`, streaming Nginx, auth, and audit logs.
+
+### Step 2: Verify Web Target & DVWA Health
+Run the automated web target health check:
+
+```bash
+./scripts/linux-web-health-check.sh
+# Or: make web-check
+```
+
+---
+
+## 4. Web Dashboard SSH Tunnel
 
 Access the Wazuh Dashboard from your local browser:
 

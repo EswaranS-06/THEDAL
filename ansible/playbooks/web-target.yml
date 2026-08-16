@@ -1,0 +1,16 @@
+---
+# ==============================================================================
+# SOCForge — Linux Web Target & DVWA Deployment Playbook (Phase 8)
+# ==============================================================================
+# Deploys Nginx (port 8000), DVWA, MariaDB, auditd, and Wazuh Agent onto
+# the dedicated private web target instance.
+# ==============================================================================
+
+- name: Deploy Linux Web Target, DVWA, and Web Telemetry
+  hosts: web
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+    - role: linux-base
+    - role: web-target

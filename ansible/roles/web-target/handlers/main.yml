@@ -1,0 +1,28 @@
+---
+# Handlers for role: web-target
+# ==============================================================================
+
+- name: Restart nginx
+  ansible.builtin.service:
+    name: nginx
+    state: restarted
+
+- name: Restart php-fpm
+  ansible.builtin.service:
+    name: "{{ php_fpm_service_name | default('php8.1-fpm') }}"
+    state: restarted
+  ignore_errors: true
+
+- name: Restart mariadb
+  ansible.builtin.service:
+    name: mariadb
+    state: restarted
+
+- name: Reload auditd
+  ansible.builtin.command: augenrules --load
+  changed_when: false
+
+- name: Restart wazuh-agent
+  ansible.builtin.service:
+    name: wazuh-agent
+    state: restarted
