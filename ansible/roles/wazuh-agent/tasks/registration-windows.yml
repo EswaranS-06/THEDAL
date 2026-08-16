@@ -1,0 +1,26 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Agent Windows Registration & Service Start
+# ==============================================================================
+
+- name: Check if Wazuh Agent client keys exist
+  ansible.windows.win_stat:
+    path: "{{ wazuh_win_install_dir }}\\client.keys"
+  register: client_keys_stat
+
+- name: Register Wazuh Agent with Wazuh Manager if keys are missing
+  ansible.windows.win_shell: |
+    & "{{ wazuh_win_install_dir }}\\agent-auth.exe" `
+      -m "{{ wazuh_manager_address }}" `
+      -p {{ wazuh_registration_port }} `
+      -A "{{ wazuh_agent_name }}" `
+      -G "{{ wazuh_agent_group }}"
+  when: not client_keys_stat.stat.exists or client_keys_stat.stat.size == 0
+  changed_when: true
+  notify: Restart Wazuh Agent on Windows
+
+- name: Ensure Wazuh Agent Windows service is running and set to automatic
+  ansible.windows.win_service:
+    name: WazuhSvc
+    state: started
+    start_mode: auto

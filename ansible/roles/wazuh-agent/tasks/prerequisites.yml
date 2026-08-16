@@ -1,0 +1,14 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Agent Prerequisites Verification
+# ==============================================================================
+
+- name: Display agent target host information
+  ansible.builtin.debug:
+    msg: "Deploying Wazuh Agent v{{ wazuh_version }} on {{ inventory_hostname }} (OS Family: {{ ansible_os_family | default('unknown') }})"
+
+- name: Verify Windows working directory exists
+  ansible.windows.win_file:
+    path: "{{ wazuh_win_temp_dir }}"
+    state: directory
+  when: ansible_os_family == 'Windows'

@@ -1,6 +1,6 @@
-# SOCForge — Ansible Automation & Provisioning Framework (Phase 5)
+# SOCForge — Ansible Automation & Provisioning Framework (Phases 5–7)
 
-> **Current Scope**: This directory contains the Ansible automation framework for host bootstrapping, proxy configuration, and base system preparation across the SOCForge environment.
+> **Current Scope**: Contains the complete automation suite for baseline configuration, Bastion proxying, Wazuh SIEM deployment, and Windows endpoint telemetry onboarding (Sysmon + Wazuh Agent).
 
 ---
 
@@ -14,89 +14,60 @@ ansible/
 │   └── hosts.ini.example          # Sample inventory template for reference
 │
 ├── group_vars/
-│   ├── all.yml                    # Global variables & Bastion proxy settings
+│   ├── all.yml                    # Global variables, Wazuh version (4.14.7) & proxy settings
 │   ├── linux.yml                  # Linux base packages, user & sysctl parameters
 │   └── windows.yml                # Windows WinRM connection parameters
 │
 ├── playbooks/
 │   ├── bootstrap.yml              # Connectivity & package channel verification
-│   ├── linux-base.yml             # Linux base configuration playbook
-│   └── windows-base.yml           # Windows base configuration playbook
+│   ├── linux-base.yml             # Linux baseline deployment playbook
+│   ├── windows-base.yml           # Windows baseline deployment playbook
+│   ├── windows-agent.yml          # Windows baseline + Sysmon + Wazuh Agent playbook
+│   └── wazuh.yml                  # Wazuh SIEM platform master deployment playbook
 │
 └── roles/
     ├── common/                    # Shared baseline tasks (UTC timezone, dirs)
     ├── linux-base/                # APT proxy, foundational packages, NTP, sysctl
-    └── windows-base/              # WinHTTP proxy, PowerShell policy, Event logs
+    ├── windows-base/              # WinHTTP proxy, Security Auditing, PowerShell logs, Sysmon
+    ├── wazuh/                     # Wazuh SIEM (Indexer, Manager, Filebeat, Dashboard)
+    └── wazuh-agent/               # Wazuh Agent installation, configuration & enrollment
 ```
 
 ---
 
-## 2. Provisioning & Package Channel Architecture
+## 2. Windows Endpoint Telemetry & Sysmon
 
-Because SOCForge intentionally omits a NAT Gateway to eliminate recurring AWS charges (~$32/month), private instances cannot directly initiate outbound internet connections.
-
-### Selected Solution: Bastion Forward Proxy (Tinyproxy on Port 3128)
-
+### Windows Telemetry Pipeline
 ```text
-               +-----------------------------+
-               |        Public Internet      |
-               | (Ubuntu / Wazuh / Docker)   |
-               +--------------+--------------+
-                              ^
-                              | (Outbound HTTPS / APT)
-               +--------------+--------------+
-               |      SOCForge Bastion       |
-               |   (Tinyproxy Port 3128)     |
-               |     (Management Subnet)     |
-               +--------------+--------------+
-                              ^
-       +----------------------+----------------------+
-       | (HTTP_PROXY          | (HTTP_PROXY          | (WinHTTP Proxy
-       |  :3128)              |  :3128)              |  :3128)
-+------+------+        +------+------+        +------+------+
-|  Wazuh SIEM |        |  Web Target |        |   Windows   |
-| (Private)   |        | (Private)   |        | (Private)   |
-+-------------+        +-------------+        +-------------+
+Windows Security Audit Policy (auditpol / Event ID 4688 with CLI)
+Windows PowerShell Logging (ScriptBlock 4104 / Module 4103)
+Microsoft Sysmon (Process, Network, DLL, LSASS, File, Registry, DNS)
+                     |
+                     v
+             Windows Event Channels
+                     |
+                     v
+         Wazuh Agent (WazuhSvc Service)
+                     |
+                     | (Encrypted TCP 1514)
+                     v
+       Wazuh Manager (SOCForge-wazuh :1514)
+                     |
+                     v
+       Wazuh Indexer (OpenSearch Engine :9200)
+                     |
+                     v
+       Wazuh Dashboard (HTTPS :443 -> localhost:8443)
 ```
-
-### What is Supported via Bastion Forward Proxy:
-* **Ubuntu APT Repositories**: (`archive.ubuntu.com`, `security.ubuntu.com`)
-* **Wazuh Package Repositories**: (`packages.wazuh.com` HTTPS repo)
-* **Docker Container Registry**: (`download.docker.com` and Docker Hub image pulls via dockerd proxy)
-* **Python Package Index**: (`pypi.org` over HTTPS)
-* **Windows Package Downloads**: (PowerShell / WinHTTP downloads)
-
-### Limitations:
-* Non-HTTP/HTTPS protocols (e.g. raw ICMP ping to internet or non-proxied proprietary ports) cannot reach the external internet.
 
 ---
 
-## 3. Playbooks & Usage
+## 3. Playbooks & Deployment Lifecycle
 
-### Step 1: Generate Inventory
-Ensure your inventory is generated from Terraform outputs:
-
-```bash
-python3 ../scripts/generate-inventory.py
-```
-
-### Step 2: Run Bootstrap & Connectivity Verification
-Verify connectivity through the Bastion and test external package repository access:
-
-```bash
-ansible-playbook -i inventory/hosts.ini playbooks/bootstrap.yml
-```
-
-### Step 3: Apply Linux Base Configuration
-Install foundational packages, synchronize time with Amazon Time Sync Service, and optimize kernel parameters (`vm.max_map_count=262144`):
-
-```bash
-ansible-playbook -i inventory/hosts.ini playbooks/linux-base.yml
-```
-
-### Step 4: Apply Windows Base Configuration
-Configure WinHTTP proxy, PowerShell execution policies, and expand Windows Event Log buffer sizes:
-
-```bash
-ansible-playbook -i inventory/hosts.ini playbooks/windows-base.yml
-```
+| Playbook | Target Hosts | Purpose |
+| :--- | :--- | :--- |
+| `playbooks/bootstrap.yml` | `bastion`, `linux`, `windows` | Sets up Bastion Tinyproxy (:3128) and verifies connectivity & repo access |
+| `playbooks/linux-base.yml` | `linux` | Configures APT proxy, foundational packages, NTP, and `vm.max_map_count` |
+| `playbooks/windows-base.yml`| `windows` | Configures WinHTTP proxy, Security Auditing, PowerShell logging, and Sysmon |
+| `playbooks/wazuh.yml` | `wazuh` | Deploys Wazuh SIEM All-in-One stack (Indexer, Manager, Filebeat, Dashboard) |
+| `playbooks/windows-agent.yml`| `windows` | Deploys Windows baseline, Sysmon, and registers Wazuh Agent against Manager |

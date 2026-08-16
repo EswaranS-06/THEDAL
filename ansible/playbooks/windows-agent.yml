@@ -1,0 +1,14 @@
+---
+# ==============================================================================
+# SOCForge — Windows Endpoint Telemetry & Wazuh Agent Playbook (Phase 7)
+# ==============================================================================
+# Applies the enhanced Windows baseline (auditing, PowerShell telemetry, Sysmon)
+# and installs, configures, and registers the Wazuh Agent against the Wazuh Manager.
+# ==============================================================================
+
+- name: Deploy Windows Baseline, Sysmon, and Wazuh Agent
+  hosts: windows
+  gather_facts: true
+  roles:
+    - role: windows-base
+    - role: wazuh-agent

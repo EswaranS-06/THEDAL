@@ -1,0 +1,13 @@
+---
+# Handlers for role: wazuh-agent
+# ==============================================================================
+
+- name: Restart Wazuh Agent on Windows
+  ansible.windows.win_service:
+    name: WazuhSvc
+    state: restarted
+
+- name: Restart Wazuh Agent on Linux
+  ansible.builtin.service:
+    name: wazuh-agent
+    state: restarted

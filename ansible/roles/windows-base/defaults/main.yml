@@ -1,6 +1,27 @@
 ---
 # Defaults for role: windows-base
+# ==============================================================================
+# SOCForge — Windows Baseline & Telemetry Configuration Defaults (Phase 7)
+# ==============================================================================
+
 manage_windows_proxy: true
 manage_windows_eventlogs: true
 manage_windows_time: true
-windows_security_log_size_bytes: 1073741824 # 1 GB
+manage_windows_auditing: true
+manage_powershell_logging: true
+manage_sysmon: true
+
+# Working Directories
+socforge_win_base_dir: "C:\\SOCForge"
+sysmon_install_dir: "C:\\SOCForge\\Sysmon"
+sysmon_config_path: "C:\\SOCForge\\sysmonconfig.xml"
+
+# Official Sysinternals Sysmon Download
+sysmon_download_url: "https://download.sysinternals.com/files/Sysmon.zip"
+
+# Windows Event Log Sizes (in Bytes)
+windows_security_log_size_bytes: 1073741824   # 1 GB
+windows_system_log_size_bytes: 536870912      # 512 MB
+windows_application_log_size_bytes: 536870912 # 512 MB
+windows_sysmon_log_size_bytes: 536870912      # 512 MB
+windows_powershell_log_size_bytes: 536870912  # 512 MB

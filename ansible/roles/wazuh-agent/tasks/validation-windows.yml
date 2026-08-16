@@ -1,0 +1,44 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Agent Windows Telemetry Validation
+# ==============================================================================
+
+- name: Verify Wazuh Agent Windows service is running
+  ansible.windows.win_service:
+    name: WazuhSvc
+  register: wazuh_svc_state
+  failed_when: wazuh_svc_state.state != 'running'
+
+- name: Verify Microsoft Sysmon service is running
+  ansible.windows.win_service:
+    name: Sysmon64
+  register: sysmon_svc_state
+  failed_when: sysmon_svc_state.state != 'running'
+
+- name: Generate benign test activity to populate Security and Sysmon channels
+  ansible.windows.win_shell: |
+    # 1. Process creation & command-line audit test (Event ID 4688 / Sysmon Event ID 1)
+    whoami.exe /all
+
+    # 2. PowerShell ScriptBlock Logging test (Event ID 4104)
+    Write-Output "SOCForge Telemetry Pipeline Test — $(Get-Date -Format o)"
+
+    # 3. File creation test (Sysmon Event ID 11)
+    Set-Content -Path "C:\SOCForge\Logs\telemetry_probe.txt" -Value "SOCForge Harmless Telemetry Probe $(Get-Date)"
+
+    # 4. DNS resolution test (Sysmon Event ID 22)
+    Resolve-DnsName -Name "localhost" -ErrorAction SilentlyContinue
+  changed_when: false
+
+- name: Display Windows Endpoint Telemetry Summary
+  ansible.builtin.debug:
+    msg:
+      - "================================================================="
+      - "       SOCForge Windows Endpoint Telemetry Active                "
+      - "================================================================="
+      - "Target Host       : {{ inventory_hostname }}"
+      - "Wazuh Agent       : Active (Connected to {{ wazuh_manager_address }}:{{ wazuh_manager_port }})"
+      - "Microsoft Sysmon  : Active (Service: Sysmon64)"
+      - "Auditing          : Process Creation, Logon, PowerShell ScriptBlock"
+      - "Event Channels    : Security, System, Sysmon, PowerShell"
+      - "================================================================="

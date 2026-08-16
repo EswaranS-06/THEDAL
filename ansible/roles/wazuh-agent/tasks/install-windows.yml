@@ -1,0 +1,22 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Agent Windows Installation
+# ==============================================================================
+
+- name: Download official Wazuh Agent Windows MSI package
+  ansible.windows.win_get_url:
+    url: "{{ wazuh_win_msi_url }}"
+    dest: "{{ wazuh_win_temp_dir }}\\wazuh-agent-{{ wazuh_version }}.msi"
+    proxy_url: "{{ http_proxy_url }}"
+
+- name: Install Wazuh Agent MSI package
+  ansible.windows.win_package:
+    path: "{{ wazuh_win_temp_dir }}\\wazuh-agent-{{ wazuh_version }}.msi"
+    arguments: >
+      /q
+      WAZUH_MANAGER="{{ wazuh_manager_address }}"
+      WAZUH_REGISTRATION_SERVER="{{ wazuh_manager_address }}"
+      WAZUH_REGISTRATION_PORT="{{ wazuh_registration_port }}"
+      WAZUH_AGENT_NAME="{{ wazuh_agent_name }}"
+      WAZUH_AGENT_GROUP="{{ wazuh_agent_group }}"
+    state: present

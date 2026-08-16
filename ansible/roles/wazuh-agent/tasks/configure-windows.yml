@@ -1,0 +1,10 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Agent Windows Configuration
+# ==============================================================================
+
+- name: Deploy Wazuh Agent configuration (ossec.conf)
+  ansible.windows.win_template:
+    src: ossec.conf.j2
+    dest: "{{ wazuh_win_install_dir }}\\ossec.conf"
+  notify: Restart Wazuh Agent on Windows

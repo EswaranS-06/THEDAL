@@ -8,6 +8,10 @@ project_name: SOCForge
 environment_tier: lab
 vpc_cidr: "10.10.0.0/16"
 
+# Wazuh Platform Version Specification
+wazuh_version: "4.14.7"
+wazuh_major_version: "4.x"
+
 # Bastion Forward Proxy Configuration
 # Internal hosts route HTTP/HTTPS package downloads through Bastion on port 3128
 bastion_internal_ip: "10.10.1.10"

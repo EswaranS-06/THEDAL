@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–6: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–7: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
 # ==============================================================================
@@ -21,7 +21,7 @@ FAILURES=0
 # Helper functions
 check_dir() {
   local dir="$1"
-  printf "  Checking directory: %-42s " "${dir}"
+  printf "  Checking directory: %-45s " "${dir}"
   if [ -d "${REPO_ROOT}/${dir}" ]; then
     echo "[OK]"
   else
@@ -32,7 +32,7 @@ check_dir() {
 
 check_file() {
   local file="$1"
-  printf "  Checking file:      %-42s " "${file}"
+  printf "  Checking file:      %-45s " "${file}"
   if [ -f "${REPO_ROOT}/${file}" ]; then
     echo "[OK]"
   else
@@ -70,9 +70,13 @@ REQUIRED_DIRS=(
   "ansible/roles/common"
   "ansible/roles/linux-base"
   "ansible/roles/windows-base"
+  "ansible/roles/windows-base/templates"
   "ansible/roles/wazuh"
   "ansible/roles/wazuh/tasks"
   "ansible/roles/wazuh/templates"
+  "ansible/roles/wazuh-agent"
+  "ansible/roles/wazuh-agent/tasks"
+  "ansible/roles/wazuh-agent/templates"
   "detection"
   "attacks"
   "tests"
@@ -117,10 +121,13 @@ REQUIRED_FILES=(
   "ansible/playbooks/bootstrap.yml"
   "ansible/playbooks/linux-base.yml"
   "ansible/playbooks/windows-base.yml"
+  "ansible/playbooks/windows-agent.yml"
   "ansible/playbooks/wazuh.yml"
   "ansible/roles/common/tasks/main.yml"
   "ansible/roles/linux-base/tasks/main.yml"
   "ansible/roles/windows-base/tasks/main.yml"
+  "ansible/roles/windows-base/defaults/main.yml"
+  "ansible/roles/windows-base/templates/sysmonconfig.xml.j2"
   "ansible/roles/wazuh/README.md"
   "ansible/roles/wazuh/defaults/main.yml"
   "ansible/roles/wazuh/handlers/main.yml"
@@ -137,11 +144,22 @@ REQUIRED_FILES=(
   "ansible/roles/wazuh/templates/filebeat.yml.j2"
   "ansible/roles/wazuh/templates/opensearch_dashboards.yml.j2"
   "ansible/roles/wazuh/templates/wazuh_dashboard.yml.j2"
+  "ansible/roles/wazuh-agent/README.md"
+  "ansible/roles/wazuh-agent/defaults/main.yml"
+  "ansible/roles/wazuh-agent/handlers/main.yml"
+  "ansible/roles/wazuh-agent/tasks/main.yml"
+  "ansible/roles/wazuh-agent/tasks/prerequisites.yml"
+  "ansible/roles/wazuh-agent/tasks/install-windows.yml"
+  "ansible/roles/wazuh-agent/tasks/configure-windows.yml"
+  "ansible/roles/wazuh-agent/tasks/registration-windows.yml"
+  "ansible/roles/wazuh-agent/tasks/validation-windows.yml"
+  "ansible/roles/wazuh-agent/templates/ossec.conf.j2"
   "scripts/preflight.sh"
   "scripts/health-check.sh"
   "scripts/generate-inventory.py"
   "scripts/wazuh-tunnel.sh"
   "scripts/wazuh-health-check.sh"
+  "scripts/windows-agent-health-check.sh"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -151,7 +169,7 @@ echo ""
 
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
-for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh"; do
+for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/windows-agent-health-check.sh"; do
   printf "  Checking executable bit: %-35s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
@@ -166,7 +184,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, and Wazuh SIEM platform are intact."
+  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, and Windows endpoint telemetry are intact."
   echo "================================================================="
   exit 0
 else

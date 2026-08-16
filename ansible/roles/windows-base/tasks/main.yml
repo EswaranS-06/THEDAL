@@ -1,10 +1,10 @@
 ---
 # ==============================================================================
-# SOCForge — Tasks for role: windows-base
+# SOCForge — Tasks for role: windows-base (Phase 7 Enhanced)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 1. Forward Proxy Configuration (WinHTTP & PowerShell environment)
+# 1. Forward Proxy Configuration (WinHTTP & Environment)
 # ------------------------------------------------------------------------------
 - name: Configure WinHTTP proxy for outbound package/update downloads
   ansible.windows.win_shell: |
@@ -24,12 +24,16 @@
   when: manage_windows_proxy | bool
 
 # ------------------------------------------------------------------------------
-# 2. Base Directories & PowerShell Execution Policy
+# 2. Base Working Directories & PowerShell Execution Policy
 # ------------------------------------------------------------------------------
-- name: Ensure SOCForge root working directory exists
+- name: Ensure SOCForge root and sub-working directories exist
   ansible.windows.win_file:
-    path: "C:\\SOCForge"
+    path: "{{ item }}"
     state: directory
+  loop:
+    - "{{ socforge_win_base_dir }}"
+    - "{{ sysmon_install_dir }}"
+    - "{{ socforge_win_base_dir }}\\Logs"
 
 - name: Set PowerShell Execution Policy to RemoteSigned
   ansible.windows.win_shell: |
@@ -53,12 +57,111 @@
   when: manage_windows_time | bool
 
 # ------------------------------------------------------------------------------
-# 4. Windows Event Log Retention & Sizing (Telemetry Preparation)
+# 4. Advanced Security Audit Policy Configuration (auditpol.exe)
 # ------------------------------------------------------------------------------
-- name: Configure Security Event Log maximum size to 1 GB
+- name: Configure high-fidelity Windows Security Audit Policies
   ansible.windows.win_shell: |
-    wevtutil sl Security /ms:1073741824
-    wevtutil sl System /ms:536870912
-    wevtutil sl Application /ms:536870912
+    auditpol /set /subcategory:"Process Creation" /success:enable /failure:enable
+    auditpol /set /subcategory:"Logon" /success:enable /failure:enable
+    auditpol /set /subcategory:"Logoff" /success:enable /failure:disable
+    auditpol /set /subcategory:"Account Lockout" /success:enable /failure:enable
+    auditpol /set /subcategory:"User Account Management" /success:enable /failure:enable
+    auditpol /set /subcategory:"Security Group Management" /success:enable /failure:enable
+    auditpol /set /subcategory:"Sensitive Privilege Use" /success:enable /failure:enable
+    auditpol /set /subcategory:"Audit Policy Change" /success:enable /failure:enable
+    auditpol /set /subcategory:"Authentication Policy Change" /success:enable /failure:enable
+  when: manage_windows_auditing | bool
+  changed_when: false
+
+- name: Enable Command Line in Process Creation Auditing (Event ID 4688)
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit
+    name: ProcessCreationIncludeCmdLine_Enabled
+    data: 1
+    type: dword
+  when: manage_windows_auditing | bool
+
+# ------------------------------------------------------------------------------
+# 5. PowerShell Telemetry & Logging (ScriptBlock & Module Logging)
+# ------------------------------------------------------------------------------
+- name: Enable PowerShell Script Block Logging (Event ID 4104)
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging
+    name: EnableScriptBlockLogging
+    data: 1
+    type: dword
+  when: manage_powershell_logging | bool
+
+- name: Enable PowerShell Module Logging (Event ID 4103)
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging
+    name: EnableModuleLogging
+    data: 1
+    type: dword
+  when: manage_powershell_logging | bool
+
+- name: Configure PowerShell Module Logging wildcard capture
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ModuleLogging\ModuleNames
+    name: "*"
+    data: "*"
+    type: string
+  when: manage_powershell_logging | bool
+
+# ------------------------------------------------------------------------------
+# 6. Windows Event Log Buffer Sizing
+# ------------------------------------------------------------------------------
+- name: Configure Windows Event Log maximum sizes for high telemetry throughput
+  ansible.windows.win_shell: |
+    wevtutil sl Security /ms:{{ windows_security_log_size_bytes }}
+    wevtutil sl System /ms:{{ windows_system_log_size_bytes }}
+    wevtutil sl Application /ms:{{ windows_application_log_size_bytes }}
+    wevtutil sl "Microsoft-Windows-PowerShell/Operational" /ms:{{ windows_powershell_log_size_bytes }}
   when: manage_windows_eventlogs | bool
+  changed_when: false
+
+# ------------------------------------------------------------------------------
+# 7. Microsoft Sysmon Deployment & Configuration
+# ------------------------------------------------------------------------------
+- name: Deploy SOCForge curated Sysmon configuration XML
+  ansible.windows.win_template:
+    src: sysmonconfig.xml.j2
+    dest: "{{ sysmon_config_path }}"
+  when: manage_sysmon | bool
+
+- name: Download official Microsoft Sysinternals Sysmon package
+  ansible.windows.win_get_url:
+    url: "{{ sysmon_download_url }}"
+    dest: "{{ socforge_win_base_dir }}\\Sysmon.zip"
+    proxy_url: "{{ http_proxy_url }}"
+  when: manage_sysmon | bool
+
+- name: Extract Sysmon package
+  community.windows.win_unzip:
+    src: "{{ socforge_win_base_dir }}\\Sysmon.zip"
+    dest: "{{ sysmon_install_dir }}"
+    creates: "{{ sysmon_install_dir }}\\Sysmon64.exe"
+  when: manage_sysmon | bool
+
+- name: Install or update Microsoft Sysmon with SOCForge configuration
+  ansible.windows.win_shell: |
+    if (Get-Service -Name "Sysmon64" -ErrorAction SilentlyContinue) {
+      & "{{ sysmon_install_dir }}\\Sysmon64.exe" -c "{{ sysmon_config_path }}"
+    } else {
+      & "{{ sysmon_install_dir }}\\Sysmon64.exe" -accepteula -i "{{ sysmon_config_path }}"
+    }
+  when: manage_sysmon | bool
+  changed_when: false
+
+- name: Ensure Microsoft Sysmon service is running and set to automatic
+  ansible.windows.win_service:
+    name: Sysmon64
+    state: started
+    start_mode: auto
+  when: manage_sysmon | bool
+
+- name: Configure Sysmon Event Log buffer size to 512 MB
+  ansible.windows.win_shell: |
+    wevtutil sl "Microsoft-Windows-Sysmon/Operational" /ms:{{ windows_sysmon_log_size_bytes }}
+  when: manage_sysmon | bool
   changed_when: false

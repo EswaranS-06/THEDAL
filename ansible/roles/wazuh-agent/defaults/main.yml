@@ -1,0 +1,39 @@
+---
+# Defaults for role: wazuh-agent
+# ==============================================================================
+# SOCForge — Wazuh Agent Role Defaults (Phase 7)
+# ==============================================================================
+
+# Wazuh Agent Version Specification (Synchronized with Wazuh Manager)
+wazuh_version: "4.14.7"
+wazuh_major_version: "4.x"
+
+# Wazuh Manager Connection & Registration
+wazuh_manager_ip: "10.10.10.10"
+wazuh_manager_address: "{{ hostvars['wazuh']['ansible_default_ipv4']['address'] | default(hostvars['wazuh']['ansible_host'] | default(wazuh_manager_ip)) }}"
+wazuh_manager_port: 1514
+wazuh_registration_port: 1515
+wazuh_agent_protocol: "tcp"
+
+# Agent Identity & Group
+wazuh_agent_name: "{{ inventory_hostname }}"
+wazuh_agent_group: "windows-endpoints"
+
+# Windows Installation Parameters
+wazuh_win_msi_url: "https://packages.wazuh.com/{{ wazuh_major_version }}/windows/wazuh-agent-{{ wazuh_version }}-1.msi"
+wazuh_win_install_dir: "C:\\Program Files (x86)\\ossec-agent"
+wazuh_win_temp_dir: "C:\\SOCForge"
+
+# Monitored Event Channels
+wazuh_windows_event_channels:
+  - "Security"
+  - "System"
+  - "Application"
+  - "Microsoft-Windows-Sysmon/Operational"
+  - "Microsoft-Windows-PowerShell/Operational"
+
+# Baseline FIM Configuration
+wazuh_fim_frequency: 21600
+wazuh_fim_paths:
+  - "C:\\Windows\\System32\\drivers\\etc"
+  - "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"

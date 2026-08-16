@@ -1,0 +1,25 @@
+---
+# ==============================================================================
+# SOCForge — Main Tasks for role: wazuh-agent
+# ==============================================================================
+# Installs, configures, and registers the Wazuh Agent across Windows & Linux hosts.
+# ==============================================================================
+
+- name: 1. Verify agent prerequisites
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: 2. Install Wazuh Agent on Windows
+  ansible.builtin.include_tasks: install-windows.yml
+  when: ansible_os_family == 'Windows'
+
+- name: 3. Configure Wazuh Agent on Windows
+  ansible.builtin.include_tasks: configure-windows.yml
+  when: ansible_os_family == 'Windows'
+
+- name: 4. Register Wazuh Agent with Manager on Windows
+  ansible.builtin.include_tasks: registration-windows.yml
+  when: ansible_os_family == 'Windows'
+
+- name: 5. Validate Wazuh Agent service and telemetry pipeline on Windows
+  ansible.builtin.include_tasks: validation-windows.yml
+  when: ansible_os_family == 'Windows'

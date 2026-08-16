@@ -5,7 +5,7 @@
 # ==============================================================================
 
 # Wazuh Version Specification
-wazuh_version: "4.9.2"
+wazuh_version: "4.14.7"
 wazuh_major_version: "4.x"
 
 # Node & Cluster Configuration
