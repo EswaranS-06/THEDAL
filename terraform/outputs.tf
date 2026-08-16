@@ -1,8 +1,8 @@
 # ==============================================================================
 # SOCForge — Terraform Outputs
 # ==============================================================================
-# Provides networking identifiers and CIDR ranges for future infrastructure
-# layers (Security Groups, EC2) and Ansible inventory generation.
+# Provides networking, security group, and IAM identifiers for future
+# infrastructure layers (EC2 instances) and Ansible dynamic inventory generation.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -82,4 +82,55 @@ output "private_route_table_id" {
 output "internet_gateway_id" {
   description = "The ID of the Internet Gateway attached to the VPC"
   value       = aws_internet_gateway.igw.id
+}
+
+# ------------------------------------------------------------------------------
+# Security Group Outputs (Phase 3)
+# ------------------------------------------------------------------------------
+output "management_security_group_id" {
+  description = "Security group ID for the Management bastion host"
+  value       = aws_security_group.management.id
+}
+
+output "soc_security_group_id" {
+  description = "Security group ID for the Wazuh SIEM server"
+  value       = aws_security_group.soc.id
+}
+
+output "windows_security_group_id" {
+  description = "Security group ID for the Windows employee endpoint"
+  value       = aws_security_group.windows.id
+}
+
+output "web_security_group_id" {
+  description = "Security group ID for the Linux Web target server"
+  value       = aws_security_group.web.id
+}
+
+output "attack_security_group_id" {
+  description = "Security group ID for the Atomic Red Team attack simulation node"
+  value       = aws_security_group.attack.id
+}
+
+# ------------------------------------------------------------------------------
+# IAM & Access Outputs (Phase 3)
+# ------------------------------------------------------------------------------
+output "ec2_instance_profile_name" {
+  description = "Name of the IAM instance profile for SOCForge EC2 instances"
+  value       = aws_iam_instance_profile.ec2_profile.name
+}
+
+output "ec2_instance_profile_arn" {
+  description = "ARN of the IAM instance profile for SOCForge EC2 instances"
+  value       = aws_iam_instance_profile.ec2_profile.arn
+}
+
+output "ec2_role_arn" {
+  description = "ARN of the EC2 base IAM role"
+  value       = aws_iam_role.ec2_base_role.arn
+}
+
+output "ssh_key_name" {
+  description = "Name of the configured SSH key pair for EC2 instances"
+  value       = var.ssh_key_name
 }

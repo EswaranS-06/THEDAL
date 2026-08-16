@@ -1,98 +1,96 @@
-# SOCForge — Networking Specification & Design Goals
+# SOCForge — Networking & Security Group Architecture
 
-> **Phase 2 Status**: The AWS network foundation (VPC, subnets, Internet Gateway, route tables, and associations) is **fully implemented in Terraform** under `terraform/`.
+> **Phase 3 Status**: The AWS network foundation (VPC, subnets, routing) and **Security Access Layer** (5 security groups, IAM instance profile, EC2 key pair, and Bastion access model) are fully defined in Terraform.
 
 ---
 
-## 1. Phase 2 Routing & Subnet Model
+## 1. Network & Security Topology Overview
 
-The SOCForge network topology enforces strict perimeter isolation: only the Management subnet communicates directly with the Internet Gateway. The internal SOC, Attack, and Web subnets reside on a private route table isolated from unsolicited internet traffic.
+SOCForge implements a defense-in-depth architecture where network routing and stateful security groups jointly enforce strict perimeter controls.
 
 ```text
-Internet
-|
-v
-Internet Gateway (SOCForge-igw)
-|
-v
-Management subnet
-10.10.1.0/24
-PUBLIC (SOCForge-public-rt: 0.0.0.0/0 -> IGW)
-|
-X (No direct public ingress to private tier)
-|
-+--------------------------------+
-|                                |
-v                                v
-SOC subnet                      Attack subnet
-10.10.10.0/24                  10.10.20.0/24
-PRIVATE (Local route only)      PRIVATE (Local route only)
-|
-|
-v
-Web/Target subnet
-10.10.30.0/24
-PRIVATE (Local route only)
+                    Internet
+                       |
+                       | (TCP 22 from admin_cidr only)
+                       v
+             +--------------------+
+             |   Management SG    |
+             | (Bastion / Jumpbox)|
+             |   (10.10.1.0/24)   |
+             +---------+----------+
+                       |
+        +--------------+--------------+
+        | (SSH 22,     | (WinRM /     | (SSH 22,
+        |  API 55000,  |  RDP 3389)   |  HTTP 80)
+        |  HTTPS 443)  |              |
+        v              v              v
++---------------+ +---------------+ +---------------+
+|    SOC SG     | |  Windows SG   | |    Web SG     |
+| (Wazuh SIEM)  | |  (Endpoint)   | |  (Juice Shop  |
++-------^-------+ +-------^-------+ |   & DVWA)     |
+        |                 |         +-------^-------+
+        | (Telemetry      | (Attack         | (Attack
+        |  1514/1515)     |  445/135)       |  8000/3000)
+        |                 +--------+--------+
+        |                          |
+        +--------------------------+
+                                   |
+                         +---------+---------+
+                         |     Attack SG     |
+                         | (Atomic Red Team) |
+                         +-------------------+
 ```
 
 ---
 
-## 2. Subnet Allocation & AZ Scoping
+## 2. Security Group Reference Matrix
 
-In AWS, **subnets are Availability Zone-scoped**. All four SOCForge subnets are provisioned within a single Availability Zone selected dynamically at runtime via `data.aws_availability_zones.available.names[0]`.
-
-### Why a Single Availability Zone?
-* **Simplicity**: Eliminates cross-AZ routing complexities for training exercises.
-* **Cost Efficiency**: Avoids AWS inter-AZ data transfer fees between the attack node, web server, endpoints, and SIEM indexer.
-* **Compatibility**: Works transparently across all AWS accounts without assuming fixed AZ letter designations (e.g. `a`, `b`, `c`).
-
-| Subnet Identifier | CIDR Block | Route Table | Tier | Auto-Assign Public IP |
-| :--- | :--- | :--- | :--- | :--- |
-| **`SOCForge-management`** | `10.10.1.0/24` | `SOCForge-public-rt` | Public | **Yes** |
-| **`SOCForge-soc`** | `10.10.10.0/24` | `SOCForge-private-rt` | Private | **No** |
-| **`SOCForge-attack`** | `10.10.20.0/24` | `SOCForge-private-rt` | Private | **No** |
-| **`SOCForge-web`** | `10.10.30.0/24` | `SOCForge-private-rt` | Private | **No** |
+| Security Group | Inbound Rules | Outbound Rules | Security Purpose |
+| :--- | :--- | :--- | :--- |
+| **`SOCForge-management-sg`** | TCP 22 (SSH) from `var.admin_cidr` | All traffic (`0.0.0.0/0`) | Strictly controlled entry point for operator and Ansible automation. |
+| **`SOCForge-soc-sg`** | TCP 22, 55000, 443 from `management-sg`<br>TCP 443 from `admin_cidr`<br>TCP 1514, 1515 from `windows-sg`, `web-sg`, `attack-sg` | All traffic (`0.0.0.0/0`) | Ingests agent telemetry, protects Wazuh API and Web Dashboard. |
+| **`SOCForge-windows-sg`** | TCP 3389 (RDP) from `management-sg` & `admin_cidr`<br>TCP 5985/5986 (WinRM) from `management-sg`<br>TCP 445, 135, 5985 from `attack-sg` | All traffic (`0.0.0.0/0`) | Protects Windows workstation while enabling Ansible provisioning, RDP triage, and simulated attack ingress. |
+| **`SOCForge-web-sg`** | TCP 22, 80, 8000, 3000 from `management-sg`<br>TCP 80, 8000, 3000 from `attack-sg` | All traffic (`0.0.0.0/0`) | Hosts Nginx and vulnerable targets (**NEVER exposed to 0.0.0.0/0**). Only reachable by attack host and management. |
+| **`SOCForge-attack-sg`** | TCP 22 from `management-sg` | All traffic (`0.0.0.0/0`) | Allows operator to drive Atomic Red Team attack simulations against target subnets. |
 
 ---
 
-## 3. Route Table Architecture
+## 3. Core Security Justifications
 
-### Public Route Table (`SOCForge-public-rt`)
-* **Associated Subnet**: `Management` (`10.10.1.0/24`)
-* **Routes**:
-  * `10.10.0.0/16` -> `local` (Default VPC route for inter-subnet communication)
-  * `0.0.0.0/0` -> `SOCForge-igw` (Internet Gateway)
-* **Behavior**: Allows future bastion hosts in the Management subnet to receive operator connections and access the external internet.
+### Why Vulnerable Web Applications Are NOT Public
+DVWA (port 8000) and OWASP Juice Shop (port 3000) contain real, exploitable security flaws (SQL injection, remote command execution, insecure deserialization). Exposing these services to `0.0.0.0/0` would allow external bots and automated scanners to compromise the instances. By restricting ingress to `SOCForge-attack-sg` and `SOCForge-management-sg`, all exploit traffic originates strictly from inside the controlled training lab.
 
-### Private Route Table (`SOCForge-private-rt`)
-* **Associated Subnets**: `SOC` (`10.10.10.0/24`), `Attack` (`10.10.20.0/24`), `Web` (`10.10.30.0/24`)
-* **Routes**:
-  * `10.10.0.0/16` -> `local`
-* **Behavior**: Subnets communicate freely with each other via private IPs (`10.10.x.x`) but cannot be reached directly from the Internet.
+### Why SSH and RDP Ingress is Strictly Scoped
+* Direct Internet-wide exposure of SSH (port 22) or RDP (port 3389) leads to perpetual brute-force attacks and credential stuffing.
+* Management ingress is restricted to the operator's specific public IP (`admin_cidr`).
+* Internal instances do not have public IPs; they are reachable only through the Bastion jumpbox.
+
+### Why No NAT Gateway in Phase 3
+An AWS Managed NAT Gateway incurs a continuous hourly fee (~$32/month) regardless of usage. Since all simulation traffic, telemetry collection, and management connectivity occur internally over private IPs (`10.10.x.x`), a NAT Gateway is avoided to ensure the project remains accessible to learners on a budget.
 
 ---
 
-## 4. Security Principles
+## 4. Controlled Management & Ansible Connection Flow
 
-1. **Zero Unsolicited Public Exposure**:
-   * Vulnerable applications (DVWA, Juice Shop) and the Wazuh SIEM core reside in private subnets and never receive public IPs.
-2. **Private IP Inter-Communication**:
-   * All log forwarding, agent registration, and attack emulation traffic traverse internal private IP addresses (`10.10.x.x`).
-3. **No NAT Gateway in Phase 2**:
-   * Omitted to minimize AWS running costs during initial lab setup.
-4. **Least Privilege Security Groups**:
-   * Granular stateful firewall rules will be implemented in Phase 3.
-
----
-
-## 5. Traffic Flow Classification
+To manage private Linux and Windows instances without public exposure, operators and Ansible utilize **SSH ProxyJump**:
 
 ```text
-+-----------------------+-----------------------+-----------------------+-----------------------+
-|  Management Traffic   |   Telemetry Traffic   |  Application Traffic  |    Attack Traffic     |
-+-----------------------+-----------------------+-----------------------+-----------------------+
-| Operator Ingress      | Agent (Port 1514)     | HTTP (80/8000/3000)   | Controlled probes     |
-| to Bastion via        | from Web & Windows to | from Attack node to   | from Attack subnet to |
-| Management subnet     | Wazuh Manager         | Web applications      | targets               |
-+-----------------------+-----------------------+-----------------------+-----------------------+
+Operator / Ansible Workstation
+              |
+              | (SSH with IdentityFile ~/.ssh/socforge_key)
+              v
+     Management Bastion Host (10.10.1.x)
+              |
+              | (ProxyJump over internal VPC routing)
+              +-------------------+-------------------+
+              |                   |                   |
+              v                   v                   v
+     Wazuh Server        Web Server          Windows Endpoint
+     (10.10.10.x)        (10.10.30.x)        (10.10.10.x - WinRM)
+```
+
+### Ansible SSH Configuration Snippet:
+```ini
+[ssh_connection]
+ssh_args = -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> -o StrictHostKeyChecking=no
 ```

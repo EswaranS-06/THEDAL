@@ -1,6 +1,6 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Notice**: This document outlines the **target deployment workflow and orchestration lifecycle** for SOCForge. Infrastructure provisioning and automation playbooks will be implemented in Phases 2 through 4.
+> **Current Status**: Network, Subnets, Routing (Phase 2), and Security Groups, IAM, and Access Management (Phase 3) are defined in Terraform. Compute instances and Ansible provisioning will follow in subsequent phases.
 
 ---
 
@@ -13,13 +13,16 @@ Debian 13 Control Machine
 |
 +--> Terraform (Infrastructure as Code)
 |       |
-|       +--> AWS VPC & Subnets
-|       +--> Security Groups & IAM Roles
-|       +--> EC2 Instances (SIEM, Web, Windows, Attack)
+|       +--> AWS VPC & 4 Subnets (Phase 2)
+|       +--> Route Tables & Internet Gateway (Phase 2)
+|       +--> 5 Security Groups & Inter-Group Rules (Phase 3)
+|       +--> EC2 IAM Instance Profile & Base Role (Phase 3)
+|       +--> EC2 SSH Key Pair Registration (Phase 3)
+|       +--> EC2 Compute Instances (Phase 4)
 |
-+--> Dynamic Inventory Generation
++--> Terraform Outputs -> Dynamic Inventory Handoff (Phase 4)
 |
-+--> Ansible (Configuration Automation)
++--> Ansible (Configuration Automation via Bastion ProxyJump)
 |       |
 |       +--> Deploy & Configure Wazuh Manager & Indexer
 |       +--> Provision Windows Endpoint (Sysmon + Wazuh Agent)
@@ -33,61 +36,55 @@ Debian 13 Control Machine
 
 ---
 
-## 2. Target Deployment Lifecycle & Commands
+## 2. Access Management & SSH Key Lifecycle
 
-### Stage 0: Control Machine Preflight
-Verify that all required toolchains and dependencies are installed on the control machine before attempting any cloud operations:
+### 1. Generating Operator SSH Key Pair
+Before running Terraform, generate an ED25519 key pair locally on your control machine:
 
 ```bash
-# Verify local environment readiness
-./scripts/preflight.sh
+ssh-keygen -t ed25519 -f ~/.ssh/socforge_key -C "socforge-operator"
 ```
 
-### Stage 1: Infrastructure Provisioning (Terraform)
-Terraform provisions the isolated AWS VPC, subnets, route tables, network interfaces, and compute instances:
+### 2. Registering the Key with Terraform
+Add your public key to `terraform/terraform.tfvars`:
 
-```bash
-cd terraform/
-terraform init
-terraform plan -out=tfplan
-terraform apply tfplan
+```hcl
+ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... socforge-operator"
+ssh_key_name   = "SOCForge-key"
 ```
 
-### Stage 2: Machine Configuration & Provisioning (Ansible)
-Ansible connects to the provisioned instances (via dynamic inventory or generated host definitions) to configure OS settings, install security software, and bootstrap services:
+> **Security Rule**: The private key (`~/.ssh/socforge_key`) never leaves your control workstation and is **never** committed to version control or stored in Terraform state.
 
+---
+
+## 3. Connecting to Private EC2 Instances via Bastion
+
+Because SOC, Attack, and Web instances are located in private subnets without public IPs, all management connections traverse the Bastion host in the Management subnet:
+
+### Manual SSH Connection via ProxyJump
 ```bash
-cd ../ansible/
-# Example conceptual playbook execution
-ansible-playbook -i inventory/aws_ec2.yml playbooks/site.yml
+# Connect to internal Linux Web Server through Bastion
+ssh -J debian@<BASTION_PUBLIC_IP> -i ~/.ssh/socforge_key debian@10.10.30.x
+
+# Connect to internal Wazuh SIEM Server through Bastion
+ssh -J debian@<BASTION_PUBLIC_IP> -i ~/.ssh/socforge_key debian@10.10.10.x
 ```
 
-* **Role: Wazuh Core**: Installs Wazuh Manager, Indexer, and Dashboard.
-* **Role: Web Target**: Installs Nginx, Docker, pulls OWASP Juice Shop, and configures reverse proxy rules.
-* **Role: Windows Endpoint**: Provisions Sysmon with detection configuration and registers Wazuh Agent.
-* **Role: Attack Host**: Clones and configures Atomic Red Team frameworks.
+### Ansible Inventory Configuration
+When Ansible is deployed, it uses SSH `ProxyJump` seamlessly:
 
-### Stage 3: Lab Health & Telemetry Verification
-Run automated health checks to verify that services are healthy, agents are registered, and telemetry is reaching the SIEM:
-
-```bash
-./scripts/health-check.sh
-```
-
-### Stage 4: Clean Teardown & Cost Elimination
-When training or testing is complete, destroy all provisioned AWS assets immediately to avoid ongoing cloud expenses:
-
-```bash
-cd terraform/
-terraform destroy -auto-approve
+```ini
+[all:vars]
+ansible_user = debian
+ansible_ssh_private_key_file = ~/.ssh/socforge_key
+ansible_ssh_common_args = '-o ProxyJump=debian@<BASTION_PUBLIC_IP> -o StrictHostKeyChecking=no'
 ```
 
 ---
 
-## 3. Configuration Management & Secrets Handling
+## 4. Credentials & Secret Management
 
-To maintain security and prevent accidental leakage of sensitive credentials:
-* **AWS Credentials**: Managed via AWS CLI configuration (`~/.aws/credentials`) or environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`). Never commit credentials to version control.
-* **SSH Keys**: Key pairs generated locally and referenced dynamically by Terraform.
-* **Terraform State**: Stored locally (or in S3 with state locking) and strictly ignored via `.gitignore`.
-* **Ansible Vault**: Any sensitive passwords (e.g. Wazuh admin password, database credentials) are encrypted using Ansible Vault.
+* **AWS API Credentials**: Managed via AWS CLI configuration (`~/.aws/credentials`) or environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`). Never commit credentials to version control.
+* **EC2 IAM Role**: Uses `AmazonSSMManagedInstanceCore` and least-privilege CloudWatch logging policies.
+* **Terraform State**: Ignored via `.gitignore`.
+* **Ansible Vault**: Used in future phases to encrypt sensitive passwords.

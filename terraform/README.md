@@ -1,103 +1,124 @@
-# SOCForge — Terraform AWS Network Foundation (Phase 2)
+# SOCForge — Terraform AWS Foundation (Phases 2 & 3)
 
-> **Phase 2 Scope**: This directory contains the Infrastructure-as-Code (IaC) configuration for the **AWS Network Layer** of the SOCForge training lab.
+> **Current Scope**: This directory contains the Infrastructure-as-Code (IaC) configuration for the **AWS Network & Security Layers** of the SOCForge training lab.
 
 ---
 
-## 1. Overview & Provisioned Resources
+## 1. Architecture & Provisioned Resources
 
-The Phase 2 Terraform configuration provisions a dedicated, isolated Amazon Virtual Private Cloud (VPC) with segregated subnets, routing controls, and internet egress boundaries.
-
-### What is Implemented in Phase 2:
+### What is Implemented:
 * **Dedicated AWS VPC**: `10.10.0.0/16` with DNS hostnames and DNS resolution enabled.
-* **Dynamic Single-AZ Selection**: Automatically selects one active Availability Zone in the target region for all subnets to eliminate cross-AZ transfer costs.
-* **4 Subnets**:
-  * `SOCForge-management-subnet` (`10.10.1.0/24`) — Public tier for operator/bastion access.
-  * `SOCForge-soc-subnet` (`10.10.10.0/24`) — Private tier for Wazuh SIEM components.
-  * `SOCForge-attack-subnet` (`10.10.20.0/24`) — Private tier for Atomic Red Team attack simulation.
-  * `SOCForge-web-subnet` (`10.10.30.0/24`) — Private tier for Nginx, DVWA, and OWASP Juice Shop.
-* **Internet Gateway (IGW)**: `SOCForge-igw` attached to the VPC.
-* **Route Tables & Explicit Associations**:
-  * `SOCForge-public-rt`: Contains default route `0.0.0.0/0` pointing to `SOCForge-igw`. Associated exclusively with `Management`.
-  * `SOCForge-private-rt`: Contains only the local VPC route (`10.10.0.0/16 -> local`). Associated with `SOC`, `Attack`, and `Web`.
+* **Single Availability Zone**: Discovered dynamically in target region.
+* **4 Segregated Subnets**:
+  * `SOCForge-management-subnet` (`10.10.1.0/24`) — Public tier (Bastion / Jumpbox).
+  * `SOCForge-soc-subnet` (`10.10.10.0/24`) — Private tier (Wazuh SIEM server).
+  * `SOCForge-attack-subnet` (`10.10.20.0/24`) — Private tier (Atomic Red Team).
+  * `SOCForge-web-subnet` (`10.10.30.0/24`) — Private tier (Nginx, DVWA, Juice Shop).
+* **Internet Gateway & Route Tables**: Public route table for Management; Private route table with local routing only for internal tiers.
+* **5 Dedicated Least-Privilege Security Groups**:
+  * `SOCForge-management-sg`: SSH (port 22) restricted strictly to `var.admin_cidr`.
+  * `SOCForge-soc-sg`: Wazuh agent telemetry (ports 1514, 1515) from endpoints/web/attack; API (55000) and Dashboard (443) from management/admin; SSH (22) from bastion.
+  * `SOCForge-windows-sg`: RDP (3389) and WinRM (5985/5986) from bastion; simulated attack vectors (SMB 445, RPC 135, WinRM 5985) from attack host; egress to Wazuh.
+  * `SOCForge-web-sg`: HTTP (80), DVWA (8000), and Juice Shop (3000) from attack host and bastion; **never exposed to 0.0.0.0/0**.
+  * `SOCForge-attack-sg`: SSH (22) from bastion; egress permitted to target subnets.
+* **IAM Foundation**:
+  * `SOCForge-ec2-base-role`: EC2 assume role with `AmazonSSMManagedInstanceCore` and custom CloudWatch metrics policy.
+  * `SOCForge-ec2-instance-profile`: Instance profile ready for future EC2 attachments.
+* **Access & SSH Key Management**:
+  * `aws_key_pair.main`: Registers user's public key (`var.ssh_public_key`) without generating or exposing private keys in Terraform.
 
-### What is Intentionally NOT Implemented in Phase 2:
-* **No EC2 compute instances**
-* **No Security Groups or firewall rules** (Scheduled for Phase 3)
-* **No IAM roles, instance profiles, or policies** (Scheduled for Phase 3)
-* **No NAT Gateways or Elastic IPs** (Omitted to prevent unnecessary AWS hourly billing)
-* **No SSH key pairs**
-* **No Wazuh / OS / application software deployments**
-
----
-
-## 2. Network Layout & Subnet Specifications
-
-| Subnet Name | CIDR Block | Tier | Auto-Assign Public IP | Route Table | Purpose |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `SOCForge-management-subnet` | `10.10.1.0/24` | Public | **Yes** | `SOCForge-public-rt` | Operator entry point, jumpbox / bastion |
-| `SOCForge-soc-subnet` | `10.10.10.0/24` | Private | **No** | `SOCForge-private-rt` | Wazuh Manager, Indexer, and Dashboard |
-| `SOCForge-attack-subnet` | `10.10.20.0/24` | Private | **No** | `SOCForge-private-rt` | Atomic Red Team simulation node |
-| `SOCForge-web-subnet` | `10.10.30.0/24` | Private | **No** | `SOCForge-private-rt` | Vulnerable web targets (DVWA, Juice Shop) |
+### What is NOT Implemented in Phase 3:
+* **No EC2 Compute Instances** (Scheduled for Phase 4)
+* **No Software Deployments** (Wazuh, Sysmon, Nginx, Juice Shop scheduled for Phase 4/5)
+* **No Ansible Playbooks or Roles** (Scheduled for Phase 4)
+* **No NAT Gateways or Elastic IPs** (Omitted to keep lab costs near zero)
 
 ---
 
-## 3. Design Decisions & Cost Controls
+## 2. Security Group Relationships
 
-### Why Only the Management Subnet is Public
-The Management subnet acts as the controlled bastion host tier. In future phases, operator ingress (SSH / HTTPS) will be strictly allowed from authorized IP addresses into this subnet. All target workloads (vulnerable web applications and SOC servers) remain private to prevent automated internet crawlers and malicious external actors from discovering or attacking the lab.
-
-### Why No NAT Gateway Yet
-An AWS Managed NAT Gateway incurs a fixed hourly charge (~$0.045/hour or ~$32/month plus data transfer fees). In Phase 2, internal subnets only require private inter-communication. Subsequent phases will evaluate whether external package installation is handled via temporary elastic assignment, dual-homed bastion proxying, or ephemeral NAT.
-
-### Dynamic Single Availability Zone
-All four subnets are allocated in a single Availability Zone retrieved dynamically via `data.aws_availability_zones.available.names[0]`. This ensures compatibility with any AWS account without hardcoding AZ identifiers while avoiding AWS cross-AZ inter-subnet data transfer fees.
+```text
+                    Internet
+                       |
+                       | (Port 22 from admin_cidr only)
+                       v
+             +--------------------+
+             |   Management SG    |
+             |  (Bastion / Admin) |
+             +---------+----------+
+                       |
+        +--------------+--------------+
+        | (SSH 22,     | (WinRM /     | (SSH 22,
+        |  API 55000,  |  RDP 3389)   |  HTTP 80)
+        |  HTTPS 443)  |              |
+        v              v              v
++---------------+ +---------------+ +---------------+
+|    SOC SG     | |  Windows SG   | |    Web SG     |
+| (Wazuh SIEM)  | |  (Endpoint)   | |  (Juice Shop  |
++-------^-------+ +-------^-------+ |   & DVWA)     |
+        |                 |         +-------^-------+
+        | (Telemetry      | (Attack         | (Attack
+        |  1514/1515)     |  445/135)       |  8000/3000)
+        |                 +--------+--------+
+        |                          |
+        +--------------------------+
+                                   |
+                         +---------+---------+
+                         |     Attack SG     |
+                         | (Atomic Red Team) |
+                         +-------------------+
+```
 
 ---
 
-## 4. Terraform Workflow
+## 3. Management Architecture Decision
 
-### Step 1: Prepare Variables
-Copy the example variable definitions file:
+Because the SOC, Attack, and Web subnets are completely private (no public IPs, no NAT Gateway), direct SSH/RDP connections from the internet to internal hosts are blocked by design.
+
+### Chosen Approach: Bastion Jumpbox with SSH ProxyJump
+* An operator connects from their control workstation (e.g. Debian 13 VM) to a lightweight bastion host in the Management subnet (`10.10.1.0/24`).
+* Inbound SSH to the bastion is strictly limited to the operator's IP (`admin_cidr`).
+* **Ansible Configuration Workflow**: Ansible uses native `ProxyJump` in `ansible.cfg` / `ssh_config`:
+  ```text
+  Host 10.10.*.*
+      ProxyJump bastion.socforge.internal
+      IdentityFile ~/.ssh/socforge_key
+      User debian
+  ```
+* **Benefits**: Zero NAT Gateway cost (~$32/month saved), zero exposed attack surface on vulnerable apps, and native compatibility with Ansible and Linux tooling.
+
+---
+
+## 4. SSH Key Management & Safety
+
+1. **Generate Key Pair Locally**:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/socforge_key -C "socforge-operator"
+   ```
+2. **Supply Public Key to Terraform**:
+   Set `ssh_public_key` in `terraform.tfvars`:
+   ```hcl
+   ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA..."
+   ```
+3. **Private Key Safety**:
+   * The private key (`~/.ssh/socforge_key`) stays on the operator's local machine and is never shared, output, or committed to Git.
+
+---
+
+## 5. Terraform Workflow
 
 ```bash
+# 1. Prepare configuration
 cp terraform.tfvars.example terraform.tfvars
-```
+# (Edit admin_cidr and ssh_public_key in terraform.tfvars)
 
-*(Edit `terraform.tfvars` if you wish to change the target AWS region or CIDR allocations).*
-
-### Step 2: Initialize Terraform
-Download provider plugins and initialize local backend:
-
-```bash
+# 2. Initialize
 terraform init
-```
 
-### Step 3: Format & Validate
-Check code syntax and configuration validity:
-
-```bash
+# 3. Format & Validate
 terraform fmt -check
 terraform validate
-```
 
-### Step 4: Review Execution Plan
-Generate and inspect the speculative execution plan:
-
-```bash
+# 4. Review Plan
 terraform plan
-```
-
-### Step 5: Provision Infrastructure (Future)
-When ready to create the AWS VPC:
-
-```bash
-terraform apply
-```
-
-### Step 6: Destroy Infrastructure (Teardown)
-To tear down all network assets and stop AWS billing:
-
-```bash
-terraform destroy
 ```

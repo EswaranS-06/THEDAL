@@ -14,9 +14,17 @@ locals {
   # and keeps infrastructure lean for security training exercises.
   selected_az = data.aws_availability_zones.available.names[0]
 
-  # Common resource tags specific to the networking component
+  # Common resource tags specific to functional components
   networking_tags = {
     Component = "networking"
+  }
+
+  security_tags = {
+    Component = "security"
+  }
+
+  iam_tags = {
+    Component = "iam"
   }
 
   # Standardized resource name prefix
