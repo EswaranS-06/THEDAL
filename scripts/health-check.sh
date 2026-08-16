@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–8: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–9: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
 # ==============================================================================
@@ -80,6 +80,12 @@ REQUIRED_DIRS=(
   "ansible/roles/web-target"
   "ansible/roles/web-target/tasks"
   "ansible/roles/web-target/templates"
+  "ansible/roles/docker"
+  "ansible/roles/docker/tasks"
+  "ansible/roles/docker/templates"
+  "ansible/roles/juice-shop"
+  "ansible/roles/juice-shop/tasks"
+  "ansible/roles/juice-shop/templates"
   "detection"
   "attacks"
   "tests"
@@ -104,6 +110,7 @@ REQUIRED_FILES=(
   "docs/logging.md"
   "docs/learning-path.md"
   "docs/phase-8-linux-web-target.md"
+  "docs/phase-9-juice-shop-docker.md"
   "terraform/versions.tf"
   "terraform/provider.tf"
   "terraform/variables.tf"
@@ -128,6 +135,7 @@ REQUIRED_FILES=(
   "ansible/playbooks/windows-agent.yml"
   "ansible/playbooks/wazuh.yml"
   "ansible/playbooks/web-target.yml"
+  "ansible/playbooks/juice-shop.yml"
   "ansible/roles/common/tasks/main.yml"
   "ansible/roles/linux-base/tasks/main.yml"
   "ansible/roles/windows-base/tasks/main.yml"
@@ -175,6 +183,24 @@ REQUIRED_FILES=(
   "ansible/roles/web-target/templates/dvwa-config.inc.php.j2"
   "ansible/roles/web-target/templates/audit.rules.j2"
   "ansible/roles/web-target/templates/ossec-web.conf.j2"
+  "ansible/roles/docker/README.md"
+  "ansible/roles/docker/defaults/main.yml"
+  "ansible/roles/docker/handlers/main.yml"
+  "ansible/roles/docker/tasks/main.yml"
+  "ansible/roles/docker/tasks/prerequisites.yml"
+  "ansible/roles/docker/tasks/install.yml"
+  "ansible/roles/docker/tasks/proxy.yml"
+  "ansible/roles/docker/tasks/validation.yml"
+  "ansible/roles/docker/templates/daemon.json.j2"
+  "ansible/roles/docker/templates/docker-proxy.conf.j2"
+  "ansible/roles/juice-shop/README.md"
+  "ansible/roles/juice-shop/defaults/main.yml"
+  "ansible/roles/juice-shop/handlers/main.yml"
+  "ansible/roles/juice-shop/tasks/main.yml"
+  "ansible/roles/juice-shop/tasks/configure.yml"
+  "ansible/roles/juice-shop/tasks/deploy.yml"
+  "ansible/roles/juice-shop/tasks/validation.yml"
+  "ansible/roles/juice-shop/templates/docker-compose.yml.j2"
   "scripts/preflight.sh"
   "scripts/health-check.sh"
   "scripts/generate-inventory.py"
@@ -182,6 +208,7 @@ REQUIRED_FILES=(
   "scripts/wazuh-health-check.sh"
   "scripts/windows-agent-health-check.sh"
   "scripts/linux-web-health-check.sh"
+  "scripts/juice-shop-health-check.sh"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -191,7 +218,7 @@ echo ""
 
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
-for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/windows-agent-health-check.sh" "scripts/linux-web-health-check.sh"; do
+for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/windows-agent-health-check.sh" "scripts/linux-web-health-check.sh" "scripts/juice-shop-health-check.sh"; do
   printf "  Checking executable bit: %-35s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
@@ -206,7 +233,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, and Linux Web Target are intact."
+  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, Linux Web Target, and OWASP Juice Shop are intact."
   echo "================================================================="
   exit 0
 else

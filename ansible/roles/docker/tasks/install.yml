@@ -1,0 +1,48 @@
+---
+# ==============================================================================
+# Tasks: Docker Engine & Compose Plugin Installation
+# ==============================================================================
+
+- name: Add official Docker APT repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/docker.list
+    content: "{{ docker_apt_repo }}\n"
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Update APT cache for Docker repository
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install Docker CE packages and Compose plugin
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+  register: docker_pkg_install
+  until: docker_pkg_install is success
+  retries: 3
+  delay: 5
+
+- name: Ensure /etc/docker configuration directory exists
+  ansible.builtin.file:
+    path: "{{ docker_config_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Deploy Docker daemon configuration (daemon.json)
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: "{{ docker_config_dir }}/daemon.json"
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Restart docker

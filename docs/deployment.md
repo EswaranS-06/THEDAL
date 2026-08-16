@@ -1,6 +1,6 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, and **Linux Web Target + DVWA (Phases 1–8)** are implemented. OWASP Juice Shop containerization follows in Phase 9.
+> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), and **OWASP Juice Shop Docker Deployment (Phases 1–9)** are implemented. Atomic Red Team adversary simulation follows in Phase 10.
 
 ---
 
@@ -60,53 +60,45 @@
        | - Linux auditd Telemetry (/var/log/audit)     |
        | - Wazuh Agent Registered & Streaming (1514)   |
        +-----------------------------------------------+
+                        |
+                        | (9. ansible-playbook playbooks/juice-shop.yml)
+                        v
+       +-----------------------------------------------+
+       | OWASP Juice Shop Container Live (Port 3000)   |
+       | - Docker Engine with Bastion Proxy Override   |
+       | - Container JSON Log Rotation (max: 50m)      |
+       | - Wazuh Agent Container Ingestion             |
+       +-----------------------------------------------+
 ```
 
 ---
 
-## 2. Windows Endpoint & Telemetry Deployment Workflow (Phase 7)
+## 2. Playbooks & Deployment Workflows
 
+### Windows Endpoint Telemetry (Phase 7)
 ```bash
 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/windows-agent.yml
 # Or: make windows-agent-deploy
-```
-
-Verify status:
-```bash
 ./scripts/windows-agent-health-check.sh
-# Or: make windows-check
 ```
 
----
-
-## 3. Linux Web Target & DVWA Deployment Workflow (Phase 8)
-
-### Step 1: Deploy Web Target Stack
-Execute the web target playbook:
-
+### Linux Web Target & DVWA (Phase 8)
 ```bash
 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/web-target.yml
 # Or: make web-target-deploy
+./scripts/linux-web-health-check.sh
 ```
 
-This automates:
-1. **Nginx Reverse Proxy**: Configured to listen on port `8000/TCP` with standard combined access logging.
-2. **DVWA Application**: Cloned from official Git repo, configured with PHP-FPM runtime and database parameters.
-3. **MariaDB Database**: Initialized and bound to `127.0.0.1:3306` with isolated database and user permissions.
-4. **Linux Auditd**: Deploys focused audit rules for web file modifications, configuration tampering, and command execution.
-5. **Wazuh Agent**: Installs and enrolls agent against `SOCForge-wazuh:1515`, streaming Nginx, auth, and audit logs.
-
-### Step 2: Verify Web Target & DVWA Health
-Run the automated web target health check:
-
+### OWASP Juice Shop Docker Deployment (Phase 9)
 ```bash
-./scripts/linux-web-health-check.sh
-# Or: make web-check
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/juice-shop.yml
+# Or: make juice-shop-deploy
+./scripts/juice-shop-health-check.sh
 ```
 
 ---
 
-## 4. Web Dashboard SSH Tunnel
+## 3. Web Dashboard SSH Tunnel
 
 Access the Wazuh Dashboard from your local browser:
 

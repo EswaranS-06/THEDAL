@@ -1,0 +1,13 @@
+---
+# ==============================================================================
+# SOCForge — Main Tasks for role: juice-shop
+# ==============================================================================
+
+- name: 1. Configure Juice Shop deployment and Wazuh container telemetry
+  ansible.builtin.include_tasks: configure.yml
+
+- name: 2. Deploy and launch Juice Shop container via Docker Compose
+  ansible.builtin.include_tasks: deploy.yml
+
+- name: 3. Validate Juice Shop endpoint and container telemetry
+  ansible.builtin.include_tasks: validation.yml

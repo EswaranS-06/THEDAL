@@ -1,6 +1,6 @@
 # SOCForge — Telemetry, Logging & Index Architecture
 
-> **Phase 8 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), and **Linux Web Target (Nginx :8000 + DVWA + auditd + Wazuh Agent)** are operational and instrumented for security event collection.
+> **Phase 9 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), and **OWASP Juice Shop Container Telemetry (Docker :3000)** are operational and instrumented for security event collection.
 
 ---
 
@@ -14,8 +14,8 @@
 | - PowerShell (4104 ScriptBlock)    |      | - Linux Auditd (/var/log/audit)    |
 | - Microsoft Sysmon (1, 3, 7, 10)   |      | - Linux Auth Log (/var/log/auth)   |
 | - Wazuh Agent Service (WazuhSvc)   |      | - Real-time FIM (/var/www/dvwa)    |
-| - Encrypted Streaming (TCP 1514)   |      | - Wazuh Agent Daemon (wazuh-agent) |
-| - Automated Enrollment (TCP 1515)  |      | - Encrypted Streaming (TCP 1514)   |
+| - Encrypted Streaming (TCP 1514)   |      | - Docker JSON Logs (:3000 Juice)   |
+| - Automated Enrollment (TCP 1515)  |      | - Wazuh Agent Daemon (wazuh-agent) |
 +-----------------+------------------+      +-----------------+------------------+
                   |                                           |
                   +---------------------+---------------------+
@@ -42,16 +42,16 @@
 
 ---
 
-## 2. Linux Web Target Telemetry Matrix (Phase 8)
+## 2. Docker & Container Telemetry Matrix (Phase 9)
 
 | Telemetry Source | Format | Monitored Location | SOC Detection & Investigation Value |
 | :--- | :--- | :--- | :--- |
-| **Nginx Access Log** | `apache` (Combined) | `/var/log/nginx/access.log` | Records client IP, HTTP request method, URI query parameters, status codes, user-agent; essential for detecting SQLi, XSS, Path Traversal, and web reconnaissance. |
-| **Nginx Error Log** | `apache` (Standard) | `/var/log/nginx/error.log` | Records 4xx/5xx web server errors, fastcgi exceptions, and backend proxy timeouts. |
-| **Linux Auditd** | `audit` (Kernel) | `/var/log/audit/audit.log` | High-fidelity syscall tracking for web shell uploads (`/var/www/dvwa`), config modifications (`/etc/nginx`, `/etc/php`), and execution of reconnaissance/staging tools (`whoami`, `curl`, `wget`, `nc`, `sudo`). |
-| **Linux Auth Log** | `syslog` | `/var/log/auth.log` | Captures SSH authentication attempts, sudo invocations, and PAM authentication events. |
-| **Linux Syslog** | `syslog` | `/var/log/syslog` | Operating system events, service startups, and kernel messages. |
-| **Wazuh FIM (Syscheck)**| Native Wazuh | `/var/www/dvwa`, `/etc/nginx/`, `/etc/php/`, `/etc/systemd/system/` | Real-time file integrity monitoring detecting unauthorized web file additions, modified server blocks, and persistence mechanisms. |
+| **Juice Shop Container Log** | `json` | `/var/lib/docker/containers/*/*-json.log` | Captures Node.js HTTP transactions, search queries (`/rest/products/search`), admin configuration access, uncaught exceptions, and container stdout/stderr. |
+| **Nginx Access Log** | `apache` (Combined) | `/var/log/nginx/access.log` | Records client IP, HTTP request method, URI query parameters, status codes, user-agent for DVWA (:8000). |
+| **Nginx Error Log** | `apache` (Standard) | `/var/log/nginx/error.log` | Records 4xx/5xx web server errors, fastcgi exceptions, and backend timeouts. |
+| **Linux Auditd** | `audit` (Kernel) | `/var/log/audit/audit.log` | Kernel syscall tracking for web shell uploads, config modifications, and binary executions. |
+| **Linux Auth Log** | `syslog` | `/var/log/auth.log` | Captures SSH authentication attempts, sudo invocations, and PAM events. |
+| **Wazuh FIM (Syscheck)**| Native Wazuh | `/var/www/dvwa`, `/etc/nginx/`, `/etc/php/`, `/etc/systemd/system/` | Real-time file integrity monitoring detecting unauthorized modifications and persistence. |
 
 ---
 
@@ -78,10 +78,8 @@
 
 ## 4. Phased Index Separation Roadmap
 
-* **Phase 6–8 (Current)**:
+* **Phase 6–9 (Current)**:
   * Ingests all telemetry into standard Wazuh indices (`wazuh-alerts-4.x-*`).
-  * Full event metadata, channel identifiers, and original fields are strictly preserved.
-* **Phase 9**:
-  * Ingestion of Docker containerized OWASP Juice Shop application logs.
+  * Full event metadata, container attributes, channel identifiers, and original fields are strictly preserved.
 * **Phase 10**:
-  * Formal index routing rules separating `soc-windows-*`, `soc-sysmon-*`, `soc-nginx-*`, and `soc-atomic-*`.
+  * Formal index routing rules separating `soc-windows-*`, `soc-sysmon-*`, `soc-nginx-*`, `soc-juiceshop-*`, and `soc-atomic-*`.

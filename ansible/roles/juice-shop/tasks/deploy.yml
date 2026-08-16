@@ -1,0 +1,19 @@
+---
+# ==============================================================================
+# Tasks: Launch Juice Shop Container via Docker Compose
+# ==============================================================================
+
+- name: Pull and launch Juice Shop container via Docker Compose
+  ansible.builtin.command: docker compose -f {{ juice_shop_install_dir }}/docker-compose.yml up -d
+  register: compose_up_cmd
+  changed_when: "'Started' in compose_up_cmd.stdout or 'Created' in compose_up_cmd.stdout or 'Recreated' in compose_up_cmd.stdout"
+  environment:
+    http_proxy: "{{ http_proxy_url }}"
+    https_proxy: "{{ https_proxy_url }}"
+
+- name: Wait for Juice Shop port {{ juice_shop_port }} to be open
+  ansible.builtin.wait_for:
+    port: "{{ juice_shop_port }}"
+    host: 0.0.0.0
+    timeout: 60
+    state: started

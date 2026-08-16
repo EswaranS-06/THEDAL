@@ -58,7 +58,7 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
 
 ## 2. Implementation Status by Phase
 
-### ✅ IMPLEMENTED IN PHASES 1–8
+### ✅ IMPLEMENTED IN PHASES 1–9
 * **Phase 1: Project Foundation**: Directory structure, standards (`.editorconfig`, `.gitignore`, `LICENSE`), developer CLI (`Makefile`), preflight checker (`scripts/preflight.sh`), and health check (`scripts/health-check.sh`).
 * **Phase 2: AWS Network Foundation**: Dedicated VPC (`10.10.0.0/16`), single-AZ dynamic discovery, four segregated subnets (Management, SOC, Attack, Web), Internet Gateway (`SOCForge-igw`), and public/private route tables.
 * **Phase 3: Security Groups, IAM & Access Control**:
@@ -85,10 +85,12 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
   * **DVWA Deployment**: Official PHP-FPM application with isolated MariaDB backend on `127.0.0.1:3306`.
   * **Kernel Auditd Telemetry**: Focused audit rules tracking web directory modifications, Nginx/PHP config tampering, and execution of reconnaissance/staging binaries.
   * **Wazuh Web Agent & FIM**: Automated agent enrollment (`1515/TCP`), real-time FIM on `/var/www/dvwa`, `/etc/nginx`, `/etc/php`, and streaming of Nginx, auth, and audit logs.
+* **Phase 9: Containerized OWASP Juice Shop & Container Telemetry**:
+  * **Docker Engine with Bastion Proxy**: Official Docker CE and Compose plugin configured with systemd HTTP proxy drop-in for internal image pulls.
+  * **OWASP Juice Shop on Port 3000**: Pinned image `bkimminich/juice-shop:v17.1.1` running as an isolated unprivileged container with `unless-stopped` restart policy.
+  * **Container Log Streaming & Rotation**: Capped JSON-file log rotation (`max-size: 50m`, `max-file: 3`) streamed into Wazuh Agent (`/var/lib/docker/containers/*/*-json.log`).
 
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 9+)
-* **Phase 9: Containerized OWASP Juice Shop**:
-  * Docker-based Juice Shop deployment on port `3000` with dedicated container logging architecture.
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 10+)
 * **Phase 10: Adversary Emulation & MITRE ATT&CK Detection Engineering**:
   * Atomic Red Team simulation harness on `SOCForge-attack` targeting Windows and Web nodes.
   * Custom Wazuh rules and detection alert mapping.

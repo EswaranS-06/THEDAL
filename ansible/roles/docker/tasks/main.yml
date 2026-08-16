@@ -1,0 +1,16 @@
+---
+# ==============================================================================
+# SOCForge — Main Tasks for role: docker
+# ==============================================================================
+
+- name: 1. Install Docker prerequisites and GPG key
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: 2. Install Docker Engine and Docker Compose plugin
+  ansible.builtin.include_tasks: install.yml
+
+- name: 3. Configure Docker forward proxy and log rotation
+  ansible.builtin.include_tasks: proxy.yml
+
+- name: 4. Validate Docker installation and service state
+  ansible.builtin.include_tasks: validation.yml

@@ -1,0 +1,49 @@
+---
+# ==============================================================================
+# Tasks: Juice Shop Health & Container Telemetry Validation
+# ==============================================================================
+
+- name: Verify Juice Shop base HTTP endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ juice_shop_port }}/"
+    method: GET
+    status_code: 200
+    timeout: 10
+  register: juice_base_probe
+  ignore_errors: true
+
+- name: Verify Juice Shop REST API endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ juice_shop_port }}/rest/products/search?q=test"
+    method: GET
+    status_code: 200
+    timeout: 10
+  register: juice_api_probe
+  ignore_errors: true
+
+- name: Generate benign application test traffic to verify container log emission
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ juice_shop_port }}/{{ item }}"
+    method: GET
+    status_code: [200, 304, 404]
+    timeout: 5
+  loop:
+    - "login"
+    - "robots.txt"
+    - "rest/admin/application-configuration"
+  ignore_errors: true
+
+- name: Display Juice Shop Deployment Summary
+  ansible.builtin.debug:
+    msg:
+      - "================================================================="
+      - "         SOCForge OWASP Juice Shop Container Active              "
+      - "================================================================="
+      - "Target Host       : {{ inventory_hostname }}"
+      - "Container Name    : {{ juice_shop_container_name }}"
+      - "Image Version     : {{ juice_shop_image }}:{{ juice_shop_version }}"
+      - "Port Mapping      : 0.0.0.0:{{ juice_shop_port }} -> 3000/TCP"
+      - "Log Driver        : {{ juice_shop_log_driver }} (/var/lib/docker/containers/*/*-json.log)"
+      - "Wazuh Ingestion   : Configured in /var/ossec/etc/ossec.conf"
+      - "Restart Policy    : {{ juice_shop_restart_policy }}"
+      - "================================================================="

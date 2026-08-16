@@ -1,0 +1,15 @@
+---
+# ==============================================================================
+# SOCForge — OWASP Juice Shop & Container Telemetry Playbook (Phase 9)
+# ==============================================================================
+# Installs Docker Engine (with Bastion forward proxy support and log rotation),
+# deploys OWASP Juice Shop on port 3000, and enables Wazuh Agent container logging.
+# ==============================================================================
+
+- name: Deploy Docker and OWASP Juice Shop Container
+  hosts: web
+  become: true
+  gather_facts: true
+  roles:
+    - role: docker
+    - role: juice-shop

@@ -1,0 +1,32 @@
+---
+# ==============================================================================
+# Tasks: Docker Systemd Proxy Override & Service Enablement
+# ==============================================================================
+
+- name: Ensure Docker systemd override directory exists
+  ansible.builtin.file:
+    path: "{{ docker_systemd_override_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Deploy Docker HTTP/HTTPS proxy systemd configuration
+  ansible.builtin.template:
+    src: docker-proxy.conf.j2
+    dest: "{{ docker_systemd_override_dir }}/http-proxy.conf"
+    mode: "0644"
+    owner: root
+    group: root
+  notify:
+    - Reload systemd daemon
+    - Restart docker
+
+- name: Flush handlers to apply systemd reload and restart docker if needed
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure Docker daemon service is running and enabled
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true

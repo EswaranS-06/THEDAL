@@ -1,0 +1,23 @@
+version: '3.8'
+
+# ==============================================================================
+# SOCForge — OWASP Juice Shop Docker Compose
+# ==============================================================================
+
+services:
+  juice-shop:
+    image: {{ juice_shop_image }}:{{ juice_shop_version }}
+    container_name: {{ juice_shop_container_name }}
+    restart: {{ juice_shop_restart_policy }}
+    ports:
+      - "{{ juice_shop_port }}:3000"
+    environment:
+      - NODE_ENV=unsafe
+    logging:
+      driver: "{{ juice_shop_log_driver }}"
+      options:
+        max-size: "{{ juice_shop_log_max_size }}"
+        max-file: "{{ juice_shop_log_max_file }}"
+    labels:
+      socforge.app: "juice-shop"
+      socforge.environment: "lab"

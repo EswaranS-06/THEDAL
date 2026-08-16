@@ -1,0 +1,23 @@
+---
+# Defaults for role: docker
+# ==============================================================================
+# SOCForge — Docker Engine & Daemon Configuration Defaults (Phase 9)
+# ==============================================================================
+
+# Docker Package & Repository Configuration
+docker_apt_key_url: "https://download.docker.com/linux/ubuntu/gpg"
+docker_apt_repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+
+# Docker Proxy Settings (Uses Bastion forward proxy on port 3128)
+docker_http_proxy: "{{ http_proxy_url }}"
+docker_https_proxy: "{{ https_proxy_url }}"
+docker_no_proxy: "{{ no_proxy_list }}"
+
+# Docker Log Rotation Defaults
+docker_log_driver: "json-file"
+docker_log_max_size: "50m"
+docker_log_max_file: "3"
+
+# Docker Daemon Configuration Directory
+docker_config_dir: "/etc/docker"
+docker_systemd_override_dir: "/etc/systemd/system/docker.service.d"

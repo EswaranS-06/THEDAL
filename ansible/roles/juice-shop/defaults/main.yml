@@ -1,0 +1,23 @@
+---
+# Defaults for role: juice-shop
+# ==============================================================================
+# SOCForge — OWASP Juice Shop Docker Deployment Defaults (Phase 9)
+# ==============================================================================
+
+# OWASP Juice Shop Image & Version
+juice_shop_image: "bkimminich/juice-shop"
+juice_shop_version: "v17.1.1"
+juice_shop_container_name: "juice-shop"
+juice_shop_port: 3000
+juice_shop_restart_policy: "unless-stopped"
+
+# Deployment Directory
+juice_shop_install_dir: "/opt/juice-shop"
+
+# Container Logging Configuration
+juice_shop_log_driver: "json-file"
+juice_shop_log_max_size: "50m"
+juice_shop_log_max_file: "3"
+
+# Wazuh Agent Configuration File
+wazuh_config_file: "/var/ossec/etc/ossec.conf"

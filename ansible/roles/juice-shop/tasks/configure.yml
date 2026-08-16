@@ -1,0 +1,39 @@
+---
+# ==============================================================================
+# Tasks: Juice Shop Directory, Compose Setup & Wazuh Container Log Integration
+# ==============================================================================
+
+- name: Ensure Juice Shop installation directory exists
+  ansible.builtin.file:
+    path: "{{ juice_shop_install_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Deploy Juice Shop Docker Compose template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ juice_shop_install_dir }}/docker-compose.yml"
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Check if Wazuh Agent configuration exists
+  ansible.builtin.stat:
+    path: "{{ wazuh_config_file }}"
+  register: wazuh_conf_stat
+
+- name: Ensure Docker container JSON logs are monitored by Wazuh Agent
+  ansible.builtin.blockinfile:
+    path: "{{ wazuh_config_file }}"
+    insertbefore: "</ossec_config>"
+    marker: "<!-- {mark} ANSIBLE MANAGED DOCKER TELEMETRY BLOCK -->"
+    block: |
+      <!-- Docker Container Telemetry (OWASP Juice Shop) -->
+      <localfile>
+        <location>/var/lib/docker/containers/*/*-json.log</location>
+        <log_format>json</log_format>
+      </localfile>
+  when: wazuh_conf_stat.stat.exists
+  notify: Restart wazuh-agent

@@ -1,0 +1,33 @@
+---
+# ==============================================================================
+# Tasks: Docker Prerequisites & Official GPG Key Setup
+# ==============================================================================
+
+- name: Install APT prerequisite packages for Docker
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure APT keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Download and de-armor official Docker GPG key
+  ansible.builtin.shell: |
+    curl -fsSL {{ docker_apt_key_url }} | gpg --dearmor -o /etc/apt/keyrings/docker.gpg --yes
+    chmod 0644 /etc/apt/keyrings/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+  environment:
+    http_proxy: "{{ http_proxy_url }}"
+    https_proxy: "{{ https_proxy_url }}"

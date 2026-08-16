@@ -1,0 +1,34 @@
+---
+# ==============================================================================
+# Tasks: Docker Engine Validation
+# ==============================================================================
+
+- name: Verify Docker service is active
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+  register: docker_svc_check
+  failed_when: docker_svc_check.status.ActiveState != 'active'
+
+- name: Query Docker Engine version
+  ansible.builtin.command: docker --version
+  register: docker_ver_cmd
+  changed_when: false
+
+- name: Query Docker Compose plugin version
+  ansible.builtin.command: docker compose version
+  register: compose_ver_cmd
+  changed_when: false
+
+- name: Display Docker Engine Validation Summary
+  ansible.builtin.debug:
+    msg:
+      - "================================================================="
+      - "               Docker Engine Active & Validated                   "
+      - "================================================================="
+      - "Engine Version    : {{ docker_ver_cmd.stdout }}"
+      - "Compose Plugin    : {{ compose_ver_cmd.stdout }}"
+      - "Daemon Status     : active"
+      - "Forward Proxy     : {{ docker_http_proxy }}"
+      - "Log Driver        : {{ docker_log_driver }} (max-size: {{ docker_log_max_size }}, max-file: {{ docker_log_max_file }})"
+      - "================================================================="
