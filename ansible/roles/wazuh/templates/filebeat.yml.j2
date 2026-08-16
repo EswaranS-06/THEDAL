@@ -1,0 +1,32 @@
+# ==============================================================================
+# SOCForge — Filebeat Configuration (Wazuh Module)
+# ==============================================================================
+output.elasticsearch:
+  hosts: ["https://127.0.0.1:{{ wazuh_indexer_port }}"]
+  protocol: "https"
+  username: "{{ wazuh_admin_username }}"
+  password: "{{ wazuh_admin_password }}"
+  ssl.certificate_authorities: ["{{ wazuh_manager_certs_dir }}/root-ca.pem"]
+  ssl.certificate: "{{ wazuh_manager_certs_dir }}/filebeat.pem"
+  ssl.key: "{{ wazuh_manager_certs_dir }}/filebeat-key.pem"
+  ssl.verification_mode: "none"
+
+setup.template.json.enabled: true
+setup.template.json.path: "/etc/filebeat/wazuh-template.json"
+setup.template.json.name: "wazuh"
+setup.template.overwrite: true
+setup.ilm.enabled: false
+
+filebeat.modules:
+  - module: wazuh
+    alerts:
+      enabled: true
+    archives:
+      enabled: false
+
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0640

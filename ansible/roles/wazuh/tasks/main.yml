@@ -1,0 +1,28 @@
+---
+# ==============================================================================
+# SOCForge — Main Tasks for role: wazuh
+# ==============================================================================
+# Deploys the complete single-node Wazuh SIEM stack in sequence:
+# Prerequisites -> Repository -> Certificates -> Indexer -> Manager -> Dashboard -> Validation
+# ==============================================================================
+
+- name: 1. Validate host prerequisites and system sizing
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: 2. Configure official Wazuh package repositories
+  ansible.builtin.include_tasks: repository.yml
+
+- name: 3. Generate and deploy Wazuh TLS/SSL certificates
+  ansible.builtin.include_tasks: certificates.yml
+
+- name: 4. Deploy and initialize Wazuh Indexer
+  ansible.builtin.include_tasks: indexer.yml
+
+- name: 5. Deploy and configure Wazuh Manager & Filebeat
+  ansible.builtin.include_tasks: manager.yml
+
+- name: 6. Deploy and configure Wazuh Dashboard
+  ansible.builtin.include_tasks: dashboard.yml
+
+- name: 7. Validate Wazuh services, APIs, and health endpoints
+  ansible.builtin.include_tasks: validation.yml

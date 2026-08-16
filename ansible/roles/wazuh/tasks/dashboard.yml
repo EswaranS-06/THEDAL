@@ -1,0 +1,79 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Dashboard Deployment
+# ==============================================================================
+
+- name: Install Wazuh Dashboard package
+  ansible.builtin.apt:
+    name: wazuh-dashboard
+    state: present
+  register: dashboard_install
+  until: dashboard_install is success
+  retries: 3
+  delay: 5
+
+- name: Create Wazuh Dashboard certificates directory
+  ansible.builtin.file:
+    path: "{{ wazuh_dashboard_certs_dir }}"
+    state: directory
+    mode: "0700"
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+
+- name: Copy TLS certificates to Wazuh Dashboard directory
+  ansible.builtin.copy:
+    src: "{{ wazuh_certs_dir }}/{{ item.src }}"
+    dest: "{{ wazuh_dashboard_certs_dir }}/{{ item.dest }}"
+    remote_src: true
+    mode: "{{ item.mode }}"
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+  loop:
+    - { src: "root-ca.pem", dest: "root-ca.pem", mode: "0644" }
+    - { src: "dashboard.pem", dest: "dashboard.pem", mode: "0644" }
+    - { src: "dashboard-key.pem", dest: "dashboard-key.pem", mode: "0600" }
+  notify: Restart wazuh-dashboard
+
+- name: Deploy Wazuh Dashboard configuration (opensearch_dashboards.yml)
+  ansible.builtin.template:
+    src: opensearch_dashboards.yml.j2
+    dest: /etc/wazuh-dashboard/opensearch_dashboards.yml
+    mode: "0640"
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+  notify: Restart wazuh-dashboard
+
+- name: Ensure Wazuh app plugin configuration directory exists
+  ansible.builtin.file:
+    path: /usr/share/wazuh-dashboard/data/wazuh/config
+    state: directory
+    mode: "0755"
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+
+- name: Deploy Wazuh app plugin configuration (wazuh.yml)
+  ansible.builtin.template:
+    src: wazuh_dashboard.yml.j2
+    dest: /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+    mode: "0640"
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+  notify: Restart wazuh-dashboard
+
+- name: Grant node binary capability to bind privileged port 443
+  ansible.builtin.shell: |
+    setcap 'cap_net_bind_service=+ep' /usr/share/wazuh-dashboard/node/bin/node
+  changed_when: false
+
+- name: Ensure Wazuh Dashboard service is enabled and started
+  ansible.builtin.service:
+    name: wazuh-dashboard
+    state: started
+    enabled: true
+
+- name: Wait for Wazuh Dashboard HTTPS port 443 to open
+  ansible.builtin.wait_for:
+    port: "{{ wazuh_dashboard_port }}"
+    host: 0.0.0.0
+    timeout: 60
+    state: started

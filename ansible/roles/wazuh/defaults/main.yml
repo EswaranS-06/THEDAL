@@ -1,0 +1,48 @@
+---
+# Defaults for role: wazuh
+# ==============================================================================
+# SOCForge — Wazuh SIEM Role Defaults (Phase 6)
+# ==============================================================================
+
+# Wazuh Version Specification
+wazuh_version: "4.9.2"
+wazuh_major_version: "4.x"
+
+# Node & Cluster Configuration
+wazuh_node_name: "socforge-wazuh"
+wazuh_cluster_name: "socforge-cluster"
+wazuh_node_ip: "127.0.0.1"
+
+# Service Ports
+wazuh_indexer_port: 9200
+wazuh_indexer_cluster_port: 9300
+wazuh_dashboard_port: 443
+wazuh_api_port: 55000
+wazuh_agent_event_port: 1514
+wazuh_agent_auth_port: 1515
+
+# Resource Thresholds
+wazuh_min_memory_mb: 3500
+wazuh_min_disk_gb: 20
+
+# Certificate Directories
+wazuh_certs_dir: "/etc/wazuh-certs"
+wazuh_indexer_certs_dir: "/etc/wazuh-indexer/certs"
+wazuh_manager_certs_dir: "/etc/filebeat/certs"
+wazuh_dashboard_certs_dir: "/etc/wazuh-dashboard/certs"
+
+# Indexer JVM Sizing (Configured for t3.medium 4GB RAM lab instances)
+# Standard recommendation is 50% of available RAM (e.g. 1g for t3.medium, 8g for t3.xlarge)
+wazuh_indexer_jvm_min_heap: "1g"
+wazuh_indexer_jvm_max_heap: "1g"
+
+# Wazuh Dashboard Settings
+wazuh_dashboard_https: true
+wazuh_dashboard_app_timeout: 30000
+
+# Administrative Credentials
+# In production/lab operations, provide wazuh_admin_password via Ansible Vault or CLI flag
+wazuh_admin_username: "admin"
+wazuh_admin_password: "{{ lookup('env', 'WAZUH_ADMIN_PASSWORD') | default('SOCForgeAdminPass2026!', true) }}"
+wazuh_api_username: "wazuh-wui"
+wazuh_api_password: "{{ lookup('env', 'WAZUH_API_PASSWORD') | default('SOCForgeWuiPass2026!', true) }}"

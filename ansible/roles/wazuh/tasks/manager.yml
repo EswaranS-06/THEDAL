@@ -1,0 +1,94 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Manager & Filebeat Deployment
+# ==============================================================================
+
+- name: Install Wazuh Manager and Filebeat packages
+  ansible.builtin.apt:
+    name:
+      - wazuh-manager
+      - filebeat
+    state: present
+  register: manager_install
+  until: manager_install is success
+  retries: 3
+  delay: 5
+
+- name: Download and install Wazuh Filebeat module
+  ansible.builtin.shell: |
+    curl -s https://packages.wazuh.com/{{ wazuh_major_version }}/filebeat/wazuh-filebeat-0.4.tar.gz | tar -xvz -C /usr/share/filebeat/module
+  args:
+    creates: /usr/share/filebeat/module/wazuh
+  environment:
+    http_proxy: "{{ http_proxy_url }}"
+    https_proxy: "{{ https_proxy_url }}"
+
+- name: Download Wazuh Indexer template for Filebeat
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/wazuh/wazuh/v{{ wazuh_version }}/src/indexer/wazuh-template.json"
+    dest: /etc/filebeat/wazuh-template.json
+    mode: "0644"
+    owner: root
+    group: root
+  environment:
+    http_proxy: "{{ http_proxy_url }}"
+    https_proxy: "{{ https_proxy_url }}"
+
+- name: Create Filebeat certificates directory
+  ansible.builtin.file:
+    path: "{{ wazuh_manager_certs_dir }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Copy TLS certificates to Filebeat directory
+  ansible.builtin.copy:
+    src: "{{ wazuh_certs_dir }}/{{ item.src }}"
+    dest: "{{ wazuh_manager_certs_dir }}/{{ item.dest }}"
+    remote_src: true
+    mode: "{{ item.mode }}"
+    owner: root
+    group: root
+  loop:
+    - { src: "root-ca.pem", dest: "root-ca.pem", mode: "0644" }
+    - { src: "filebeat.pem", dest: "filebeat.pem", mode: "0644" }
+    - { src: "filebeat-key.pem", dest: "filebeat-key.pem", mode: "0600" }
+  notify: Restart filebeat
+
+- name: Deploy Filebeat configuration (filebeat.yml)
+  ansible.builtin.template:
+    src: filebeat.yml.j2
+    dest: /etc/filebeat/filebeat.yml
+    mode: "0640"
+    owner: root
+    group: root
+  notify: Restart filebeat
+
+- name: Deploy Wazuh Manager configuration (ossec.conf)
+  ansible.builtin.template:
+    src: ossec.conf.j2
+    dest: /var/ossec/etc/ossec.conf
+    mode: "0640"
+    owner: root
+    group: wazuh
+  notify: Restart wazuh-manager
+
+- name: Ensure Wazuh Manager and Filebeat services are enabled and started
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - wazuh-manager
+    - filebeat
+
+- name: Wait for Wazuh Manager auth and agent registration ports to open
+  ansible.builtin.wait_for:
+    port: "{{ item }}"
+    host: 0.0.0.0
+    timeout: 30
+    state: started
+  loop:
+    - "{{ wazuh_agent_event_port }}"
+    - "{{ wazuh_agent_auth_port }}"

@@ -1,0 +1,34 @@
+# ==============================================================================
+# SOCForge — Wazuh Indexer Configuration (OpenSearch)
+# ==============================================================================
+network.host: 0.0.0.0
+http.port: {{ wazuh_indexer_port }}
+node.name: {{ wazuh_node_name }}
+cluster.name: {{ wazuh_cluster_name }}
+discovery.type: single-node
+
+path.data: /var/lib/wazuh-indexer
+path.logs: /var/log/wazuh-indexer
+
+# Cluster Transport TLS
+plugins.security.ssl.transport.pemcert_filepath: {{ wazuh_indexer_certs_dir }}/indexer.pem
+plugins.security.ssl.transport.pemkey_filepath: {{ wazuh_indexer_certs_dir }}/indexer-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: {{ wazuh_indexer_certs_dir }}/root-ca.pem
+plugins.security.ssl.transport.enforce_hostname_verification: false
+
+# REST API HTTPS TLS
+plugins.security.ssl.http.enabled: true
+plugins.security.ssl.http.pemcert_filepath: {{ wazuh_indexer_certs_dir }}/indexer.pem
+plugins.security.ssl.http.pemkey_filepath: {{ wazuh_indexer_certs_dir }}/indexer-key.pem
+plugins.security.ssl.http.pemtrustedcas_filepath: {{ wazuh_indexer_certs_dir }}/root-ca.pem
+
+# Security Admin DN
+plugins.security.authcz.admin_dn:
+  - "CN=admin,OU=SIEM,O=SOCForge,L=Lab,ST=Lab,C=US"
+
+plugins.security.nodes_dn:
+  - "CN=*,OU=SIEM,O=SOCForge,L=Lab,ST=Lab,C=US"
+
+plugins.security.check_snapshot_restore_write_privileges: true
+plugins.security.restapi.roles_enabled: ["all_access", "security_rest_api_access"]
+plugins.security.allow_default_init_securityindex: true

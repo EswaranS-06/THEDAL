@@ -1,0 +1,126 @@
+---
+# ==============================================================================
+# Tasks: Wazuh TLS/SSL Certificates Generation
+# ==============================================================================
+# Generates local root CA and node certificates for Indexer, Filebeat, and Dashboard.
+# Ensures all private keys are strictly permissions 0600 and never committed to Git.
+# ==============================================================================
+
+- name: Create secure certificate authority working directory
+  ansible.builtin.file:
+    path: "{{ wazuh_certs_dir }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Check if Wazuh Root CA already exists
+  ansible.builtin.stat:
+    path: "{{ wazuh_certs_dir }}/root-ca.pem"
+  register: root_ca_stat
+
+- name: Generate Wazuh Root Certificate Authority (CA)
+  ansible.builtin.shell: |
+    set -e
+    openssl req -x509 -new -nodes -newkey rsa:4096 \
+      -keyout {{ wazuh_certs_dir }}/root-ca.key \
+      -out {{ wazuh_certs_dir }}/root-ca.pem \
+      -batch -subj "/C=US/ST=Lab/L=Lab/O=SOCForge/OU=SIEM/CN=SOCForge-Wazuh-CA" \
+      -days 3650
+    chmod 0600 {{ wazuh_certs_dir }}/root-ca.key
+    chmod 0644 {{ wazuh_certs_dir }}/root-ca.pem
+  when: not root_ca_stat.stat.exists
+
+- name: Generate Admin Certificate for SecurityAdmin initialization
+  ansible.builtin.shell: |
+    set -e
+    openssl req -new -nodes -newkey rsa:2048 \
+      -keyout {{ wazuh_certs_dir }}/admin-key.pem \
+      -out {{ wazuh_certs_dir }}/admin.csr \
+      -batch -subj "/C=US/ST=Lab/L=Lab/O=SOCForge/OU=SIEM/CN=admin"
+    openssl x509 -req -in {{ wazuh_certs_dir }}/admin.csr \
+      -CA {{ wazuh_certs_dir }}/root-ca.pem \
+      -CAkey {{ wazuh_certs_dir }}/root-ca.key \
+      -CAcreateserial -out {{ wazuh_certs_dir }}/admin.pem -days 3650
+    chmod 0600 {{ wazuh_certs_dir }}/admin-key.pem
+    chmod 0644 {{ wazuh_certs_dir }}/admin.pem
+  args:
+    creates: "{{ wazuh_certs_dir }}/admin.pem"
+
+- name: Generate OpenSSL SAN configuration for node certificates
+  ansible.builtin.copy:
+    dest: "{{ wazuh_certs_dir }}/san.cnf"
+    content: |
+      [ req ]
+      default_bits       = 2048
+      distinguished_name = req_distinguished_name
+      req_extensions     = req_ext
+      prompt             = no
+      [ req_distinguished_name ]
+      C                  = US
+      ST                 = Lab
+      L                  = Lab
+      O                  = SOCForge
+      OU                 = SIEM
+      CN                 = {{ ansible_default_ipv4.address | default('127.0.0.1') }}
+      [ req_ext ]
+      subjectAltName = @alt_names
+      [ alt_names ]
+      DNS.1 = localhost
+      DNS.2 = socforge-wazuh
+      IP.1  = 127.0.0.1
+      IP.2  = {{ ansible_default_ipv4.address | default('10.10.10.10') }}
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Generate Wazuh Indexer node certificate
+  ansible.builtin.shell: |
+    set -e
+    openssl req -new -nodes -newkey rsa:2048 \
+      -keyout {{ wazuh_certs_dir }}/indexer-key.pem \
+      -out {{ wazuh_certs_dir }}/indexer.csr \
+      -config {{ wazuh_certs_dir }}/san.cnf
+    openssl x509 -req -in {{ wazuh_certs_dir }}/indexer.csr \
+      -CA {{ wazuh_certs_dir }}/root-ca.pem \
+      -CAkey {{ wazuh_certs_dir }}/root-ca.key \
+      -CAcreateserial -out {{ wazuh_certs_dir }}/indexer.pem -days 3650 \
+      -extensions req_ext -extfile {{ wazuh_certs_dir }}/san.cnf
+    chmod 0600 {{ wazuh_certs_dir }}/indexer-key.pem
+    chmod 0644 {{ wazuh_certs_dir }}/indexer.pem
+  args:
+    creates: "{{ wazuh_certs_dir }}/indexer.pem"
+
+- name: Generate Wazuh Dashboard node certificate
+  ansible.builtin.shell: |
+    set -e
+    openssl req -new -nodes -newkey rsa:2048 \
+      -keyout {{ wazuh_certs_dir }}/dashboard-key.pem \
+      -out {{ wazuh_certs_dir }}/dashboard.csr \
+      -config {{ wazuh_certs_dir }}/san.cnf
+    openssl x509 -req -in {{ wazuh_certs_dir }}/dashboard.csr \
+      -CA {{ wazuh_certs_dir }}/root-ca.pem \
+      -CAkey {{ wazuh_certs_dir }}/root-ca.key \
+      -CAcreateserial -out {{ wazuh_certs_dir }}/dashboard.pem -days 3650 \
+      -extensions req_ext -extfile {{ wazuh_certs_dir }}/san.cnf
+    chmod 0600 {{ wazuh_certs_dir }}/dashboard-key.pem
+    chmod 0644 {{ wazuh_certs_dir }}/dashboard.pem
+  args:
+    creates: "{{ wazuh_certs_dir }}/dashboard.pem"
+
+- name: Generate Wazuh Filebeat node certificate
+  ansible.builtin.shell: |
+    set -e
+    openssl req -new -nodes -newkey rsa:2048 \
+      -keyout {{ wazuh_certs_dir }}/filebeat-key.pem \
+      -out {{ wazuh_certs_dir }}/filebeat.csr \
+      -config {{ wazuh_certs_dir }}/san.cnf
+    openssl x509 -req -in {{ wazuh_certs_dir }}/filebeat.csr \
+      -CA {{ wazuh_certs_dir }}/root-ca.pem \
+      -CAkey {{ wazuh_certs_dir }}/root-ca.key \
+      -CAcreateserial -out {{ wazuh_certs_dir }}/filebeat.pem -days 3650 \
+      -extensions req_ext -extfile {{ wazuh_certs_dir }}/san.cnf
+    chmod 0600 {{ wazuh_certs_dir }}/filebeat-key.pem
+    chmod 0644 {{ wazuh_certs_dir }}/filebeat.pem
+  args:
+    creates: "{{ wazuh_certs_dir }}/filebeat.pem"

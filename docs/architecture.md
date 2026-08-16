@@ -1,6 +1,6 @@
 # SOCForge — Architectural Blueprint
 
-> **Notice**: This document details the architectural blueprint for SOCForge. It clearly delineates components **implemented in Phases 1–5** versus components **planned for future phases**.
+> **Notice**: This document details the architectural blueprint for SOCForge. It clearly delineates components **implemented in Phases 1–6** versus components **planned for future phases**.
 
 ---
 
@@ -29,6 +29,9 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
 | [SOCForge-    |             | [SOCForge-    |
 |    wazuh]     |             |   windows]    |
 | (10.10.10.0)  |             | (10.10.10.0)  |
+| - Indexer:9200|             |               |
+| - Manager:1514|             |               |
+| - Dashbrd:443 |             |               |
 +-------^-------+             +-------^-------+
         | (Telemetry                  | (Simulated
         |  1514/1515)                 |  Attack 445/135)
@@ -53,7 +56,7 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
 
 ## 2. Implementation Status by Phase
 
-### ✅ IMPLEMENTED IN PHASES 1–5
+### ✅ IMPLEMENTED IN PHASES 1–6
 * **Phase 1: Project Foundation**: Directory structure, standards (`.editorconfig`, `.gitignore`, `LICENSE`), developer CLI (`Makefile`), preflight checker (`scripts/preflight.sh`), and health check (`scripts/health-check.sh`).
 * **Phase 2: AWS Network Foundation**: Dedicated VPC (`10.10.0.0/16`), single-AZ dynamic discovery, four segregated subnets (Management, SOC, Attack, Web), Internet Gateway (`SOCForge-igw`), and public/private route tables.
 * **Phase 3: Security Groups, IAM & Access Control**:
@@ -67,25 +70,28 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
 * **Phase 5: Bootstrap & Provisioning Channel**:
   * **Bastion Forward Proxy Architecture**: `tinyproxy` configured on Bastion port `3128` allowing internal private instances to download packages over HTTP/HTTPS without an expensive NAT Gateway.
   * **Ansible Roles**: `roles/common`, `roles/linux-base`, `roles/windows-base`.
-  * **Playbooks**: `playbooks/bootstrap.yml` (connectivity & repo reachability tests), `playbooks/linux-base.yml`, `playbooks/windows-base.yml`.
-  * **Baseline Configurations**: Kernel sysctl tuning (`vm.max_map_count=262144`), Amazon Time Sync NTP, foundational packages, and Windows event log buffer expansion.
-
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 6+)
 * **Phase 6: Wazuh SIEM Platform Deployment**:
-  * Deployment and configuration of Wazuh Manager, Wazuh Indexer, and Wazuh Dashboard on the SOC server.
+  * **Wazuh SIEM All-In-One Stack**: Wazuh Indexer (OpenSearch), Wazuh Manager, Filebeat alert shipper, and Wazuh Dashboard on `SOCForge-wazuh`.
+  * **Automated TLS PKI**: Deterministic generation of Root CA and node certificates for Indexer, Filebeat, and Dashboard.
+  * **Secure Dashboard Access**: Encrypted SSH port forward tunnel via Bastion (`scripts/wazuh-tunnel.sh` -> `https://localhost:8443`).
+  * **Health & Validation Automation**: `scripts/wazuh-health-check.sh` and `ansible/playbooks/wazuh.yml`.
+
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 7+)
 * **Phase 7: Endpoint Telemetry & Application Targets**:
-  * Wazuh Agent deployment on Windows, Web, and Attack instances.
-  * Microsoft Sysmon configuration on Windows.
-  * Nginx reverse proxy, DVWA, and Docker containerized OWASP Juice Shop.
-* **Phase 8: Attack Simulation & Detection Engineering**:
-  * Atomic Red Team simulation playbooks and custom Wazuh detection rules mapped to MITRE ATT&CK.
+  * Windows workstation onboarding with Microsoft Sysmon and Wazuh Agent.
+  * Web application server onboarding with Nginx, DVWA, and Docker containerized OWASP Juice Shop.
+  * Attack node onboarding with Atomic Red Team test harness and Wazuh Agent.
+* **Phase 8: Detection Engineering & MITRE ATT&CK Mapping**:
+  * Custom Wazuh detection rules, alert decoders, and multi-stage adversary emulation scenarios.
 
 ---
 
-## 3. Provisioning Channel Comparison
+## 3. Wazuh SIEM Component Sizing & Specifications
 
-| Strategy | Cost | Security | Protocol Support | Selected? |
-| :--- | :--- | :--- | :--- | :--- |
-| **AWS NAT Gateway** | ~$32.40/month + data fees | High | All TCP/UDP outbound | ❌ Rejected (Violates low-cost educational goal) |
-| **Public IPs on Private Nodes** | Free | ⚠️ Unsafe (Exposes vulnerable targets) | All outbound | ❌ Rejected (Breaches least-privilege isolation) |
-| **Bastion Forward Proxy (Tinyproxy)** | **$0 additional** | **High (Internal VPC only)** | **HTTP/HTTPS (APT, Wazuh, Docker)** | **✅ SELECTED** |
+| Component | Service | Port | JVM / Heap Allocation | Minimum RAM | Recommended RAM |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Wazuh Indexer** | `wazuh-indexer` | 9200 (HTTPS) | 1 GB (`-Xms1g -Xmx1g`) | 2 GB | 8 GB (`t3.xlarge`) |
+| **Wazuh Manager** | `wazuh-manager` | 1514 (TCP/UDP), 1515 (TCP), 55000 (HTTPS) | Native C / Python daemon | 1 GB | 4 GB |
+| **Filebeat** | `filebeat` | Internal socket | Native Go daemon | 256 MB | 512 MB |
+| **Wazuh Dashboard** | `wazuh-dashboard`| 443 (HTTPS) | Node.js runtime | 512 MB | 2 GB |
+| **Combined Stack** | All-In-One | — | — | **4 GB (`t3.medium`)** | **16 GB (`t3.xlarge`)** |

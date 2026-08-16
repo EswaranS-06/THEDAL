@@ -1,6 +1,6 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, and **Bootstrap & Provisioning Channels (Phases 1–5)** are implemented. Individual SOC software components will follow in Phase 6.
+> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, and **Wazuh SIEM Platform (Phases 1–6)** are implemented. Endpoint and target provisioning follow in Phase 7.
 
 ---
 
@@ -34,50 +34,51 @@
        | Base Operating System Prerequisites Applied   |
        | (Time Sync, Packages, Sysctl, Event Logs)     |
        +-----------------------------------------------+
+                        |
+                        | (6. ansible-playbook playbooks/wazuh.yml)
+                        v
+       +-----------------------------------------------+
+       | Wazuh SIEM Platform Fully Initialized         |
+       | - Indexer (9200), Manager (1514/1515/55000)   |
+       | - Filebeat Forwarder, Dashboard (443)         |
+       +-----------------------------------------------+
 ```
 
 ---
 
-## 2. Bootstrap & Provisioning Channel Design
+## 2. Wazuh SIEM Deployment Workflow (Phase 6)
 
-### The Challenge: No NAT Gateway
-To keep lab operational costs near zero and eliminate recurring AWS Managed NAT Gateway charges (~$32/month), the private subnets (`SOC`, `Web`, `Attack`) have no NAT Gateway.
+### Step 1: Deploy Wazuh SIEM Stack
+Run the dedicated Wazuh playbook against the private SIEM host:
 
-### The Solution: Bastion Forward Proxy (Tinyproxy on Port 3128)
-* **Bastion Role**: Runs a lightweight forward proxy daemon (`tinyproxy`) listening on internal port `3128`, restricted via Security Groups to the VPC CIDR `10.10.0.0/16`.
-* **Client Configuration**: Private Linux and Windows instances configure their HTTP/HTTPS proxy environment variables and APT configs (`/etc/apt/apt.conf.d/01proxy`) to route package downloads through `http://10.10.1.x:3128`.
+```bash
+# Execute Wazuh SIEM playbook via Bastion SSH ProxyJump
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/wazuh.yml
 
-```text
-               +-----------------------------+
-               |        Public Internet      |
-               | (Ubuntu / Wazuh / Docker)   |
-               +--------------+--------------+
-                              ^
-                              | (Outbound HTTPS / APT)
-               +--------------+--------------+
-               |      SOCForge Bastion       |
-               |   (Tinyproxy Port 3128)     |
-               |     (Management Subnet)     |
-               +--------------+--------------+
-                              ^
-       +----------------------+----------------------+
-       | (HTTP_PROXY          | (HTTP_PROXY          | (WinHTTP Proxy
-       |  :3128)              |  :3128)              |  :3128)
-+------+------+        +------+------+        +------+------+
-|  Wazuh SIEM |        |  Web Target |        |   Windows   |
-| (Private)   |        | (Private)   |        | (Private)   |
-+-------------+        +-------------+        +-------------+
+# Or via Makefile target
+make wazuh-deploy
 ```
 
-### What is Supported:
-* Ubuntu APT package repositories (`archive.ubuntu.com`, `security.ubuntu.com`).
-* Wazuh HTTPS repositories (`packages.wazuh.com`).
-* Docker container registry pulls (`download.docker.com` and Docker Hub).
-* Python PyPI packages (`pypi.org`).
-* Windows WinHTTP package downloads.
+### Step 2: Open Encrypted SSH Tunnel for Web Dashboard
+Because the Wazuh instance is isolated in the private SOC subnet, access the HTTPS dashboard via the SSH tunnel helper:
 
-### Known Limitation:
-* Non-proxied protocols (e.g. raw ICMP ping to internet or arbitrary non-HTTP ports) are blocked from private subnets by design.
+```bash
+./scripts/wazuh-tunnel.sh
+# Or: make wazuh-tunnel
+```
+
+Navigate to: `https://localhost:8443` in your browser.
+
+* Default Username: `admin`
+* Default Password: Configured in `ansible/roles/wazuh/defaults/main.yml` (or overridden via `WAZUH_ADMIN_PASSWORD` environment variable).
+
+### Step 3: Run Wazuh Health Verification
+Verify that all SIEM daemons and API ports are active:
+
+```bash
+./scripts/wazuh-health-check.sh
+# Or: make wazuh-check
+```
 
 ---
 
@@ -90,28 +91,5 @@ Ansible connects from the control machine to internal Linux instances by bouncin
 Debian Control VM ----(SSH:22)----> Bastion (10.10.1.x) ----(ProxyJump:22)----> Internal Linux Host (10.10.x.x)
 ```
 
-Configuration in `ansible.cfg` / inventory:
-```ini
-[soc_stack:vars]
-ansible_ssh_common_args='-o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> -o StrictHostKeyChecking=no'
-```
-
 ### Windows Host: WinRM over Bastion
-* WinRM is configured on Windows Server (`5985/5986`) and accessible from the Bastion security group.
-* Operators and Ansible tunnel WinRM connections through the Bastion via SSH port forwarding (`ssh -L 5985:10.10.10.x:5985 ubuntu@<BASTION_PUBLIC_IP>`) or native WinRM ProxyJump.
-
----
-
-## 4. Execution Workflow
-
-```bash
-# 1. Generate inventory from Terraform outputs
-python3 scripts/generate-inventory.py
-
-# 2. Run bootstrap verification (starts Tinyproxy, tests connectivity)
-ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/bootstrap.yml
-
-# 3. Apply base system configurations
-ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/linux-base.yml
-ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/windows-base.yml
-```
+WinRM is configured on Windows Server (`5985/5986`) and accessible only from the Bastion security group.

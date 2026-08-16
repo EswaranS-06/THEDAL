@@ -1,0 +1,44 @@
+---
+# ==============================================================================
+# Tasks: Prerequisites Verification
+# ==============================================================================
+
+- name: Verify supported operating system distribution
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+      - ansible_distribution in ['Ubuntu', 'Debian']
+    fail_msg: "Wazuh role is only supported on Ubuntu/Debian distributions. Detected: {{ ansible_distribution }}"
+
+- name: Verify system architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in ['x86_64', 'amd64']
+    fail_msg: "Wazuh packages require x86_64/amd64 architecture. Detected: {{ ansible_architecture }}"
+
+- name: Check system memory threshold (Wazuh SIEM requirement)
+  ansible.builtin.debug:
+    msg: >
+      [RESOURCE NOTICE] System RAM is {{ ansible_memtotal_mb }} MB.
+      Official Wazuh documentation recommends 8192 MB (4 vCPU / 8GB RAM).
+      Running on t3.medium (4096 MB) is suitable for lab validation but may experience memory pressure under high ingestion.
+
+- name: Check available root disk space
+  ansible.builtin.assert:
+    that:
+      - (ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | int / 1024 / 1024 / 1024) >= 10
+    fail_msg: "Insufficient root disk space. Minimum 10 GB required for Wazuh SIEM stack."
+
+- name: Install prerequisite packages for Wazuh installation
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - gnupg
+      - curl
+      - tar
+      - debconf-utils
+      - libcap2-bin
+      - openssl
+    state: present
+    update_cache: true
+    cache_valid_time: 3600

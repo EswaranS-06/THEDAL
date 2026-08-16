@@ -1,0 +1,83 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Indexer Deployment & Initialization
+# ==============================================================================
+
+- name: Install Wazuh Indexer package
+  ansible.builtin.apt:
+    name: wazuh-indexer
+    state: present
+  register: indexer_install
+  until: indexer_install is success
+  retries: 3
+  delay: 5
+
+- name: Create Wazuh Indexer certificates directory
+  ansible.builtin.file:
+    path: "{{ wazuh_indexer_certs_dir }}"
+    state: directory
+    mode: "0700"
+    owner: wazuh-indexer
+    group: wazuh-indexer
+
+- name: Copy TLS certificates to Wazuh Indexer directory
+  ansible.builtin.copy:
+    src: "{{ wazuh_certs_dir }}/{{ item.src }}"
+    dest: "{{ wazuh_indexer_certs_dir }}/{{ item.dest }}"
+    remote_src: true
+    mode: "{{ item.mode }}"
+    owner: wazuh-indexer
+    group: wazuh-indexer
+  loop:
+    - { src: "root-ca.pem", dest: "root-ca.pem", mode: "0644" }
+    - { src: "indexer.pem", dest: "indexer.pem", mode: "0644" }
+    - { src: "indexer-key.pem", dest: "indexer-key.pem", mode: "0600" }
+    - { src: "admin.pem", dest: "admin.pem", mode: "0644" }
+    - { src: "admin-key.pem", dest: "admin-key.pem", mode: "0600" }
+  notify: Restart wazuh-indexer
+
+- name: Deploy Wazuh Indexer configuration (opensearch.yml)
+  ansible.builtin.template:
+    src: opensearch.yml.j2
+    dest: /etc/wazuh-indexer/opensearch.yml
+    mode: "0644"
+    owner: wazuh-indexer
+    group: wazuh-indexer
+  notify: Restart wazuh-indexer
+
+- name: Configure Wazuh Indexer JVM Heap options
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/jvm.options
+    regexp: "^-Xm{{ item.opt }}"
+    line: "-Xm{{ item.opt }}{{ item.val }}"
+  loop:
+    - { opt: "s", val: "{{ wazuh_indexer_jvm_min_heap }}" }
+    - { opt: "x", val: "{{ wazuh_indexer_jvm_max_heap }}" }
+  notify: Restart wazuh-indexer
+
+- name: Ensure Wazuh Indexer service is enabled and started
+  ansible.builtin.service:
+    name: wazuh-indexer
+    state: started
+    enabled: true
+
+- name: Wait for Wazuh Indexer HTTPS port to be open
+  ansible.builtin.wait_for:
+    port: "{{ wazuh_indexer_port }}"
+    host: 127.0.0.1
+    timeout: 60
+    state: started
+
+- name: Initialize Wazuh Indexer Security cluster index
+  ansible.builtin.shell: |
+    export JAVA_HOME=/usr/share/wazuh-indexer/jdk
+    /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh \
+      -cd /etc/wazuh-indexer/opensearch-security/ \
+      -nhnv \
+      -cacert {{ wazuh_indexer_certs_dir }}/root-ca.pem \
+      -cert {{ wazuh_indexer_certs_dir }}/admin.pem \
+      -key {{ wazuh_indexer_certs_dir }}/admin-key.pem \
+      -h 127.0.0.1 -p {{ wazuh_indexer_port }}
+  register: secadmin_res
+  changed_when: "'ERR:' not in secadmin_res.stdout"
+  failed_when: secadmin_res.rc != 0 and 'ERR:' in secadmin_res.stdout

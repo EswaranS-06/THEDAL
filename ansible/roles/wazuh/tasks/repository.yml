@@ -1,0 +1,36 @@
+---
+# ==============================================================================
+# Tasks: Wazuh Repository Configuration
+# ==============================================================================
+
+- name: Ensure APT keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Download and de-armor Wazuh GPG repository key
+  ansible.builtin.shell: |
+    curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring /etc/apt/keyrings/wazuh.gpg --import - || true
+    chmod 0644 /etc/apt/keyrings/wazuh.gpg
+  args:
+    creates: /etc/apt/keyrings/wazuh.gpg
+  environment:
+    http_proxy: "{{ http_proxy_url }}"
+    https_proxy: "{{ https_proxy_url }}"
+
+- name: Add official Wazuh APT repository source
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/wazuh.list
+    content: "deb [signed-by=/etc/apt/keyrings/wazuh.gpg] https://packages.wazuh.com/{{ wazuh_major_version }}/apt/ stable main\n"
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Update APT cache
+
+- name: Force immediate APT cache refresh for Wazuh repository
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0

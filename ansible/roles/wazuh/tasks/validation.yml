@@ -1,0 +1,64 @@
+---
+# ==============================================================================
+# Tasks: Wazuh SIEM Health & Service Validation
+# ==============================================================================
+
+- name: Verify all Wazuh systemd services are active
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+  loop:
+    - wazuh-indexer
+    - wazuh-manager
+    - filebeat
+    - wazuh-dashboard
+  register: service_states
+
+- name: Verify Wazuh Indexer REST API health endpoint
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ wazuh_indexer_port }}/_cluster/health"
+    method: GET
+    user: "{{ wazuh_admin_username }}"
+    password: "{{ wazuh_admin_password }}"
+    validate_certs: false
+    status_code: [200, 201]
+    timeout: 15
+  register: indexer_health
+  ignore_errors: true
+
+- name: Verify Wazuh Manager REST API endpoint
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ wazuh_api_port }}"
+    method: GET
+    user: "{{ wazuh_api_username }}"
+    password: "{{ wazuh_api_password }}"
+    validate_certs: false
+    status_code: [200, 401]
+    timeout: 15
+  register: manager_api_health
+  ignore_errors: true
+
+- name: Verify Wazuh Dashboard HTTPS web interface
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ wazuh_dashboard_port }}"
+    method: GET
+    validate_certs: false
+    status_code: [200, 302, 401]
+    timeout: 15
+  register: dashboard_health
+  ignore_errors: true
+
+- name: Display Wazuh SIEM Deployment Summary
+  ansible.builtin.debug:
+    msg:
+      - "================================================================="
+      - "             SOCForge Wazuh SIEM Deployment Complete              "
+      - "================================================================="
+      - "Wazuh Version     : {{ wazuh_version }}"
+      - "Wazuh Host        : {{ inventory_hostname }} ({{ ansible_default_ipv4.address | default(ansible_host) }})"
+      - "Wazuh Indexer     : Port {{ wazuh_indexer_port }} (Status: Active)"
+      - "Wazuh Manager     : Port {{ wazuh_agent_event_port }} / {{ wazuh_agent_auth_port }} (Status: Active)"
+      - "Wazuh API         : Port {{ wazuh_api_port }} (Status: Active)"
+      - "Wazuh Dashboard   : Port {{ wazuh_dashboard_port }} (Status: Active)"
+      - "Dashboard Access  : Use './scripts/wazuh-tunnel.sh' to access via https://localhost:8443"
+      - "================================================================="

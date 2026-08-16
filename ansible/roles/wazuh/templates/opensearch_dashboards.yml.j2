@@ -1,0 +1,27 @@
+# ==============================================================================
+# SOCForge — Wazuh Dashboard Configuration (OpenSearch Dashboards)
+# ==============================================================================
+server.port: {{ wazuh_dashboard_port }}
+server.host: 0.0.0.0
+
+# HTTPS TLS Configuration
+server.ssl.enabled: {{ wazuh_dashboard_https | string | lower }}
+server.ssl.certificate: {{ wazuh_dashboard_certs_dir }}/dashboard.pem
+server.ssl.key: {{ wazuh_dashboard_certs_dir }}/dashboard-key.pem
+
+# Wazuh Indexer Connection
+opensearch.hosts: ["https://127.0.0.1:{{ wazuh_indexer_port }}"]
+opensearch.ssl.certificateAuthorities: ["{{ wazuh_dashboard_certs_dir }}/root-ca.pem"]
+opensearch.ssl.verificationMode: "none"
+opensearch.username: "{{ wazuh_admin_username }}"
+opensearch.password: "{{ wazuh_admin_password }}"
+opensearch.requestHeadersWhitelist: ["securitytenant", "Authorization"]
+
+# OpenSearch Security Plugin Settings
+opensearch_security.multitenancy.enabled: false
+opensearch_security.readonly_mode.roles: ["kibana_read_only"]
+opensearch_security.cookie.secure: false
+
+# UI / Localization
+uiSettings.overrides.defaultRoute: /app/wazuh
+logging.dest: /var/log/wazuh-dashboard/wazuh-dashboard.log

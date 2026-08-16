@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–5: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–6: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
 # ==============================================================================
@@ -21,7 +21,7 @@ FAILURES=0
 # Helper functions
 check_dir() {
   local dir="$1"
-  printf "  Checking directory: %-35s " "${dir}"
+  printf "  Checking directory: %-42s " "${dir}"
   if [ -d "${REPO_ROOT}/${dir}" ]; then
     echo "[OK]"
   else
@@ -32,7 +32,7 @@ check_dir() {
 
 check_file() {
   local file="$1"
-  printf "  Checking file:      %-35s " "${file}"
+  printf "  Checking file:      %-42s " "${file}"
   if [ -f "${REPO_ROOT}/${file}" ]; then
     echo "[OK]"
   else
@@ -70,6 +70,9 @@ REQUIRED_DIRS=(
   "ansible/roles/common"
   "ansible/roles/linux-base"
   "ansible/roles/windows-base"
+  "ansible/roles/wazuh"
+  "ansible/roles/wazuh/tasks"
+  "ansible/roles/wazuh/templates"
   "detection"
   "attacks"
   "tests"
@@ -106,6 +109,7 @@ REQUIRED_FILES=(
   "terraform/terraform.tfvars.example"
   "terraform/README.md"
   "ansible/ansible.cfg"
+  "ansible/README.md"
   "ansible/inventory/hosts.ini.example"
   "ansible/group_vars/all.yml"
   "ansible/group_vars/linux.yml"
@@ -113,12 +117,31 @@ REQUIRED_FILES=(
   "ansible/playbooks/bootstrap.yml"
   "ansible/playbooks/linux-base.yml"
   "ansible/playbooks/windows-base.yml"
+  "ansible/playbooks/wazuh.yml"
   "ansible/roles/common/tasks/main.yml"
   "ansible/roles/linux-base/tasks/main.yml"
   "ansible/roles/windows-base/tasks/main.yml"
+  "ansible/roles/wazuh/README.md"
+  "ansible/roles/wazuh/defaults/main.yml"
+  "ansible/roles/wazuh/handlers/main.yml"
+  "ansible/roles/wazuh/tasks/main.yml"
+  "ansible/roles/wazuh/tasks/prerequisites.yml"
+  "ansible/roles/wazuh/tasks/repository.yml"
+  "ansible/roles/wazuh/tasks/certificates.yml"
+  "ansible/roles/wazuh/tasks/indexer.yml"
+  "ansible/roles/wazuh/tasks/manager.yml"
+  "ansible/roles/wazuh/tasks/dashboard.yml"
+  "ansible/roles/wazuh/tasks/validation.yml"
+  "ansible/roles/wazuh/templates/opensearch.yml.j2"
+  "ansible/roles/wazuh/templates/ossec.conf.j2"
+  "ansible/roles/wazuh/templates/filebeat.yml.j2"
+  "ansible/roles/wazuh/templates/opensearch_dashboards.yml.j2"
+  "ansible/roles/wazuh/templates/wazuh_dashboard.yml.j2"
   "scripts/preflight.sh"
   "scripts/health-check.sh"
   "scripts/generate-inventory.py"
+  "scripts/wazuh-tunnel.sh"
+  "scripts/wazuh-health-check.sh"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -128,8 +151,8 @@ echo ""
 
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
-for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py"; do
-  printf "  Checking executable bit: %-30s " "${s}"
+for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh"; do
+  printf "  Checking executable bit: %-35s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
   else
@@ -143,7 +166,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, and Ansible provisioning channel are intact."
+  echo "SOCForge project foundation, compute declarations, and Wazuh SIEM platform are intact."
   echo "================================================================="
   exit 0
 else
