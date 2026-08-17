@@ -1,0 +1,261 @@
+# ==============================================================================
+# SOCForge — Curated Web Security Testing Catalog (Phase 11)
+# ==============================================================================
+# Target: {{ web_target_name }} ({{ web_target_host }})
+# Ports: 8000 (DVWA), 3000 (OWASP Juice Shop)
+# ==============================================================================
+
+version: "1.0"
+target_environment: "{{ web_target_name }}"
+target_host: "{{ web_target_host }}"
+allowed_targets:
+{% for host in web_target_allowed_hosts %}
+  - "{{ host }}"
+{% endfor %}
+allowed_ports:
+{% for port in web_target_ports %}
+  - {{ port }}
+{% endfor %}
+
+scenarios:
+  # ----------------------------------------------------------------------------
+  # 1. DVWA Scenarios (Port 8000: Nginx + PHP-FPM + MariaDB)
+  # ----------------------------------------------------------------------------
+  - scenario_id: "DVWA-01"
+    application: "dvwa"
+    name: "Normal Web Traffic Baseline"
+    target_port: 8000
+    method: "GET"
+    path: "/login.php"
+    risk_level: "low"
+    purpose: "Establishes baseline normal HTTP GET access telemetry against DVWA entry point."
+    expected_http_status: [200, 302]
+    expected_telemetry:
+      source: "nginx_access"
+      log_file: "/var/log/nginx/access.log"
+      description: "Standard combined access log entry with HTTP 200/302 and normal User-Agent."
+      auditd_expected: false
+      wazuh_rule: "31100" # Generic web server access
+    cleanup:
+      required: false
+      action: "None required (read-only baseline)"
+
+  - scenario_id: "DVWA-02"
+    application: "dvwa"
+    name: "Authentication Failure / Login Probe"
+    target_port: 8000
+    method: "POST"
+    path: "/login.php"
+    data: "username=admin&password=wrongpassword123&Login=Login"
+    risk_level: "low"
+    purpose: "Generates failed authentication telemetry on web login interface."
+    expected_http_status: [200, 401]
+    expected_telemetry:
+      source: "nginx_access"
+      log_file: "/var/log/nginx/access.log"
+      description: "POST request to /login.php resulting in failed authentication response."
+      auditd_expected: false
+      wazuh_rule: "31101" # Web authentication failure
+    cleanup:
+      required: false
+      action: "None required"
+
+  - scenario_id: "DVWA-03"
+    application: "dvwa"
+    name: "SQL Injection (SQLi) Probe"
+    target_port: 8000
+    method: "GET"
+    path: "/vulnerabilities/sqli/?id=1%27%20OR%20%271%27=%271&Submit=Submit"
+    risk_level: "low"
+    purpose: "Generates SQL syntax injection telemetry in URI query string parameters."
+    expected_http_status: [200, 302]
+    expected_telemetry:
+      source: "nginx_access"
+      log_file: "/var/log/nginx/access.log"
+      description: "URI containing classic SQL injection pattern ' OR '1'='1 in query parameter id."
+      auditd_expected: false
+      wazuh_rule: "31103" # SQL injection attempt
+    cleanup:
+      required: false
+      action: "None required (read-only SQL query)"
+
+  - scenario_id: "DVWA-04"
+    application: "dvwa"
+    name: "Command Injection Discovery Probe"
+    target_port: 8000
+    method: "POST"
+    path: "/vulnerabilities/exec/"
+    data: "ip=127.0.0.1%3B+whoami&Submit=Submit"
+    risk_level: "low"
+    purpose: "Executes non-destructive whoami command via vulnerable ping utility to trigger auditd and web telemetry."
+    expected_http_status: [200, 302]
+    expected_telemetry:
+      source: "nginx_access"
+      log_file: "/var/log/nginx/access.log"
+      description: "POST request containing semicolon command separator and whoami payload."
+      auditd_expected: true
+      auditd_key: "socforge_recon_cmd"
+      wazuh_rule: "31100" # Web access + auditd rule detection
+    cleanup:
+      required: false
+      action: "None required (read-only discovery binary)"
+
+  - scenario_id: "DVWA-05"
+    application: "dvwa"
+    name: "Local File Inclusion (LFI) / Path Traversal Probe"
+    target_port: 8000
+    method: "GET"
+    path: "/vulnerabilities/fi/?page=../../../../../../etc/passwd"
+    risk_level: "low"
+    purpose: "Generates directory traversal and sensitive system file query telemetry."
+    expected_http_status: [200, 302]
+    expected_telemetry:
+      source: "nginx_access"
+      log_file: "/var/log/nginx/access.log"
+      description: "Query parameter containing directory traversal sequence ../../../etc/passwd."
+      auditd_expected: false
+      wazuh_rule: "31106" # Directory traversal attempt
+    cleanup:
+      required: false
+      action: "None required (read-only traversal)"
+
+  - scenario_id: "DVWA-06"
+    application: "dvwa"
+    name: "Controlled File Upload & FIM Detection Scenario"
+    target_port: 8000
+    method: "POST"
+    path: "/vulnerabilities/upload/"
+    upload_file: "socforge-test.txt"
+    upload_content: "SOCForge Benign Web Telemetry Test Marker"
+    risk_level: "low"
+    purpose: "Uploads a benign non-executable text test marker to trigger Linux auditd and Wazuh FIM."
+    expected_http_status: [200, 302]
+    expected_telemetry:
+      source: "auditd"
+      log_file: "/var/log/audit/audit.log"
+      description: "Syscall write event in /var/www/dvwa/hackable/uploads/ tracked by auditd and Wazuh syscheck."
+      auditd_expected: true
+      auditd_key: "socforge_web_file_mod"
+      wazuh_rule: "31100" # Web upload + FIM event
+    cleanup:
+      required: true
+      action: "Automatically removes /var/www/dvwa/hackable/uploads/socforge-test.txt"
+
+  # ----------------------------------------------------------------------------
+  # 2. OWASP Juice Shop Scenarios (Port 3000: Docker Container / Node.js)
+  # ----------------------------------------------------------------------------
+  - scenario_id: "JS-01"
+    application: "juice_shop"
+    name: "Normal Juice Shop Application Baseline"
+    target_port: 3000
+    method: "GET"
+    path: "/rest/products/search?q="
+    risk_level: "low"
+    purpose: "Establishes baseline REST API telemetry in Docker JSON container logs."
+    expected_http_status: [200]
+    expected_telemetry:
+      source: "juice_shop"
+      log_file: "/var/lib/docker/containers/*/*-json.log"
+      description: "Container JSON stdout stream logging GET /rest/products/search with 200 response."
+      auditd_expected: false
+      wazuh_rule: "Raw container telemetry"
+    cleanup:
+      required: false
+      action: "None required (read-only baseline)"
+
+  - scenario_id: "JS-02"
+    application: "juice_shop"
+    name: "Authentication Failure / Invalid User Login"
+    target_port: 3000
+    method: "POST"
+    path: "/rest/user/login"
+    content_type: "application/json"
+    json_data: '{"email":"admin@juice-sh.op","password":"wrongpassword123"}'
+    risk_level: "low"
+    purpose: "Generates REST API 401 Unauthorized authentication failure telemetry in Docker logs."
+    expected_http_status: [401]
+    expected_telemetry:
+      source: "juice_shop"
+      log_file: "/var/lib/docker/containers/*/*-json.log"
+      description: "Container JSON stream logging failed POST /rest/user/login with 401 status."
+      auditd_expected: false
+      wazuh_rule: "Raw container telemetry"
+    cleanup:
+      required: false
+      action: "None required"
+
+  - scenario_id: "JS-03"
+    application: "juice_shop"
+    name: "REST API Administrative Endpoint Enumeration"
+    target_port: 3000
+    method: "GET"
+    path: "/rest/admin/application-version"
+    risk_level: "low"
+    purpose: "Generates administrative API discovery and version reconnaissance telemetry."
+    expected_http_status: [200, 401, 403]
+    expected_telemetry:
+      source: "juice_shop"
+      log_file: "/var/lib/docker/containers/*/*-json.log"
+      description: "Container JSON stream capturing access to administrative version API."
+      auditd_expected: false
+      wazuh_rule: "Raw container telemetry"
+    cleanup:
+      required: false
+      action: "None required"
+
+  - scenario_id: "JS-04"
+    application: "juice_shop"
+    name: "Product Search Syntax Error Probing"
+    target_port: 3000
+    method: "GET"
+    path: "/rest/products/search?q=%27%29%29"
+    risk_level: "low"
+    purpose: "Generates backend database error / Sequelize exception stack trace in container logs."
+    expected_http_status: [200, 500]
+    expected_telemetry:
+      source: "juice_shop"
+      log_file: "/var/lib/docker/containers/*/*-json.log"
+      description: "Container JSON stream logging SQL syntax error or 500 exception trace."
+      auditd_expected: false
+      wazuh_rule: "Raw container telemetry"
+    cleanup:
+      required: false
+      action: "None required"
+
+  - scenario_id: "JS-05"
+    application: "juice_shop"
+    name: "Controlled SQL / NoSQL Injection Probe"
+    target_port: 3000
+    method: "GET"
+    path: "/rest/products/search?q=%27%20UNION%20SELECT%201,2,3,4,5,6,7,8,9--"
+    risk_level: "low"
+    purpose: "Generates SQL UNION query telemetry against containerized Node.js REST API."
+    expected_http_status: [200, 500]
+    expected_telemetry:
+      source: "juice_shop"
+      log_file: "/var/lib/docker/containers/*/*-json.log"
+      description: "Container JSON stream logging SQL UNION injection query in search parameter."
+      auditd_expected: false
+      wazuh_rule: "Raw container telemetry"
+    cleanup:
+      required: false
+      action: "None required"
+
+  - scenario_id: "JS-06"
+    application: "juice_shop"
+    name: "Sensitive Documentation & Static Asset Discovery"
+    target_port: 3000
+    method: "GET"
+    path: "/ftp/"
+    risk_level: "low"
+    purpose: "Generates sensitive directory and static resource probing telemetry."
+    expected_http_status: [200, 403]
+    expected_telemetry:
+      source: "juice_shop"
+      log_file: "/var/lib/docker/containers/*/*-json.log"
+      description: "Container JSON stream logging access to sensitive /ftp/ endpoint."
+      auditd_expected: false
+      wazuh_rule: "Raw container telemetry"
+    cleanup:
+      required: false
+      action: "None required"

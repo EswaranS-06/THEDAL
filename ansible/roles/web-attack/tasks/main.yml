@@ -1,0 +1,13 @@
+---
+# ==============================================================================
+# SOCForge — Web Security Testing Master Task Sequence (Phase 11)
+# ==============================================================================
+
+- name: Include prerequisites tasks
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: Include scenario catalog & wrapper deployment tasks
+  ansible.builtin.include_tasks: scenarios.yml
+
+- name: Include validation tasks
+  ansible.builtin.include_tasks: validation.yml

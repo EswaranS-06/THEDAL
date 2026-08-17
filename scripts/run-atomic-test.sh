@@ -131,18 +131,24 @@ if [[ "${CONFIRMED}" != "true" && "${DRY_RUN}" != "true" ]]; then
   exit 1
 fi
 
-# 1. Resolve Bastion and Attack host IPs
+# 1. Resolve Bastion and Attack host IPs cleanly
 BASTION_IP=""
 ATTACK_IP=""
 
 if command -v terraform >/dev/null 2>&1 && [ -d "${REPO_ROOT}/terraform" ]; then
-  BASTION_IP=$(terraform -chdir="${REPO_ROOT}/terraform" output -raw bastion_public_ip 2>/dev/null || true)
-  ATTACK_IP=$(terraform -chdir="${REPO_ROOT}/terraform" output -raw attack_private_ip 2>/dev/null || true)
+  RAW_BASTION=$(terraform -chdir="${REPO_ROOT}/terraform" output -raw bastion_public_ip 2>&1 || true)
+  if [[ "${RAW_BASTION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    BASTION_IP="${RAW_BASTION}"
+  fi
+  RAW_ATTACK=$(terraform -chdir="${REPO_ROOT}/terraform" output -raw attack_private_ip 2>&1 || true)
+  if [[ "${RAW_ATTACK}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    ATTACK_IP="${RAW_ATTACK}"
+  fi
 fi
 
-if [[ ! "${BASTION_IP}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ -f "${INVENTORY_FILE}" ]; then
-  BASTION_IP=$(grep -E '^bastion ' "${INVENTORY_FILE}" | grep -oE 'ansible_host=[^ ]+' | cut -d= -f2 || true)
-  ATTACK_IP=$(grep -E '^attack ' "${INVENTORY_FILE}" | grep -oE 'ansible_host=[^ ]+' | cut -d= -f2 || true)
+if [[ -z "${BASTION_IP}" ]] && [ -f "${INVENTORY_FILE}" ]; then
+  BASTION_IP=$(grep -E '^bastion ' "${INVENTORY_FILE}" | grep -oE 'ansible_host=[0-9.]+' | cut -d= -f2 || true)
+  ATTACK_IP=$(grep -E '^attack ' "${INVENTORY_FILE}" | grep -oE 'ansible_host=[0-9.]+' | cut -d= -f2 || true)
 fi
 
 if [[ "${DRY_RUN}" == "true" ]]; then

@@ -1,0 +1,8 @@
+---
+# ==============================================================================
+# SOCForge — Web Security Testing Role Handlers
+# ==============================================================================
+
+- name: Reload web attack environment
+  ansible.builtin.debug:
+    msg: "Web security testing environment reloaded on SOCForge-attack"

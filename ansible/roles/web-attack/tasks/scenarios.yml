@@ -1,0 +1,30 @@
+---
+# ==============================================================================
+# Tasks: Deploy Web Scenarios Catalog & Controlled Execution Wrapper
+# ==============================================================================
+
+- name: Deploy curated web scenarios catalog
+  ansible.builtin.template:
+    src: web-scenarios.yml.j2
+    dest: "{{ web_attack_catalog_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy controlled web attack wrapper script
+  ansible.builtin.template:
+    src: run-web-test.sh.j2
+    dest: "{{ web_attack_wrapper_bin }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Initialize web simulation audit log file if absent
+  ansible.builtin.file:
+    path: "{{ web_attack_log_file }}"
+    state: touch
+    owner: ubuntu
+    group: ubuntu
+    mode: "0664"
+    modification_time: preserve
+    access_time: preserve

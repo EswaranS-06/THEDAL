@@ -1,0 +1,37 @@
+---
+# ==============================================================================
+# Tasks: Prerequisites for Controlled Web Security Testing
+# ==============================================================================
+
+- name: Ensure required web testing packages are installed
+  ansible.builtin.apt:
+    name:
+      - curl
+      - jq
+      - python3-requests
+      - python3-yaml
+    state: present
+    update_cache: yes
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
+- name: Create web testing suite directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ web_attack_dir }}"
+    - "{{ web_attack_log_dir }}"
+
+- name: Ensure web simulation log directory has appropriate permissions
+  ansible.builtin.file:
+    path: "{{ web_attack_log_dir }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0775"

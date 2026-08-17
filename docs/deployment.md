@@ -79,6 +79,15 @@
        | - Target Allowlisting & Safety Interlocks     |
        | - Simulation Logging (/var/log/socforge/)     |
        +-----------------------------------------------+
+                        |
+                        | (11. ansible-playbook playbooks/web-attack.yml)
+                        v
+       +-----------------------------------------------+
+       | Web Security Testing Suite Live               |
+       | - Curated DVWA (:8000) & Juice Shop (:3000)   |
+       | - Structured Audit Logs (/var/log/socforge/)  |
+       | - Nginx / auditd / Docker Log Validation      |
+       +-----------------------------------------------+
 ```
 
 ---
@@ -123,6 +132,29 @@ ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/atomic-red-tea
 
 # Authorize live simulation execution against Windows target
 ./scripts/run-atomic-test.sh --technique T1082 --confirm
+```
+
+### Web Security Testing Suite Deployment (Phase 11)
+```bash
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/web-attack.yml
+# Or: make web-attack-deploy
+./scripts/web-target-health-check.sh
+```
+
+### Controlled Web Attack Execution (Phase 11)
+```bash
+# List available curated web scenarios
+./scripts/run-web-test.sh --list
+
+# Generate normal baseline traffic across both apps
+./scripts/run-web-test.sh --baseline --confirm
+
+# Perform safe dry-run plan
+./scripts/run-web-test.sh --target dvwa --scenario DVWA-03 --dry-run
+
+# Authorize live simulation execution against DVWA or Juice Shop
+./scripts/run-web-test.sh --target dvwa --scenario DVWA-03 --confirm
+./scripts/run-web-test.sh --target juice-shop --scenario JS-03 --confirm
 ```
 
 ---

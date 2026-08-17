@@ -119,8 +119,12 @@ All EC2 instances are deterministically defined in `terraform/variables.tf`:
   * **PowerShell Core & Execution Harness**: Deployed `pwsh` and official `Invoke-AtomicRedTeam` on `SOCForge-attack` (`10.10.20.x`).
   * **Curated Test Catalog**: 5 low-risk Windows ATT&CK techniques (`T1059.001`, `T1082`, `T1087.001`, `T1016`, `T1053.005`).
   * **Safety Controls & Wrapper**: Simulation execution disabled by default (`atomic_execute: false`), strict target allowlist (`SOCForge-windows`), execution wrapper (`run-atomic-test`), and audit logging (`/var/log/socforge/atomic/`).
+* **Phase 11: Controlled Web Security Testing & Web Attack Telemetry**:
+  * **Controlled Web Attack Suite**: Deployed curated web scenario catalogs for DVWA (:8000) and OWASP Juice Shop (:3000) on `SOCForge-attack`.
+  * **Strict Target Allowlisting & Safety Boundaries**: Dynamic target discovery, port restrictions (8000/3000), execution safety interlocks (`--confirm`), and structured audit logging (`/var/log/socforge/web/simulation.log`).
+  * **Web Telemetry Validation**: Ingestion validation across Nginx access/error logs, PHP-FPM, Linux auditd command execution / FIM, and Docker container JSON logs.
 
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 11+)
-* **Phase 11: Controlled Web Security Testing**:
-  * Dedicated web application attack scenarios against DVWA (:8000) and OWASP Juice Shop (:3000).
-  * Custom Wazuh web detection rules and alert correlation.
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 12+)
+* **Phase 12: SOCForge Telemetry & Index Architecture**:
+  * Final index separation and routing for `windows_security`, `sysmon`, `powershell`, `nginx_access`, `nginx_error`, `dvwa`, `auditd`, `linux_auth`, `juice_shop`, and `atomic`.
+  * Custom field extraction, OpenSearch dashboards, retention rules, and investigation workbooks.

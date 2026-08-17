@@ -1,6 +1,6 @@
 # SOCForge — Telemetry, Logging & Index Architecture
 
-> **Phase 10 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), OWASP Juice Shop Container (Docker :3000), and **Atomic Red Team Attack Simulation Host (SOCForge-attack)** are operational, reconciled, and instrumented with standardized telemetry metadata.
+> **Phase 11 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), OWASP Juice Shop Container (Docker :3000), Atomic Red Team Attack Simulation Host, and **Web Security Testing Suite** are operational, reconciled, and instrumented with standardized telemetry metadata.
 
 ---
 
@@ -11,10 +11,13 @@
                |   Attack Simulation (10.10.20.x)   |
                |                                    |
                | - Invoke-AtomicRedTeam (pwsh)      |
-               | - Ground-truth Audit Logs (atomic) |
+               | - Atomic Simulation Log (atomic)   |
+               | - Web Attack Suite (run-web-test)  |
+               | - Web Simulation Log (web_attack)  |
                +-----------------+------------------+
                                  |
-                                 | Controlled ATT&CK Simulation
+                                 | Controlled ATT&CK / Web Traffic
+                                 | (SMB 445 / WinRM / HTTP 8000 / HTTP 3000)
                                  v
 +------------------------------------+      +------------------------------------+
 |  Windows Endpoint (10.10.10.x)     |      |   Linux Web Target (10.10.30.x)    |
@@ -66,14 +69,15 @@ The following canonical taxonomy keys standardize telemetry collection across al
 | **`auditd`** | `SOCForge-web` | Linux Kernel Audit | `/var/log/audit/audit.log` | `audit` | File integrity modifications on web roots, server configuration tampering, and execution of reconnaissance/staging binaries (`whoami`, `curl`, `nc`, `sudo`). |
 | **`linux_auth`** | `SOCForge-web` | Linux PAM / sshd | `/var/log/auth.log` | `syslog` | SSH authentication attempts, sudo privilege escalation, PAM session tracking. |
 | **`juice_shop`** | `SOCForge-web` | Docker Container | `/var/lib/docker/containers/*/*-json.log` | `json` | Node.js REST API traffic, search queries (`/rest/products/search`), admin config access, container stdout/stderr. |
-| **`atomic`** | `SOCForge-attack` | Atomic Red Team | `/var/log/socforge/atomic/simulation.log` | `json` | Ground-truth simulation execution telemetry for automated alert correlation and detection engineering (Phase 10). |
+| **`atomic`** | `SOCForge-attack` | Atomic Red Team | `/var/log/socforge/atomic/simulation.log` | `json` | Ground-truth Windows simulation execution telemetry for automated alert correlation (Phase 10). |
+| **`web_attack`** | `SOCForge-attack` | Web Testing Suite | `/var/log/socforge/web/simulation.log` | `json` | Ground-truth Web application simulation execution telemetry for DVWA and Juice Shop testing (Phase 11). |
 
 ---
 
 ## 3. Phased Index Separation Roadmap
 
-* **Phase 6–10 (Current Baseline)**:
+* **Phase 6–11 (Current Baseline)**:
   * Ingests all telemetry into standard Wazuh indices (`wazuh-alerts-4.x-*`).
   * All events are tagged with canonical `<label key="socforge.source">` and metadata attributes, ensuring zero data loss and single-stream non-duplication.
-* **Phase 11+ (Adversary Emulation & Index Routing)**:
-  * Formal index routing rules separating `soc-windows-*`, `soc-sysmon-*`, `soc-nginx-*`, `soc-juiceshop-*`, and `soc-atomic-*`.
+* **Phase 12 (Adversary Emulation & Index Routing)**:
+  * Formal index routing rules separating `soc-windows-*`, `soc-sysmon-*`, `soc-nginx-*`, `soc-juiceshop-*`, `soc-atomic-*`, and `soc-web-*`.

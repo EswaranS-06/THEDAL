@@ -1,0 +1,37 @@
+---
+# ==============================================================================
+# SOCForge — Web Security Testing Role Defaults (Phase 11)
+# ==============================================================================
+
+# Bastion Forward Proxy Settings (Private Subnet Package Routing)
+http_proxy: "http://10.10.1.10:3128"
+https_proxy: "http://10.10.1.10:3128"
+no_proxy: "localhost,127.0.0.1,10.10.0.0/16,169.254.169.254,local.socforge"
+
+# Web Target Sizing & Placement
+web_target_name: "SOCForge-web"
+web_target_host: "10.10.30.50" # Target Web Private IP (dynamically resolved)
+web_target_ports:
+  - 8000 # DVWA (Nginx + PHP-FPM + MariaDB)
+  - 3000 # OWASP Juice Shop (Docker Container)
+
+# Target Allowlist & Safety Boundary
+web_target_allowed_hosts:
+  - "10.10.30.50"
+  - "10.10.30.x"
+  - "web"
+  - "SOCForge-web"
+
+web_target_allowed_apps:
+  - "dvwa"
+  - "juice-shop"
+
+# Directory & Log Paths
+web_attack_dir: "/opt/socforge-web-tests"
+web_attack_catalog_path: "/opt/socforge-web-tests/web-scenarios.yml"
+web_attack_log_dir: "/var/log/socforge/web"
+web_attack_log_file: "/var/log/socforge/web/simulation.log"
+web_attack_wrapper_bin: "/usr/local/bin/run-web-test"
+
+# Safety Controls
+web_attack_execute: false # Default: Execution disabled during baseline provisioning

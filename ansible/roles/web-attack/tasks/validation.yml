@@ -1,0 +1,34 @@
+---
+# ==============================================================================
+# Tasks: Validation & Verification for Web Attack Role
+# ==============================================================================
+
+- name: Validate curl and jq binaries are available
+  ansible.builtin.command: which curl jq
+  register: which_bins
+  changed_when: false
+  failed_when: which_bins.rc != 0
+
+- name: Validate web scenarios catalog exists and is readable
+  ansible.builtin.stat:
+    path: "{{ web_attack_catalog_path }}"
+  register: catalog_stat
+  failed_when: not catalog_stat.stat.exists
+
+- name: Validate execution wrapper exists and is executable
+  ansible.builtin.stat:
+    path: "{{ web_attack_wrapper_bin }}"
+  register: wrapper_stat
+  failed_when: not wrapper_stat.stat.exists or not wrapper_stat.stat.executable
+
+- name: Validate web simulation log directory exists
+  ansible.builtin.stat:
+    path: "{{ web_attack_log_dir }}"
+  register: logdir_stat
+  failed_when: not logdir_stat.stat.exists
+
+- name: Perform dry-run invocation of scenario catalog listing
+  ansible.builtin.command: "{{ web_attack_wrapper_bin }} --list"
+  register: wrapper_list_check
+  changed_when: false
+  failed_when: wrapper_list_check.rc != 0

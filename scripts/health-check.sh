@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–10: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–11: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
 # ==============================================================================
@@ -89,6 +89,9 @@ REQUIRED_DIRS=(
   "ansible/roles/atomic-red-team"
   "ansible/roles/atomic-red-team/tasks"
   "ansible/roles/atomic-red-team/templates"
+  "ansible/roles/web-attack"
+  "ansible/roles/web-attack/tasks"
+  "ansible/roles/web-attack/templates"
   "detection"
   "attacks"
   "tests"
@@ -115,6 +118,8 @@ REQUIRED_FILES=(
   "docs/phase-8-linux-web-target.md"
   "docs/phase-9-juice-shop-docker.md"
   "docs/atomic-red-team.md"
+  "docs/web-test-catalog.md"
+  "docs/web-security-testing.md"
   "terraform/versions.tf"
   "terraform/provider.tf"
   "terraform/variables.tf"
@@ -141,6 +146,7 @@ REQUIRED_FILES=(
   "ansible/playbooks/web-target.yml"
   "ansible/playbooks/juice-shop.yml"
   "ansible/playbooks/atomic-red-team.yml"
+  "ansible/playbooks/web-attack.yml"
   "ansible/roles/common/tasks/main.yml"
   "ansible/roles/linux-base/tasks/main.yml"
   "ansible/roles/windows-base/tasks/main.yml"
@@ -218,6 +224,15 @@ REQUIRED_FILES=(
   "ansible/roles/atomic-red-team/templates/socforge-tests.yml.j2"
   "ansible/roles/atomic-red-team/templates/run-atomic-test.sh.j2"
   "ansible/roles/atomic-red-team/templates/atomic-env.sh.j2"
+  "ansible/roles/web-attack/README.md"
+  "ansible/roles/web-attack/defaults/main.yml"
+  "ansible/roles/web-attack/handlers/main.yml"
+  "ansible/roles/web-attack/tasks/main.yml"
+  "ansible/roles/web-attack/tasks/prerequisites.yml"
+  "ansible/roles/web-attack/tasks/scenarios.yml"
+  "ansible/roles/web-attack/tasks/validation.yml"
+  "ansible/roles/web-attack/templates/web-scenarios.yml.j2"
+  "ansible/roles/web-attack/templates/run-web-test.sh.j2"
   "scripts/preflight.sh"
   "scripts/health-check.sh"
   "scripts/generate-inventory.py"
@@ -228,6 +243,8 @@ REQUIRED_FILES=(
   "scripts/juice-shop-health-check.sh"
   "scripts/run-atomic-test.sh"
   "scripts/atomic-health-check.sh"
+  "scripts/run-web-test.sh"
+  "scripts/web-target-health-check.sh"
 )
 
 for f in "${REQUIRED_FILES[@]}"; do
@@ -237,7 +254,7 @@ echo ""
 
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
-for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/windows-agent-health-check.sh" "scripts/linux-web-health-check.sh" "scripts/juice-shop-health-check.sh" "scripts/run-atomic-test.sh" "scripts/atomic-health-check.sh"; do
+for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/windows-agent-health-check.sh" "scripts/linux-web-health-check.sh" "scripts/juice-shop-health-check.sh" "scripts/run-atomic-test.sh" "scripts/atomic-health-check.sh" "scripts/run-web-test.sh" "scripts/web-target-health-check.sh"; do
   printf "  Checking executable bit: %-35s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
@@ -252,7 +269,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, Linux Web Target, OWASP Juice Shop, and Atomic Red Team are intact."
+  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, Linux Web Target, OWASP Juice Shop, Atomic Red Team, and Web Security Testing Suite are intact."
   echo "================================================================="
   exit 0
 else

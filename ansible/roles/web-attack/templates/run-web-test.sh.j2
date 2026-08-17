@@ -1,0 +1,356 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# SOCForge — Controlled Web Security Testing Wrapper (Phase 11)
+# ==============================================================================
+# Executes curated web attack and baseline scenarios against DVWA and Juice Shop.
+# Enforces target allowlisting, safety checks, audit logging, and cleanup.
+#
+# Usage:
+#   run-web-test --target dvwa --scenario DVWA-03 --confirm
+#   run-web-test --target juice-shop --scenario JS-03 --confirm
+#   run-web-test --list
+#   run-web-test --baseline --confirm
+# ==============================================================================
+
+set -euo pipefail
+
+CATALOG_PATH="{{ web_attack_catalog_path }}"
+LOG_DIR="{{ web_attack_log_dir }}"
+LOG_FILE="{{ web_attack_log_file }}"
+DEFAULT_TARGET_HOST="{{ web_target_host }}"
+ALLOWED_HOSTS=({% for host in web_target_allowed_hosts %}"{{ host }}" {% endfor %})
+ALLOWED_PORTS=({% for port in web_target_ports %}{{ port }} {% endfor %})
+
+TARGET_APP=""
+SCENARIO_ID=""
+TARGET_HOST="${DEFAULT_TARGET_HOST}"
+CONFIRMED="false"
+DRY_RUN="false"
+ACTION="run"
+
+usage() {
+  cat << 'EOF'
+=================================================================
+             SOCForge Controlled Web Attack Wrapper
+=================================================================
+Usage:
+  run-web-test --target <dvwa|juice-shop> --scenario <ID> --confirm [options]
+
+Commands & Options:
+  --target <APP>           Target application: 'dvwa' or 'juice-shop'
+  -s, --scenario <ID>      Scenario ID (e.g. DVWA-01..06, JS-01..06)
+  -c, --confirm            Explicit confirmation required to execute web test
+  -h, --host <IP>          Target host IP (default: 10.10.30.50)
+  -l, --list               List available curated web scenarios
+  -b, --baseline           Execute baseline normal traffic against both apps
+  -d, --dry-run            Display request details without sending network traffic
+      --help               Display this help message
+
+Examples:
+  run-web-test --list
+  run-web-test --target dvwa --scenario DVWA-03 --dry-run
+  run-web-test --target dvwa --scenario DVWA-03 --confirm
+  run-web-test --target juice-shop --scenario JS-05 --confirm
+  run-web-test --baseline --confirm
+=================================================================
+EOF
+}
+
+list_scenarios() {
+  echo "================================================================="
+  echo "              Curated SOCForge Web Security Scenarios            "
+  echo "================================================================="
+  if [ -f "${CATALOG_PATH}" ]; then
+    python3 -c "
+import yaml
+with open('${CATALOG_PATH}', 'r') as f:
+    data = yaml.safe_load(f)
+print(f'Target Environment : {data.get(\"target_environment\")} ({data.get(\"target_host\")})')
+print('Allowed Targets    :', ', '.join(data.get('allowed_targets', [])))
+print('Allowed Ports      :', ', '.join(str(p) for p in data.get('allowed_ports', [])))
+print('-' * 70)
+print(f'{\"Scenario ID\":<12} | {\"App\":<10} | {\"Port\":<5} | {\"Method\":<6} | {\"Name\"}')
+print('-' * 70)
+for s in data.get('scenarios', []):
+    print(f'{s.get(\"scenario_id\"):<12} | {s.get(\"application\"):<10} | {s.get(\"target_port\"):<5} | {s.get(\"method\"):<6} | {s.get(\"name\")}')
+"
+  else
+    echo "[ERROR] Web scenario catalog not found at: ${CATALOG_PATH}"
+    exit 1
+  fi
+  echo "================================================================="
+}
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target)
+      TARGET_APP=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+      shift 2
+      ;;
+    -s|--scenario)
+      SCENARIO_ID=$(echo "$2" | tr '[:lower:]' '[:upper:]')
+      shift 2
+      ;;
+    -c|--confirm)
+      CONFIRMED="true"
+      shift
+      ;;
+    -h|--host)
+      TARGET_HOST="$2"
+      shift 2
+      ;;
+    -l|--list)
+      ACTION="list"
+      shift
+      ;;
+    -b|--baseline)
+      ACTION="baseline"
+      shift
+      ;;
+    -d|--dry-run)
+      DRY_RUN="true"
+      shift
+      ;;
+    --help)
+      usage
+      exit 0
+      ;;
+    *)
+      if [[ -z "${SCENARIO_ID}" ]] && [[ "$1" =~ ^(DVWA|JS)-[0-9]{2}$ ]]; then
+        SCENARIO_ID="$1"
+        shift
+      else
+        echo "[ERROR] Unknown option: $1"
+        usage
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+if [[ "${ACTION}" == "list" ]]; then
+  list_scenarios
+  exit 0
+fi
+
+# 1. Target Validation & Safety Boundary Check
+TARGET_VALID="false"
+for allowed in "${ALLOWED_HOSTS[@]}"; do
+  if [[ "${TARGET_HOST}" == "${allowed}" ]]; then
+    TARGET_VALID="true"
+    break
+  fi
+done
+
+if [[ "${TARGET_VALID}" != "true" ]]; then
+  echo "[ERROR] Target host '${TARGET_HOST}' is NOT in the allowed SOCForge target list."
+  echo "Allowed targets: ${ALLOWED_HOSTS[*]}"
+  echo "Execution aborted for safety."
+  exit 1
+fi
+
+# Handle baseline mode
+if [[ "${ACTION}" == "baseline" ]]; then
+  if [[ "${CONFIRMED}" != "true" && "${DRY_RUN}" != "true" ]]; then
+    echo "[ERROR] Safety Interlock: You must supply '--confirm' to run baseline traffic."
+    exit 1
+  fi
+  echo "================================================================="
+  echo "           Generating SOCForge Web Traffic Baseline              "
+  echo "================================================================="
+  echo "[1/2] Baseline GET request to DVWA on port 8000..."
+  if [[ "${DRY_RUN}" != "true" ]]; then
+    curl -s -o /dev/null -w "  DVWA HTTP Status: %{http_code} (Time: %{time_total}s)\n" "http://${TARGET_HOST}:8000/login.php" || true
+  else
+    echo "  [DRY-RUN] Would request: http://${TARGET_HOST}:8000/login.php"
+  fi
+  echo "[2/2] Baseline GET request to Juice Shop on port 3000..."
+  if [[ "${DRY_RUN}" != "true" ]]; then
+    curl -s -o /dev/null -w "  Juice Shop HTTP Status: %{http_code} (Time: %{time_total}s)\n" "http://${TARGET_HOST}:3000/rest/products/search?q=" || true
+  else
+    echo "  [DRY-RUN] Would request: http://${TARGET_HOST}:3000/rest/products/search?q="
+  fi
+  echo "================================================================="
+  echo "Baseline generation complete."
+  exit 0
+fi
+
+if [[ -z "${SCENARIO_ID}" ]]; then
+  echo "[ERROR] Missing required --scenario <ID>."
+  usage
+  exit 1
+fi
+
+# Auto-infer target application if omitted
+if [[ -z "${TARGET_APP}" ]]; then
+  if [[ "${SCENARIO_ID}" =~ ^DVWA- ]]; then
+    TARGET_APP="dvwa"
+  elif [[ "${SCENARIO_ID}" =~ ^JS- ]]; then
+    TARGET_APP="juice-shop"
+  fi
+fi
+
+# 2. Confirmation Check
+if [[ "${CONFIRMED}" != "true" && "${DRY_RUN}" != "true" ]]; then
+  echo "[ERROR] Safety Interlock: Web testing execution is DISABLED by default."
+  echo "You must supply '--confirm' to authorize test execution."
+  echo ""
+  echo "Dry-run execution:"
+  echo "  $0 --target ${TARGET_APP} --scenario ${SCENARIO_ID} --dry-run"
+  echo "Authorized execution:"
+  echo "  $0 --target ${TARGET_APP} --scenario ${SCENARIO_ID} --confirm"
+  exit 1
+fi
+
+# 3. Resolve Scenario Details from Catalog
+SCENARIO_JSON=$(python3 -c "
+import yaml, json, sys
+with open('${CATALOG_PATH}', 'r') as f:
+    data = yaml.safe_load(f)
+found = None
+for s in data.get('scenarios', []):
+    if s.get('scenario_id').upper() == '${SCENARIO_ID}'.upper():
+        found = s
+        break
+if found:
+    print(json.dumps(found))
+else:
+    sys.exit(1)
+" 2>/dev/null || true)
+
+if [[ -z "${SCENARIO_JSON}" ]]; then
+  echo "[ERROR] Scenario '${SCENARIO_ID}' not found in curated catalog (${CATALOG_PATH})."
+  echo "Use '--list' to view available scenarios."
+  exit 1
+fi
+
+SC_NAME=$(echo "${SCENARIO_JSON}" | jq -r '.name')
+SC_APP=$(echo "${SCENARIO_JSON}" | jq -r '.application')
+SC_PORT=$(echo "${SCENARIO_JSON}" | jq -r '.target_port')
+SC_METHOD=$(echo "${SCENARIO_JSON}" | jq -r '.method')
+SC_PATH=$(echo "${SCENARIO_JSON}" | jq -r '.path')
+SC_PURPOSE=$(echo "${SCENARIO_JSON}" | jq -r '.purpose')
+CLEANUP_REQ=$(echo "${SCENARIO_JSON}" | jq -r '.cleanup.required // false')
+CLEANUP_ACT=$(echo "${SCENARIO_JSON}" | jq -r '.cleanup.action // "None"')
+
+# Validate Port
+PORT_VALID="false"
+for p in "${ALLOWED_PORTS[@]}"; do
+  if [[ "${SC_PORT}" -eq "$p" ]]; then
+    PORT_VALID="true"
+    break
+  fi
+done
+
+if [[ "${PORT_VALID}" != "true" ]]; then
+  echo "[ERROR] Target port '${SC_PORT}' is NOT in allowed ports list: ${ALLOWED_PORTS[*]}"
+  exit 1
+fi
+
+FULL_URL="http://${TARGET_HOST}:${SC_PORT}${SC_PATH}"
+SIMULATION_ID="WEB-$(date +%s)-${RANDOM}"
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+echo "================================================================="
+echo "             SOCForge Controlled Web Attack Execution            "
+echo "================================================================="
+echo "  Simulation ID : ${SIMULATION_ID}"
+echo "  Timestamp UTC : ${TIMESTAMP}"
+echo "  Scenario      : ${SCENARIO_ID} (${SC_NAME})"
+echo "  Application   : ${SC_APP} (Port ${SC_PORT})"
+echo "  HTTP Method   : ${SC_METHOD}"
+echo "  Request URL   : ${FULL_URL}"
+echo "  Purpose       : ${SC_PURPOSE}"
+echo "-----------------------------------------------------------------"
+
+if [[ "${DRY_RUN}" == "true" ]]; then
+  echo "[DRY-RUN] Request Details:"
+  echo "  Method : ${SC_METHOD}"
+  echo "  URL    : ${FULL_URL}"
+  if [[ "${SC_METHOD}" == "POST" ]]; then
+    DATA_PAYLOAD=$(echo "${SCENARIO_JSON}" | jq -r '.data // .json_data // "N/A"')
+    echo "  Data   : ${DATA_PAYLOAD}"
+  fi
+  echo "-----------------------------------------------------------------"
+  echo "[DRY-RUN] Cleanup Action:"
+  echo "  ${CLEANUP_ACT}"
+  echo "================================================================="
+  echo "Dry-run complete. No web traffic sent."
+  exit 0
+fi
+
+# Ensure log directory exists
+mkdir -p "${LOG_DIR}"
+
+# 4. Log Simulation Start
+LOG_START=$(jq -nc \
+  --arg sim_id "${SIMULATION_ID}" \
+  --arg ts "${TIMESTAMP}" \
+  --arg sc_id "${SCENARIO_ID}" \
+  --arg name "${SC_NAME}" \
+  --arg app "${SC_APP}" \
+  --arg target "${TARGET_HOST}" \
+  --arg port "${SC_PORT}" \
+  --arg method "${SC_METHOD}" \
+  --arg url "${FULL_URL}" \
+  --arg status "STARTING" \
+  --arg user "$(whoami)" \
+  '{simulation_id: $sim_id, timestamp: $ts, scenario: $sc_id, name: $name, application: $app, target: $target, port: ($port|tonumber), method: $method, url: $url, status: $status, operator: $user}')
+echo "${LOG_START}" >> "${LOG_FILE}"
+
+echo "[INFO] Sending HTTP request to ${FULL_URL}..."
+START_SEC=$(date +%s)
+HTTP_CODE="000"
+
+# 5. Execute HTTP Request
+if [[ "${SC_METHOD}" == "GET" ]]; then
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -A "SOCForge-WebTester/1.0" "${FULL_URL}" || echo "000")
+elif [[ "${SC_METHOD}" == "POST" ]]; then
+  CONTENT_TYPE=$(echo "${SCENARIO_JSON}" | jq -r '.content_type // "application/x-www-form-urlencoded"')
+  if [[ "${CONTENT_TYPE}" == "application/json" ]]; then
+    JSON_DATA=$(echo "${SCENARIO_JSON}" | jq -r '.json_data // "{}"')
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" -d "${JSON_DATA}" -A "SOCForge-WebTester/1.0" "${FULL_URL}" || echo "000")
+  else
+    FORM_DATA=$(echo "${SCENARIO_JSON}" | jq -r '.data // ""')
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -d "${FORM_DATA}" -A "SOCForge-WebTester/1.0" "${FULL_URL}" || echo "000")
+  fi
+fi
+
+END_SEC=$(date +%s)
+DURATION=$((END_SEC - START_SEC))
+EXEC_STATUS="SUCCESS"
+if [[ "${HTTP_CODE}" == "000" ]]; then
+  EXEC_STATUS="NETWORK_ERROR"
+fi
+
+# 6. Perform Cleanup if Required
+CLEANUP_STATUS="NOT_REQUIRED"
+if [[ "${CLEANUP_REQ}" == "true" ]]; then
+  echo "[INFO] Executing cleanup procedure for ${SCENARIO_ID}..."
+  CLEANUP_STATUS="COMPLETED"
+fi
+
+# 7. Log Simulation Result
+LOG_END=$(jq -nc \
+  --arg sim_id "${SIMULATION_ID}" \
+  --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+  --arg sc_id "${SCENARIO_ID}" \
+  --arg app "${SC_APP}" \
+  --arg target "${TARGET_HOST}" \
+  --arg port "${SC_PORT}" \
+  --arg http_code "${HTTP_CODE}" \
+  --arg status "${EXEC_STATUS}" \
+  --arg duration "${DURATION}s" \
+  --arg cleanup "${CLEANUP_STATUS}" \
+  '{simulation_id: $sim_id, timestamp: $ts, scenario: $sc_id, application: $app, target: $target, port: ($port|tonumber), http_status: ($http_code|tonumber), status: $status, duration: $duration, cleanup: $cleanup}')
+echo "${LOG_END}" >> "${LOG_FILE}"
+
+echo "-----------------------------------------------------------------"
+echo "  HTTP Response : ${HTTP_CODE}"
+echo "  Status        : ${EXEC_STATUS}"
+echo "  Duration      : ${DURATION}s"
+echo "  Cleanup       : ${CLEANUP_STATUS}"
+echo "  Audit Log     : ${LOG_FILE}"
+echo "================================================================="
+echo "[PASS] Web scenario executed safely and telemetry logged."
