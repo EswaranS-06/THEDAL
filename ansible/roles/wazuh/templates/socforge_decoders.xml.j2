@@ -1,0 +1,41 @@
+<!--
+  SOCForge — Custom Wazuh Decoders (Phase 13)
+  ==============================================================================
+  Decodes structured container JSON telemetry from OWASP Juice Shop and
+  structured simulation audit logs from SOCForge adversary emulation hosts.
+  ==============================================================================
+-->
+
+<!-- OWASP Juice Shop Docker JSON Decoder -->
+<decoder name="socforge-juice-shop">
+  <prematch>^{\s*"log":\s*"</prematch>
+</decoder>
+
+<decoder name="socforge-juice-shop-http">
+  <parent>socforge-juice-shop</parent>
+  <regex offset="after_parent">"log":\s*"(\w+)\s+([^"]+)\s+HTTP/[0-9.]+"\s*,\s*"stream":\s*"(\w+)"</regex>
+  <order>http_method, url, stream</order>
+</decoder>
+
+<decoder name="socforge-juice-shop-status">
+  <parent>socforge-juice-shop</parent>
+  <regex offset="after_parent">"log":\s*"HTTP/[0-9.]+\s+(\d+)\s+([^"]+)"</regex>
+  <order>http_status, status_message</order>
+</decoder>
+
+<decoder name="socforge-juice-shop-error">
+  <parent>socforge-juice-shop</parent>
+  <regex offset="after_parent">"log":\s*"([^"]*(?:SequelizeDatabaseError|SQLITE_ERROR|SyntaxError|Error:[^"]*))"</regex>
+  <order>error_message</order>
+</decoder>
+
+<!-- SOCForge Ground-Truth Simulation Audit Log Decoder -->
+<decoder name="socforge-simulation">
+  <prematch>^{\s*"timestamp":\s*"[^"]*",\s*"simulation_id":\s*"</prematch>
+</decoder>
+
+<decoder name="socforge-simulation-fields">
+  <parent>socforge-simulation</parent>
+  <regex offset="after_parent">"simulation_id":\s*"([^"]+)",\s*"scenario_id":\s*"([^"]+)",\s*"technique_id":\s*"([^"]+)",\s*"test_name":\s*"([^"]+)",\s*"target_ip":\s*"([^"]+)"</regex>
+  <order>simulation_id, scenario_id, technique_id, test_name, target_ip</order>
+</decoder>

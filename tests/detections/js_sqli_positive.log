@@ -1,0 +1,1 @@
+{"log":"GET /rest/products/search?q=apple'))-- HTTP/1.1 500 Internal Server Error\n","stream":"stdout","time":"2026-08-17T14:42:00.123456789Z"}

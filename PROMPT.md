@@ -1,1950 +1,904 @@
-# SOCForge — Phase 1: Project Foundation
+SOCForge — Phase 13: Detection Engineering, Custom Wazuh Rules, Decoders & SOC Alert Logic
 
-You are working on a cybersecurity training project called **SOCForge**.
+You are continuing the SOCForge project.
 
-SOCForge is intended to become a reproducible SOC-as-Code training environment deployed on AWS using:
+Phases 2–12 have established:
 
-* Terraform for AWS infrastructure
-* Ansible for machine configuration
-* Wazuh as the SIEM/XDR platform
-* Windows employee endpoint with Sysmon and Wazuh Agent
-* Linux web server
-* Nginx serving a deliberately vulnerable web application on port 8000
-* OWASP Juice Shop running in Docker on port 3000
-* Atomic Red Team for controlled attack simulation
-* Centralized log collection and separated log sources/indexes
-* MITRE ATT&CK-aligned detection and investigation scenarios
+- AWS VPC and private network
+- Bastion management architecture
+- Security Groups
+- IAM
+- EC2 infrastructure
+- Terraform → Ansible handoff
+- Bastion forward proxy
+- Wazuh 4.14.7
+- Windows endpoint
+- Sysmon
+- Windows Wazuh Agent
+- Linux web target
+- Nginx
+- DVWA
+- MariaDB
+- auditd
+- Linux authentication telemetry
+- OWASP Juice Shop
+- Docker telemetry
+- Atomic Red Team
+- controlled web attack testing
+- canonical telemetry taxonomy
+- source-specific indexes
+- OpenSearch templates
+- ISM retention
+- investigation dashboards
 
-The project will eventually be deployed from a **Debian 13 VM** because the developer's primary host OS is Windows.
+Phase 12 established the telemetry destinations.
 
-## IMPORTANT SCOPE RESTRICTION
+Phase 13 now establishes the SOC detection layer.
 
-This is **PHASE 1 ONLY**.
+==================================================
+CRITICAL SCOPE
+==================================================
 
-Do NOT:
+This phase is ONLY for:
 
-* create AWS resources
-* run `terraform apply`
-* run `terraform destroy`
-* configure AWS networking
-* create EC2 instances
-* install Wazuh
-* install Ansible roles
-* install Atomic Red Team
-* deploy Juice Shop
-* deploy DVWA
-* configure Nginx
-* create Wazuh indexes
-* configure Wazuh agents
-* push anything to GitHub
+- Wazuh decoders
+- Wazuh custom rules
+- detection logic
+- alert severity
+- correlation
+- thresholds
+- suppression
+- false-positive handling
+- MITRE ATT&CK mapping
+- detection documentation
+- detection testing framework
 
-Do not make assumptions that later infrastructure already exists.
+DO NOT:
 
-The goal of this phase is to create a clean, maintainable project foundation.
+- deploy AWS infrastructure
+- execute attacks automatically
+- modify the network architecture
+- add EC2 instances
+- add NAT Gateway
+- add SOAR
+- add MISP
+- implement automated remediation
+- automatically execute Atomic Red Team
+- automatically exploit DVWA
+- automatically exploit Juice Shop
 
----
+Detection rules must be created from the telemetry architecture already established.
 
-# 1. Inspect the current repository
+==================================================
+1. INSPECT EXISTING WAZUH CONFIGURATION
+==================================================
 
-First inspect the current working directory.
+Before modifying anything, inspect:
 
-Determine:
+- Wazuh Manager configuration
+- existing rules
+- existing decoders
+- existing local_rules.xml
+- existing custom decoder files
+- existing Filebeat configuration
+- existing socforge.source fields
+- existing index routing
+- existing dashboard objects
 
-* whether Git is already initialized
-* current branch
-* current commits
-* existing files
-* existing `.gitignore`
-* existing Git remotes
+Do NOT overwrite existing Wazuh rules.
 
-Do not delete existing user work.
+Use the existing custom-rule mechanism.
 
-If the repository is already initialized, preserve the existing Git history.
+==================================================
+2. DETECTION ENGINEERING PRINCIPLE
+==================================================
 
-Do not create a GitHub remote.
+Do not create rules merely because a log contains suspicious text.
 
-Do not push anything.
+Every detection must answer:
 
----
+WHAT happened?
 
-# 2. Establish the project structure
+WHERE did it happen?
 
-Create the following structure:
+WHY is it suspicious?
 
-socforge/
-├── README.md
-├── LICENSE
-├── .gitignore
-├── .editorconfig
-├── Makefile
-│
-├── docs/
-│   ├── architecture.md
-│   ├── deployment.md
-│   ├── networking.md
-│   ├── logging.md
-│   └── learning-path.md
-│
-├── scripts/
-│   ├── preflight.sh
-│   └── health-check.sh
-│
-├── terraform/
-│   └── .gitkeep
-│
-├── ansible/
-│   └── .gitkeep
-│
-├── detection/
-│   └── .gitkeep
-│
-├── attacks/
-│   └── .gitkeep
-│
-└── tests/
-└── .gitkeep
+WHAT telemetry proves it?
 
-Do not create unnecessary directories.
+WHAT ATT&CK technique does it represent?
 
-Keep the structure intentionally small at this stage.
+WHAT severity should it receive?
 
----
+WHAT legitimate activity could trigger it?
 
-# 3. Create the README
+HOW can an analyst investigate it?
 
-Create a professional README for SOCForge.
-
-Explain that SOCForge is intended to provide a reproducible SOC training environment where a learner can study:
-
-1. AWS infrastructure
-2. networking
-3. Linux and Windows endpoints
-4. SIEM
-5. log collection
-6. detection engineering
-7. MITRE ATT&CK
-8. attack simulation
-9. alert investigation
-10. incident-response fundamentals
-
-Explain the eventual architecture at a high level.
-
-The eventual environment will contain:
-
-* Wazuh SIEM
-* Windows employee endpoint
-* Linux web server
-* Nginx
-* deliberately vulnerable web application on port 8000
-* OWASP Juice Shop on port 3000
-* Atomic Red Team attack environment
-
-Make clear that the environment is intended for an isolated AWS security-training lab.
-
-Include a prominent warning that AWS resources can incur costs and users must verify their own AWS Free Tier eligibility and destroy resources when finished.
-
-Do NOT claim that the entire environment is guaranteed to be free.
-
----
-
-# 4. Document the planned architecture
+==================================================
+3. DETECTION CATALOG
+==================================================
 
 Create:
 
-docs/architecture.md
+docs/detection-catalog.md
 
-Document the intended architecture, but do not implement it.
+Each detection must have:
 
-Use this conceptual structure:
+- Detection ID
+- Name
+- Description
+- Data source
+- Required fields
+- Detection logic
+- Severity
+- MITRE ATT&CK technique
+- Expected false positives
+- Investigation steps
+- Related simulation
+- Test method
 
-Internet
-|
-v
-AWS VPC
-10.10.0.0/16
-|
-+-----------------------------+
-|                             |
-v                             v
-Management / access          SOC lab network
-|
-+---------------------+---------------------+
-|                     |                     |
-v                     v                     v
-Wazuh SIEM          Windows Employee        Web Server
-|                     |
-|              +------+------+
-|              |             |
-|           Nginx :8000   Juice Shop
-|              |           :3000
-|              v
-|         Vulnerable Web
-|
-^
-|
-Atomic Red Team
+Example:
 
-Explain that this is the target architecture and will be implemented in later phases.
+DET-WEB-001
+    SQL Injection Attempt
 
-Also document that the architecture may evolve after resource/cost validation.
+Source:
+    nginx_access
 
----
+Scenario:
+    DVWA-03
 
-# 5. Document networking goals
+Technique:
+    T1190 / relevant ATT&CK mapping
 
-Create:
+Severity:
+    appropriate level
 
-docs/networking.md
+Expected evidence:
+    suspicious query parameter
 
-Document the intended network design.
+Do not invent ATT&CK mappings.
+Verify mappings against the actual technique.
 
-Initial target:
+==================================================
+4. WEB DETECTIONS — DVWA
+==================================================
 
-VPC:
-10.10.0.0/16
+Implement controlled detections for:
 
-Potential subnet layout:
+### DET-WEB-001
+SQL Injection
 
-Management:
-10.10.1.0/24
+Detect:
 
-SOC:
-10.10.10.0/24
+- common SQL injection patterns
+- suspicious query-string structures
+- encoded injection attempts where practical
 
-Attack:
-10.10.20.0/24
+Do not rely on one exact payload.
 
-Target/Web:
-10.10.30.0/24
+Avoid excessive false positives.
 
-These are design targets only.
+### DET-WEB-002
+Command Injection
 
-Do not create these networks yet.
+Detect:
 
-Explain the security principle:
+- suspicious command separators
+- command execution patterns
+- known dangerous shell execution indicators
 
-* avoid unnecessary public exposure
-* internal communication should use private IPs
-* security groups should follow least privilege
-* management access should not be open to 0.0.0.0/0
-* vulnerable applications should not be exposed directly to the public Internet
-* the attack environment must remain isolated
-* the project must clearly distinguish management traffic, telemetry traffic, application traffic and attack traffic
+Correlate Nginx activity with auditd where possible.
 
----
+### DET-WEB-003
+Path Traversal / LFI
 
-# 6. Document the logging architecture
+Detect:
 
-Create:
+- ../
+- encoded traversal
+- suspicious file path access
 
-docs/logging.md
+### DET-WEB-004
+Suspicious File Upload
 
-Logging is a first-class requirement of SOCForge.
+Detect:
 
-The eventual design should separate major log sources.
+- suspicious uploads
+- modifications in DVWA upload directory
+- FIM events
 
-Target logical log groups/index patterns:
+Correlate:
 
-* Windows security/system/application logs
-* Sysmon telemetry
-* Nginx access logs
-* Nginx error logs
-* Juice Shop application/container logs
-* Atomic Red Team/test telemetry
-* Wazuh alerts
-
-Use conceptual names such as:
-
-soc-windows-*
-soc-sysmon-*
-soc-nginx-access-*
-soc-nginx-error-*
-soc-juiceshop-*
-soc-atomic-*
-
-Do NOT configure these indexes yet.
+Nginx
++
+auditd
++
+FIM
 
-Clearly document that Wazuh's native alert/index architecture must be preserved and that custom log separation should be implemented without breaking Wazuh's built-in functionality.
+when available.
 
-The future goal is to allow a learner to investigate:
+==================================================
+5. WEB DETECTIONS — JUICE SHOP
+==================================================
 
-Web request
-↓
-Application event
-↓
-Endpoint telemetry
-↓
-Wazuh event
-↓
-Detection
-↓
-Alert
-↓
-Investigation
-
----
-
-# 7. Document the learning path
-
-Create:
-
-docs/learning-path.md
-
-Create a beginner-friendly progression:
-
-## Level 1 — Infrastructure
-
-* AWS
-* VPC
-* subnets
-* route tables
-* security groups
-* EC2
-* IAM
-* Terraform
+Create detections for:
 
-## Level 2 — System and endpoint telemetry
+### DET-JS-001
+Suspicious API enumeration
 
-* Linux
-* Windows
-* Sysmon
-* Windows Event Logs
-* Wazuh Agent
-
-## Level 3 — SIEM
-
-* Wazuh Manager
-* Wazuh Indexer
-* Wazuh Dashboard
-* events
-* alerts
-* rules
-* decoders
-* file integrity monitoring
-
-## Level 4 — Web security
-
-* HTTP
-* Nginx
-* access logs
-* error logs
-* Juice Shop
-* vulnerable web applications
-* web attack telemetry
+### DET-JS-002
+Authentication abuse
 
-## Level 5 — Attack simulation
-
-* MITRE ATT&CK
-* Atomic Red Team
-* controlled attack techniques
-* expected telemetry
+### DET-JS-003
+Injection probing
 
-## Level 6 — SOC investigation
+### DET-JS-004
+Administrative endpoint access/probing
 
-* alert triage
-* IOC identification
-* timeline construction
-* source/destination analysis
-* process analysis
-* false positive vs true positive
-* MITRE ATT&CK mapping
+### DET-JS-005
+Application error exploitation indicators
 
-## Level 7 — Detection engineering
+Use the actual Juice Shop log format.
 
-* Wazuh rules
-* detection logic
-* severity
-* tuning
-* validation
-* detection coverage
+Do NOT assume Nginx logs exist for Juice Shop.
 
----
+Juice Shop telemetry comes through:
 
-# 8. Create the deployment documentation
+Docker JSON
+    ↓
+Wazuh Agent
+    ↓
+Wazuh
 
-Create:
+==================================================
+6. NGINX DETECTIONS
+==================================================
 
-docs/deployment.md
+Create detections based on:
 
-Describe the eventual deployment pipeline:
+- unusual HTTP methods
+- repeated 401/403
+- repeated 404
+- suspicious URI patterns
+- suspicious query strings
+- traversal patterns
+- SQL injection patterns
+- command injection indicators
+- scanning behavior
 
-Debian 13
-|
-+--> Terraform
-|       |
-|       +--> AWS infrastructure
-|
-+--> dynamic inventory
-|
-+--> Ansible
-|
-+--> Wazuh
-+--> Windows endpoint
-+--> Web server
-+--> Juice Shop
-+--> Atomic Red Team
+Do NOT alert on every 404.
 
-Document the intended future commands conceptually:
-
-./scripts/preflight.sh
-terraform plan
-terraform apply
-ansible-playbook ...
-./scripts/health-check.sh
-
-Do not implement the full deployment yet.
-
----
-
-# 9. Create .gitignore
-
-The repository must never commit secrets or generated infrastructure state.
-
-Include appropriate exclusions for:
-
-* Terraform `.tfstate`
-* Terraform `.tfstate.*`
-* `.terraform/`
-* Terraform crash logs
-* variable files containing secrets
-* SSH private keys
-* AWS credentials
-* `.env`
-* Python virtual environments
-* Ansible retry files
-* generated inventories if they contain sensitive information
-* logs
-* OS/editor temporary files
-* caches
-* generated reports
-
-Be careful not to ignore files that should be version controlled.
-
----
-
-# 10. Create .editorconfig
-
-Use a simple project-wide configuration.
-
-Recommended:
-
-* UTF-8
-* LF line endings
-* final newline
-* spaces instead of tabs
-* reasonable indentation
-
-Do not over-engineer this.
-
----
-
-# 11. Create the Makefile
-
-Create basic development commands only.
+Implement thresholding where appropriate.
 
 For example:
 
-make help
-make preflight
-make lint
+Single 404:
+    informational
 
-At this phase they should only invoke functionality that actually exists.
+Many 404s from same source within time window:
+    suspicious
 
-Do not create fake commands.
-
-`make help` should explain the available commands.
-
----
-
-# 12. Create scripts/preflight.sh
-
-Create a safe prerequisite checker for the Debian 13 control VM.
-
-Check whether the following commands exist:
-
-* git
-* terraform
-* ansible
-* aws
-* python3
-* ssh
-
-Also check:
-
-* operating system
-* architecture
-* available disk space
-* available memory
-
-The script should NOT install anything automatically.
-
-Instead it should report missing prerequisites clearly.
-
-Example conceptual output:
-
-# SOCForge Preflight
-
-OS:
-Debian GNU/Linux 13
-
-Tools:
-Git        [OK]
-Terraform  [OK]
-Ansible    [OK]
-AWS CLI    [OK]
-Python3    [OK]
-SSH        [OK]
-
-Result:
-PASS
-
-or:
-
-Result:
-FAIL
-
-Missing:
-Terraform
-AWS CLI
-
-Use proper exit codes:
-
-0 = all required checks passed
-non-zero = one or more checks failed
-
-Make the script executable.
-
----
-
-# 13. Create scripts/health-check.sh
-
-For this phase, this script should only perform local/control-machine checks.
-
-Do NOT attempt to connect to AWS.
-
-Check:
-
-* repository exists
-* required directories exist
-* Git repository exists
-* required documentation files exist
-* required tools are available
-
-Later phases will extend this script to perform AWS/SOC health checks.
-
----
-
-# 14. Code quality
+==================================================
+7. WINDOWS DETECTIONS
+==================================================
 
 Use:
 
-* clear naming
-* comments only where useful
-* no unnecessary dependencies
-* POSIX-compatible shell where practical
-* safe shell practices such as `set -euo pipefail`
-* meaningful exit codes
-* no hard-coded AWS credentials
-* no secrets
-* no private keys
-* no fake infrastructure state
+windows_security
+sysmon
+powershell
 
-Do not introduce Python dependencies in Phase 1 unless genuinely necessary.
+Create initial detections for:
 
----
+### DET-WIN-001
+Suspicious PowerShell execution
 
-# 15. Validate the implementation
+### DET-WIN-002
+PowerShell encoded/obfuscated command indicators
 
-Before committing:
+### DET-WIN-003
+Suspicious parent-child process relationship
 
-Run the available validation.
+### DET-WIN-004
+Suspicious command execution
 
-At minimum:
+### DET-WIN-005
+Potential credential-access behavior
 
-```bash
-git status
-```
+Do NOT create extremely broad rules such as:
 
-Check shell scripts for syntax errors:
+"powershell = malicious"
 
-```bash
-bash -n scripts/preflight.sh
-bash -n scripts/health-check.sh
-```
+They will generate excessive false positives.
 
-Run:
+==================================================
+8. SYSMON PROCESS LINEAGE
+==================================================
 
-```bash
-./scripts/preflight.sh
-./scripts/health-check.sh
-make help
-```
+Use Sysmon Event ID 1.
 
-If Terraform exists on the system, verify that the empty Terraform directory does not cause problems, but do NOT run `terraform apply`.
+Build detections around suspicious relationships.
 
-Verify that no credentials, `.tfstate`, private keys or generated secrets were accidentally created.
+Examples to evaluate:
 
-Run:
+Office application
+    ↓
+PowerShell
 
-```bash
-git diff
-git status
-```
+Browser
+    ↓
+PowerShell
 
-Review the changes before committing.
+Word/Excel
+    ↓
+cmd.exe
 
----
+Web-related process
+    ↓
+shell
 
-# 16. Git commit requirement
+Do not assume every parent-child relationship is malicious.
+
+Use contextual conditions.
+
+==================================================
+9. ATOMIC RED TEAM DETECTIONS
+==================================================
+
+Use the existing:
+
+atomic
+
+ground-truth telemetry.
+
+Do not execute Atomic tests automatically.
+
+Instead create detection mappings:
+
+Atomic Test
+    ↓
+Expected Windows Event
+    ↓
+Sysmon/PowerShell
+    ↓
+Wazuh Rule
+    ↓
+MITRE ATT&CK
+
+Each mapping must have:
+
+- Atomic test ID
+- technique ID
+- expected telemetry
+- detection ID
+- Wazuh rule ID
+
+Do not invent rule IDs.
+
+==================================================
+10. CORRELATION RULES
+==================================================
+
+Create correlation where meaningful.
+
+Example:
+
+WEB ATTACK:
+
+Nginx suspicious request
+        +
+auditd command execution
+        ↓
+HIGHER confidence detection
+
+Another:
+
+PowerShell
+    +
+suspicious parent process
+        ↓
+HIGHER confidence detection
+
+Another:
+
+multiple authentication failures
+        +
+successful authentication
+        ↓
+potential credential attack
+
+Do not create correlation merely for complexity.
+
+==================================================
+11. SEVERITY MODEL
+==================================================
+
+Define a SOCForge severity model.
+
+Example:
+
+Level 3–4
+    informational / low
+
+Level 5–7
+    suspicious / medium
+
+Level 8–10
+    high / critical
+
+Use the Wazuh rule level appropriately.
+
+Document why each detection receives its severity.
+
+Do not mark every web probe as critical.
+
+==================================================
+12. FALSE POSITIVE CONTROL
+==================================================
+
+Every detection must document expected false positives.
+
+Examples:
+
+Legitimate administrator:
+    PowerShell
+
+Normal application:
+    404 responses
+
+Security scanner:
+    multiple suspicious requests
+
+Developer:
+    API endpoint testing
+
+Create suppression/threshold logic where appropriate.
+
+Do NOT suppress detections globally.
+
+Use narrow conditions.
+
+==================================================
+13. RULE NAMING
+==================================================
+
+Create a consistent rule ID namespace.
+
+Do not conflict with Wazuh's built-in rules.
+
+Before assigning IDs:
+
+inspect existing local rule IDs.
+
+Reserve a SOCForge range.
+
+Example concept:
+
+SOCForge custom rules:
+    100000–100999
+
+Do not blindly use this range if Wazuh has another convention.
+
+Verify first.
+
+Document the selected range.
+
+==================================================
+14. DECODERS
+==================================================
+
+Only create custom decoders when the existing Wazuh decoder cannot properly parse the telemetry.
+
+Do NOT create unnecessary decoders.
+
+For each decoder document:
+
+- source
+- prematch
+- regex
+- fields
+- parent decoder
+- expected sample log
+
+Create sample logs for testing.
+
+==================================================
+15. RULE TESTING
+==================================================
+
+Create:
+
+tests/detections/
+
+For every custom decoder/rule provide:
+
+positive sample
+negative sample
+
+Example:
+
+tests/detections/dvwa_sqli_positive.log
+tests/detections/dvwa_sqli_negative.log
+
+The negative sample must represent legitimate traffic that should NOT alert.
 
 This is mandatory.
 
-After successful validation:
-
-```bash
-git add .
-git commit -m "chore: establish SOCForge project foundation"
-```
-
-Do NOT run:
-
-```bash
-git push
-```
-
-Do NOT create a GitHub remote.
-
-After committing, run:
-
-```bash
-git status
-git log --oneline -1
-git remote -v
-```
-
-The working tree should be clean.
-
-If there are validation failures, fix them before committing.
-
-Do not make a commit that knowingly contains broken Phase 1 functionality.
-
----
-
-# 17. Final response
-
-After completing Phase 1, report:
-
-1. Files created
-2. Files modified
-3. Validation commands executed
-4. Validation results
-5. Git commit hash
-6. Git commit message
-7. Current branch
-8. Whether a Git remote exists
-9. Any unresolved issues
-10. What Phase 2 should implement
-
-Do not proceed into Phase 2 automatically.
-
-STOP after Phase 1 is complete.
-# SOCForge — Phase 1: Project Foundation
-
-You are working on a cybersecurity training project called **SOCForge**.
-
-SOCForge is intended to become a reproducible SOC-as-Code training environment deployed on AWS using:
-
-* Terraform for AWS infrastructure
-* Ansible for machine configuration
-* Wazuh as the SIEM/XDR platform
-* Windows employee endpoint with Sysmon and Wazuh Agent
-* Linux web server
-* Nginx serving a deliberately vulnerable web application on port 8000
-* OWASP Juice Shop running in Docker on port 3000
-* Atomic Red Team for controlled attack simulation
-* Centralized log collection and separated log sources/indexes
-* MITRE ATT&CK-aligned detection and investigation scenarios
-
-The project will eventually be deployed from a **Debian 13 VM** because the developer's primary host OS is Windows.
-
-## IMPORTANT SCOPE RESTRICTION
-
-This is **PHASE 1 ONLY**.
-
-Do NOT:
-
-* create AWS resources
-* run `terraform apply`
-* run `terraform destroy`
-* configure AWS networking
-* create EC2 instances
-* install Wazuh
-* install Ansible roles
-* install Atomic Red Team
-* deploy Juice Shop
-* deploy DVWA
-* configure Nginx
-* create Wazuh indexes
-* configure Wazuh agents
-* push anything to GitHub
-
-Do not make assumptions that later infrastructure already exists.
-
-The goal of this phase is to create a clean, maintainable project foundation.
-
----
-
-# 1. Inspect the current repository
-
-First inspect the current working directory.
-
-Determine:
-
-* whether Git is already initialized
-* current branch
-* current commits
-* existing files
-* existing `.gitignore`
-* existing Git remotes
-
-Do not delete existing user work.
-
-If the repository is already initialized, preserve the existing Git history.
-
-Do not create a GitHub remote.
-
-Do not push anything.
-
----
-
-# 2. Establish the project structure
-
-Create the following structure:
-
-socforge/
-├── README.md
-├── LICENSE
-├── .gitignore
-├── .editorconfig
-├── Makefile
-│
-├── docs/
-│   ├── architecture.md
-│   ├── deployment.md
-│   ├── networking.md
-│   ├── logging.md
-│   └── learning-path.md
-│
-├── scripts/
-│   ├── preflight.sh
-│   └── health-check.sh
-│
-├── terraform/
-│   └── .gitkeep
-│
-├── ansible/
-│   └── .gitkeep
-│
-├── detection/
-│   └── .gitkeep
-│
-├── attacks/
-│   └── .gitkeep
-│
-└── tests/
-└── .gitkeep
-
-Do not create unnecessary directories.
-
-Keep the structure intentionally small at this stage.
-
----
-
-# 3. Create the README
-
-Create a professional README for SOCForge.
-
-Explain that SOCForge is intended to provide a reproducible SOC training environment where a learner can study:
-
-1. AWS infrastructure
-2. networking
-3. Linux and Windows endpoints
-4. SIEM
-5. log collection
-6. detection engineering
-7. MITRE ATT&CK
-8. attack simulation
-9. alert investigation
-10. incident-response fundamentals
-
-Explain the eventual architecture at a high level.
-
-The eventual environment will contain:
-
-* Wazuh SIEM
-* Windows employee endpoint
-* Linux web server
-* Nginx
-* deliberately vulnerable web application on port 8000
-* OWASP Juice Shop on port 3000
-* Atomic Red Team attack environment
-
-Make clear that the environment is intended for an isolated AWS security-training lab.
-
-Include a prominent warning that AWS resources can incur costs and users must verify their own AWS Free Tier eligibility and destroy resources when finished.
-
-Do NOT claim that the entire environment is guaranteed to be free.
-
----
-
-# 4. Document the planned architecture
-
-Create:
-
-docs/architecture.md
-
-Document the intended architecture, but do not implement it.
-
-Use this conceptual structure:
-
-Internet
-|
-v
-AWS VPC
-10.10.0.0/16
-|
-+-----------------------------+
-|                             |
-v                             v
-Management / access          SOC lab network
-|
-+---------------------+---------------------+
-|                     |                     |
-v                     v                     v
-Wazuh SIEM          Windows Employee        Web Server
-|                     |
-|              +------+------+
-|              |             |
-|           Nginx :8000   Juice Shop
-|              |           :3000
-|              v
-|         Vulnerable Web
-|
-^
-|
-Atomic Red Team
-
-Explain that this is the target architecture and will be implemented in later phases.
-
-Also document that the architecture may evolve after resource/cost validation.
-
----
-
-# 5. Document networking goals
-
-Create:
-
-docs/networking.md
-
-Document the intended network design.
-
-Initial target:
-
-VPC:
-10.10.0.0/16
-
-Potential subnet layout:
-
-Management:
-10.10.1.0/24
-
-SOC:
-10.10.10.0/24
-
-Attack:
-10.10.20.0/24
-
-Target/Web:
-10.10.30.0/24
-
-These are design targets only.
-
-Do not create these networks yet.
-
-Explain the security principle:
-
-* avoid unnecessary public exposure
-* internal communication should use private IPs
-* security groups should follow least privilege
-* management access should not be open to 0.0.0.0/0
-* vulnerable applications should not be exposed directly to the public Internet
-* the attack environment must remain isolated
-* the project must clearly distinguish management traffic, telemetry traffic, application traffic and attack traffic
-
----
-
-# 6. Document the logging architecture
-
-Create:
-
-docs/logging.md
-
-Logging is a first-class requirement of SOCForge.
-
-The eventual design should separate major log sources.
-
-Target logical log groups/index patterns:
-
-* Windows security/system/application logs
-* Sysmon telemetry
-* Nginx access logs
-* Nginx error logs
-* Juice Shop application/container logs
-* Atomic Red Team/test telemetry
-* Wazuh alerts
-
-Use conceptual names such as:
-
-soc-windows-*
-soc-sysmon-*
-soc-nginx-access-*
-soc-nginx-error-*
-soc-juiceshop-*
-soc-atomic-*
-
-Do NOT configure these indexes yet.
-
-Clearly document that Wazuh's native alert/index architecture must be preserved and that custom log separation should be implemented without breaking Wazuh's built-in functionality.
-
-The future goal is to allow a learner to investigate:
-
-Web request
-↓
-Application event
-↓
-Endpoint telemetry
-↓
-Wazuh event
-↓
-Detection
-↓
-Alert
-↓
-Investigation
-
----
-
-# 7. Document the learning path
-
-Create:
-
-docs/learning-path.md
-
-Create a beginner-friendly progression:
-
-## Level 1 — Infrastructure
-
-* AWS
-* VPC
-* subnets
-* route tables
-* security groups
-* EC2
-* IAM
-* Terraform
-
-## Level 2 — System and endpoint telemetry
-
-* Linux
-* Windows
-* Sysmon
-* Windows Event Logs
-* Wazuh Agent
-
-## Level 3 — SIEM
-
-* Wazuh Manager
-* Wazuh Indexer
-* Wazuh Dashboard
-* events
-* alerts
-* rules
-* decoders
-* file integrity monitoring
-
-## Level 4 — Web security
-
-* HTTP
-* Nginx
-* access logs
-* error logs
-* Juice Shop
-* vulnerable web applications
-* web attack telemetry
-
-## Level 5 — Attack simulation
-
-* MITRE ATT&CK
-* Atomic Red Team
-* controlled attack techniques
-* expected telemetry
-
-## Level 6 — SOC investigation
-
-* alert triage
-* IOC identification
-* timeline construction
-* source/destination analysis
-* process analysis
-* false positive vs true positive
-* MITRE ATT&CK mapping
-
-## Level 7 — Detection engineering
-
-* Wazuh rules
-* detection logic
-* severity
-* tuning
-* validation
-* detection coverage
-
----
-
-# 8. Create the deployment documentation
-
-Create:
-
-docs/deployment.md
-
-Describe the eventual deployment pipeline:
-
-Debian 13
-|
-+--> Terraform
-|       |
-|       +--> AWS infrastructure
-|
-+--> dynamic inventory
-|
-+--> Ansible
-|
-+--> Wazuh
-+--> Windows endpoint
-+--> Web server
-+--> Juice Shop
-+--> Atomic Red Team
-
-Document the intended future commands conceptually:
-
-./scripts/preflight.sh
-terraform plan
-terraform apply
-ansible-playbook ...
-./scripts/health-check.sh
-
-Do not implement the full deployment yet.
-
----
-
-# 9. Create .gitignore
-
-The repository must never commit secrets or generated infrastructure state.
-
-Include appropriate exclusions for:
-
-* Terraform `.tfstate`
-* Terraform `.tfstate.*`
-* `.terraform/`
-* Terraform crash logs
-* variable files containing secrets
-* SSH private keys
-* AWS credentials
-* `.env`
-* Python virtual environments
-* Ansible retry files
-* generated inventories if they contain sensitive information
-* logs
-* OS/editor temporary files
-* caches
-* generated reports
-
-Be careful not to ignore files that should be version controlled.
-
----
-
-# 10. Create .editorconfig
-
-Use a simple project-wide configuration.
-
-Recommended:
-
-* UTF-8
-* LF line endings
-* final newline
-* spaces instead of tabs
-* reasonable indentation
-
-Do not over-engineer this.
-
----
-
-# 11. Create the Makefile
-
-Create basic development commands only.
+==================================================
+16. OFFLINE DETECTION TESTING
+==================================================
+
+Use the Wazuh testing mechanism available in the installed version.
 
 For example:
 
-make help
-make preflight
-make lint
+wazuh-logtest
 
-At this phase they should only invoke functionality that actually exists.
+or the correct supported mechanism.
 
-Do not create fake commands.
+Test:
 
-`make help` should explain the available commands.
+positive event
+    → expected decoder
+    → expected rule
+    → expected severity
 
----
+negative event
+    → no alert
 
-# 12. Create scripts/preflight.sh
+Do not claim the detection works if it has not passed the test.
 
-Create a safe prerequisite checker for the Debian 13 control VM.
+==================================================
+17. DETECTION QUALITY
+==================================================
 
-Check whether the following commands exist:
+For every detection report:
 
-* git
-* terraform
-* ansible
-* aws
-* python3
-* ssh
-
-Also check:
-
-* operating system
-* architecture
-* available disk space
-* available memory
-
-The script should NOT install anything automatically.
-
-Instead it should report missing prerequisites clearly.
-
-Example conceptual output:
-
-# SOCForge Preflight
-
-OS:
-Debian GNU/Linux 13
-
-Tools:
-Git        [OK]
-Terraform  [OK]
-Ansible    [OK]
-AWS CLI    [OK]
-Python3    [OK]
-SSH        [OK]
-
-Result:
-PASS
-
-or:
-
-Result:
-FAIL
-
-Missing:
-Terraform
-AWS CLI
-
-Use proper exit codes:
-
-0 = all required checks passed
-non-zero = one or more checks failed
-
-Make the script executable.
-
----
-
-# 13. Create scripts/health-check.sh
-
-For this phase, this script should only perform local/control-machine checks.
-
-Do NOT attempt to connect to AWS.
-
-Check:
-
-* repository exists
-* required directories exist
-* Git repository exists
-* required documentation files exist
-* required tools are available
-
-Later phases will extend this script to perform AWS/SOC health checks.
-
----
-
-# 14. Code quality
+Detection ID
+Rule ID
+Decoder
+Source
+Technique
+Positive test
+Negative test
+Expected alert
+Observed alert
+False-positive consideration
 
 Use:
 
-* clear naming
-* comments only where useful
-* no unnecessary dependencies
-* POSIX-compatible shell where practical
-* safe shell practices such as `set -euo pipefail`
-* meaningful exit codes
-* no hard-coded AWS credentials
-* no secrets
-* no private keys
-* no fake infrastructure state
+PASS
+FAIL
+NOT TESTED
 
-Do not introduce Python dependencies in Phase 1 unless genuinely necessary.
+Do not use vague language.
 
----
+==================================================
+18. MITRE ATT&CK
+==================================================
 
-# 15. Validate the implementation
+Map detections to MITRE ATT&CK where appropriate.
 
-Before committing:
+At minimum evaluate mappings for:
 
-Run the available validation.
+- PowerShell
+- Command/Scripting Interpreter
+- Process Discovery
+- System Information Discovery
+- Network Discovery
+- Credential Access
+- Web exploitation where appropriate
 
-At minimum:
+Do not force ATT&CK mappings onto simple operational events.
 
-```bash
-git status
-```
+Use the correct technique/sub-technique IDs.
 
-Check shell scripts for syntax errors:
+==================================================
+19. DASHBOARD INTEGRATION
+==================================================
 
-```bash
-bash -n scripts/preflight.sh
-bash -n scripts/health-check.sh
-```
+Update the existing dashboards where useful.
 
-Run:
+Add panels for:
 
-```bash
-./scripts/preflight.sh
-./scripts/health-check.sh
-make help
-```
+- detection count
+- severity
+- top detection
+- ATT&CK technique
+- affected host
+- source
+- simulation ID
+- scenario ID
 
-If Terraform exists on the system, verify that the empty Terraform directory does not cause problems, but do NOT run `terraform apply`.
+Do not create a new dashboard for every detection.
 
-Verify that no credentials, `.tfstate`, private keys or generated secrets were accidentally created.
+==================================================
+20. INVESTIGATION CONTEXT
+==================================================
 
-Run:
+Detection alerts should preserve useful context:
 
-```bash
-git diff
-git status
-```
+- source IP
+- destination
+- URI
+- HTTP method
+- process name
+- parent process
+- command line
+- username
+- agent name
+- agent IP
+- simulation ID
+- scenario ID
+- technique ID
 
-Review the changes before committing.
+Do not destroy the original event.
 
----
+==================================================
+21. ALERT DEDUPLICATION
+==================================================
 
-# 16. Git commit requirement
+Review noisy detections.
 
-This is mandatory.
+If a single attack produces:
 
-After successful validation:
+100 identical alerts
 
-```bash
-git add .
-git commit -m "chore: establish SOCForge project foundation"
-```
+consider thresholding or suppression.
 
-Do NOT run:
+But do not suppress genuinely distinct events.
 
-```bash
-git push
-```
+Document:
 
-Do NOT create a GitHub remote.
+- threshold
+- timeframe
+- grouping key
 
-After committing, run:
+==================================================
+22. NO LIVE ATTACK EXECUTION
+==================================================
 
-```bash
-git status
-git log --oneline -1
-git remote -v
-```
+This phase must remain configuration/testing focused.
 
-The working tree should be clean.
+Do NOT automatically execute:
 
-If there are validation failures, fix them before committing.
-
-Do not make a commit that knowingly contains broken Phase 1 functionality.
-
----
-
-# 17. Final response
-
-After completing Phase 1, report:
-
-1. Files created
-2. Files modified
-3. Validation commands executed
-4. Validation results
-5. Git commit hash
-6. Git commit message
-7. Current branch
-8. Whether a Git remote exists
-9. Any unresolved issues
-10. What Phase 2 should implement
-
-Do not proceed into Phase 2 automatically.
-
-STOP after Phase 1 is complete.
-# SOCForge — Phase 1: Project Foundation
-
-You are working on a cybersecurity training project called **SOCForge**.
-
-SOCForge is intended to become a reproducible SOC-as-Code training environment deployed on AWS using:
-
-* Terraform for AWS infrastructure
-* Ansible for machine configuration
-* Wazuh as the SIEM/XDR platform
-* Windows employee endpoint with Sysmon and Wazuh Agent
-* Linux web server
-* Nginx serving a deliberately vulnerable web application on port 8000
-* OWASP Juice Shop running in Docker on port 3000
-* Atomic Red Team for controlled attack simulation
-* Centralized log collection and separated log sources/indexes
-* MITRE ATT&CK-aligned detection and investigation scenarios
-
-The project will eventually be deployed from a **Debian 13 VM** because the developer's primary host OS is Windows.
-
-## IMPORTANT SCOPE RESTRICTION
-
-This is **PHASE 1 ONLY**.
-
-Do NOT:
-
-* create AWS resources
-* run `terraform apply`
-* run `terraform destroy`
-* configure AWS networking
-* create EC2 instances
-* install Wazuh
-* install Ansible roles
-* install Atomic Red Team
-* deploy Juice Shop
-* deploy DVWA
-* configure Nginx
-* create Wazuh indexes
-* configure Wazuh agents
-* push anything to GitHub
-
-Do not make assumptions that later infrastructure already exists.
-
-The goal of this phase is to create a clean, maintainable project foundation.
-
----
-
-# 1. Inspect the current repository
-
-First inspect the current working directory.
-
-Determine:
-
-* whether Git is already initialized
-* current branch
-* current commits
-* existing files
-* existing `.gitignore`
-* existing Git remotes
-
-Do not delete existing user work.
-
-If the repository is already initialized, preserve the existing Git history.
-
-Do not create a GitHub remote.
-
-Do not push anything.
-
----
-
-# 2. Establish the project structure
-
-Create the following structure:
-
-socforge/
-├── README.md
-├── LICENSE
-├── .gitignore
-├── .editorconfig
-├── Makefile
-│
-├── docs/
-│   ├── architecture.md
-│   ├── deployment.md
-│   ├── networking.md
-│   ├── logging.md
-│   └── learning-path.md
-│
-├── scripts/
-│   ├── preflight.sh
-│   └── health-check.sh
-│
-├── terraform/
-│   └── .gitkeep
-│
-├── ansible/
-│   └── .gitkeep
-│
-├── detection/
-│   └── .gitkeep
-│
-├── attacks/
-│   └── .gitkeep
-│
-└── tests/
-└── .gitkeep
-
-Do not create unnecessary directories.
-
-Keep the structure intentionally small at this stage.
-
----
-
-# 3. Create the README
-
-Create a professional README for SOCForge.
-
-Explain that SOCForge is intended to provide a reproducible SOC training environment where a learner can study:
-
-1. AWS infrastructure
-2. networking
-3. Linux and Windows endpoints
-4. SIEM
-5. log collection
-6. detection engineering
-7. MITRE ATT&CK
-8. attack simulation
-9. alert investigation
-10. incident-response fundamentals
-
-Explain the eventual architecture at a high level.
-
-The eventual environment will contain:
-
-* Wazuh SIEM
-* Windows employee endpoint
-* Linux web server
-* Nginx
-* deliberately vulnerable web application on port 8000
-* OWASP Juice Shop on port 3000
-* Atomic Red Team attack environment
-
-Make clear that the environment is intended for an isolated AWS security-training lab.
-
-Include a prominent warning that AWS resources can incur costs and users must verify their own AWS Free Tier eligibility and destroy resources when finished.
-
-Do NOT claim that the entire environment is guaranteed to be free.
-
----
-
-# 4. Document the planned architecture
-
-Create:
-
-docs/architecture.md
-
-Document the intended architecture, but do not implement it.
-
-Use this conceptual structure:
-
-Internet
-|
-v
-AWS VPC
-10.10.0.0/16
-|
-+-----------------------------+
-|                             |
-v                             v
-Management / access          SOC lab network
-|
-+---------------------+---------------------+
-|                     |                     |
-v                     v                     v
-Wazuh SIEM          Windows Employee        Web Server
-|                     |
-|              +------+------+
-|              |             |
-|           Nginx :8000   Juice Shop
-|              |           :3000
-|              v
-|         Vulnerable Web
-|
-^
-|
 Atomic Red Team
+DVWA attacks
+Juice Shop attacks
 
-Explain that this is the target architecture and will be implemented in later phases.
+The existing attack wrappers remain operator-controlled.
 
-Also document that the architecture may evolve after resource/cost validation.
+Detection tests should initially use:
 
----
+- sample logs
+- wazuh-logtest
+- controlled synthetic events
 
-# 5. Document networking goals
+Live attack validation will happen later.
 
-Create:
+==================================================
+23. ANSIBLE IMPLEMENTATION
+==================================================
 
-docs/networking.md
+Extend:
 
-Document the intended network design.
+ansible/roles/wazuh/
 
-Initial target:
+Add:
 
-VPC:
-10.10.0.0/16
+- custom rules
+- custom decoders
+- test samples
+- validation tasks
 
-Potential subnet layout:
+Everything must be reproducible.
 
-Management:
-10.10.1.0/24
+Do not manually modify only the live server.
 
-SOC:
-10.10.10.0/24
-
-Attack:
-10.10.20.0/24
-
-Target/Web:
-10.10.30.0/24
-
-These are design targets only.
-
-Do not create these networks yet.
-
-Explain the security principle:
-
-* avoid unnecessary public exposure
-* internal communication should use private IPs
-* security groups should follow least privilege
-* management access should not be open to 0.0.0.0/0
-* vulnerable applications should not be exposed directly to the public Internet
-* the attack environment must remain isolated
-* the project must clearly distinguish management traffic, telemetry traffic, application traffic and attack traffic
-
----
-
-# 6. Document the logging architecture
+==================================================
+24. DETECTION HEALTH CHECK
+==================================================
 
 Create:
 
-docs/logging.md
+scripts/detection-health-check.sh
 
-Logging is a first-class requirement of SOCForge.
+It must verify:
 
-The eventual design should separate major log sources.
+- custom rule files exist
+- custom decoder files exist
+- rule IDs do not conflict
+- XML syntax valid
+- sample tests exist
+- positive tests pass
+- negative tests pass
 
-Target logical log groups/index patterns:
+Return:
 
-* Windows security/system/application logs
-* Sysmon telemetry
-* Nginx access logs
-* Nginx error logs
-* Juice Shop application/container logs
-* Atomic Red Team/test telemetry
-* Wazuh alerts
-
-Use conceptual names such as:
-
-soc-windows-*
-soc-sysmon-*
-soc-nginx-access-*
-soc-nginx-error-*
-soc-juiceshop-*
-soc-atomic-*
-
-Do NOT configure these indexes yet.
-
-Clearly document that Wazuh's native alert/index architecture must be preserved and that custom log separation should be implemented without breaking Wazuh's built-in functionality.
-
-The future goal is to allow a learner to investigate:
-
-Web request
-↓
-Application event
-↓
-Endpoint telemetry
-↓
-Wazuh event
-↓
-Detection
-↓
-Alert
-↓
-Investigation
-
----
-
-# 7. Document the learning path
-
-Create:
-
-docs/learning-path.md
-
-Create a beginner-friendly progression:
-
-## Level 1 — Infrastructure
-
-* AWS
-* VPC
-* subnets
-* route tables
-* security groups
-* EC2
-* IAM
-* Terraform
-
-## Level 2 — System and endpoint telemetry
-
-* Linux
-* Windows
-* Sysmon
-* Windows Event Logs
-* Wazuh Agent
-
-## Level 3 — SIEM
-
-* Wazuh Manager
-* Wazuh Indexer
-* Wazuh Dashboard
-* events
-* alerts
-* rules
-* decoders
-* file integrity monitoring
-
-## Level 4 — Web security
-
-* HTTP
-* Nginx
-* access logs
-* error logs
-* Juice Shop
-* vulnerable web applications
-* web attack telemetry
-
-## Level 5 — Attack simulation
-
-* MITRE ATT&CK
-* Atomic Red Team
-* controlled attack techniques
-* expected telemetry
-
-## Level 6 — SOC investigation
-
-* alert triage
-* IOC identification
-* timeline construction
-* source/destination analysis
-* process analysis
-* false positive vs true positive
-* MITRE ATT&CK mapping
-
-## Level 7 — Detection engineering
-
-* Wazuh rules
-* detection logic
-* severity
-* tuning
-* validation
-* detection coverage
-
----
-
-# 8. Create the deployment documentation
-
-Create:
-
-docs/deployment.md
-
-Describe the eventual deployment pipeline:
-
-Debian 13
-|
-+--> Terraform
-|       |
-|       +--> AWS infrastructure
-|
-+--> dynamic inventory
-|
-+--> Ansible
-|
-+--> Wazuh
-+--> Windows endpoint
-+--> Web server
-+--> Juice Shop
-+--> Atomic Red Team
-
-Document the intended future commands conceptually:
-
-./scripts/preflight.sh
-terraform plan
-terraform apply
-ansible-playbook ...
-./scripts/health-check.sh
-
-Do not implement the full deployment yet.
-
----
-
-# 9. Create .gitignore
-
-The repository must never commit secrets or generated infrastructure state.
-
-Include appropriate exclusions for:
-
-* Terraform `.tfstate`
-* Terraform `.tfstate.*`
-* `.terraform/`
-* Terraform crash logs
-* variable files containing secrets
-* SSH private keys
-* AWS credentials
-* `.env`
-* Python virtual environments
-* Ansible retry files
-* generated inventories if they contain sensitive information
-* logs
-* OS/editor temporary files
-* caches
-* generated reports
-
-Be careful not to ignore files that should be version controlled.
-
----
-
-# 10. Create .editorconfig
-
-Use a simple project-wide configuration.
-
-Recommended:
-
-* UTF-8
-* LF line endings
-* final newline
-* spaces instead of tabs
-* reasonable indentation
-
-Do not over-engineer this.
-
----
-
-# 11. Create the Makefile
-
-Create basic development commands only.
-
-For example:
-
-make help
-make preflight
-make lint
-
-At this phase they should only invoke functionality that actually exists.
-
-Do not create fake commands.
-
-`make help` should explain the available commands.
-
----
-
-# 12. Create scripts/preflight.sh
-
-Create a safe prerequisite checker for the Debian 13 control VM.
-
-Check whether the following commands exist:
-
-* git
-* terraform
-* ansible
-* aws
-* python3
-* ssh
-
-Also check:
-
-* operating system
-* architecture
-* available disk space
-* available memory
-
-The script should NOT install anything automatically.
-
-Instead it should report missing prerequisites clearly.
-
-Example conceptual output:
-
-# SOCForge Preflight
-
-OS:
-Debian GNU/Linux 13
-
-Tools:
-Git        [OK]
-Terraform  [OK]
-Ansible    [OK]
-AWS CLI    [OK]
-Python3    [OK]
-SSH        [OK]
-
-Result:
 PASS
-
-or:
-
-Result:
 FAIL
 
-Missing:
-Terraform
-AWS CLI
+with useful error messages.
 
-Use proper exit codes:
+==================================================
+25. VALIDATION
+==================================================
 
-0 = all required checks passed
-non-zero = one or more checks failed
+Run:
 
-Make the script executable.
+terraform fmt -check -recursive
+terraform validate
+terraform plan
 
----
+Run:
 
-# 13. Create scripts/health-check.sh
+make ansible-syntax
 
-For this phase, this script should only perform local/control-machine checks.
+Run:
 
-Do NOT attempt to connect to AWS.
+make health-check
 
-Check:
+Run:
 
-* repository exists
-* required directories exist
-* Git repository exists
-* required documentation files exist
-* required tools are available
+detection-health-check.sh
 
-Later phases will extend this script to perform AWS/SOC health checks.
+Run:
 
----
+wazuh-logtest
 
-# 14. Code quality
+or the correct supported testing mechanism.
 
-Use:
+Run secret scanning.
 
-* clear naming
-* comments only where useful
-* no unnecessary dependencies
-* POSIX-compatible shell where practical
-* safe shell practices such as `set -euo pipefail`
-* meaningful exit codes
-* no hard-coded AWS credentials
-* no secrets
-* no private keys
-* no fake infrastructure state
+==================================================
+26. LIVE INFRASTRUCTURE STATUS
+==================================================
 
-Do not introduce Python dependencies in Phase 1 unless genuinely necessary.
+Terraform apply has STILL NOT been automatically authorized.
 
----
+Therefore do NOT claim:
 
-# 15. Validate the implementation
+- Wazuh rules work live
+- alerts appear in Dashboard
+- source-specific indexes receive alerts
+- correlation works live
+
+Only report offline detection testing results.
+
+The future live-validation phase will test:
+
+real attack
+    ↓
+real telemetry
+    ↓
+real Wazuh rule
+    ↓
+real index
+    ↓
+real Dashboard
+
+==================================================
+27. DOCUMENTATION
+==================================================
+
+Create:
+
+docs/detection-engineering.md
+
+Include:
+
+- detection philosophy
+- rule ID range
+- decoder architecture
+- detection catalog
+- severity model
+- false-positive strategy
+- ATT&CK mappings
+- testing methodology
+- correlation strategy
+
+Also create:
+
+docs/detection-test-results.md
+
+Record every positive/negative test.
+
+==================================================
+28. GIT
+==================================================
 
 Before committing:
 
-Run the available validation.
-
-At minimum:
-
-```bash
 git status
-```
-
-Check shell scripts for syntax errors:
-
-```bash
-bash -n scripts/preflight.sh
-bash -n scripts/health-check.sh
-```
-
-Run:
-
-```bash
-./scripts/preflight.sh
-./scripts/health-check.sh
-make help
-```
-
-If Terraform exists on the system, verify that the empty Terraform directory does not cause problems, but do NOT run `terraform apply`.
-
-Verify that no credentials, `.tfstate`, private keys or generated secrets were accidentally created.
-
-Run:
-
-```bash
 git diff
-git status
-```
 
-Review the changes before committing.
+Run all validation.
 
----
+Run secret scanning.
 
-# 16. Git commit requirement
+Then:
 
-This is mandatory.
+git add ansible tests scripts docs
+git commit -m "feat: add SOCForge detection engineering"
 
-After successful validation:
-
-```bash
-git add .
-git commit -m "chore: establish SOCForge project foundation"
-```
-
-Do NOT run:
-
-```bash
-git push
-```
+Do NOT push.
 
 Do NOT create a GitHub remote.
 
-After committing, run:
+Verify:
 
-```bash
 git status
-git log --oneline -1
+git log --oneline -3
 git remote -v
-```
 
-The working tree should be clean.
+Working tree must be clean.
 
-If there are validation failures, fix them before committing.
+==================================================
+29. FINAL REPORT
+==================================================
 
-Do not make a commit that knowingly contains broken Phase 1 functionality.
+Report:
 
----
+1. Detection catalog
+2. Custom rules
+3. Custom decoders
+4. Rule ID namespace
+5. ATT&CK mappings
+6. Severity model
+7. False-positive controls
+8. Correlation logic
+9. Positive test results
+10. Negative test results
+11. Dashboard changes
+12. Terraform validation
+13. Ansible validation
+14. Secret scan
+15. Git commit hash
+16. Live validation status
 
-# 17. Final response
+Clearly separate:
 
-After completing Phase 1, report:
+OFFLINE DETECTION VALIDATION
 
-1. Files created
-2. Files modified
-3. Validation commands executed
-4. Validation results
-5. Git commit hash
-6. Git commit message
-7. Current branch
-8. Whether a Git remote exists
-9. Any unresolved issues
-10. What Phase 2 should implement
+from:
 
-Do not proceed into Phase 2 automatically.
+LIVE SOC VALIDATION
 
-STOP after Phase 1 is complete.
+==================================================
+30. NEXT PHASE
+==================================================
+
+After Phase 13, recommend:
+
+Phase 14 — SOCForge Live Infrastructure Deployment & End-to-End Validation
+
+This will be the first phase where the project is actually deployed to AWS.
+
+It must:
+
+1. Verify AWS credentials.
+2. Review Terraform plan.
+3. Explicitly obtain deployment authorization.
+4. Run terraform apply.
+5. Generate Terraform outputs.
+6. Generate Ansible inventory.
+7. Establish Bastion connectivity.
+8. Run Ansible provisioning.
+9. Deploy Wazuh.
+10. Configure Windows/Sysmon.
+11. Configure Web target.
+12. Configure Juice Shop.
+13. Configure Attack host.
+14. Validate Wazuh ingestion.
+15. Validate separate indexes.
+16. Validate detections.
+17. Run controlled Atomic tests.
+18. Run controlled web tests.
+19. Measure resource usage.
+20. Fix real deployment issues.
+21. Re-run all health checks.
+22. Destroy infrastructure after validation if requested.
+
+DO NOT implement Phase 14 automatically.
+
+STOP after Phase 13.

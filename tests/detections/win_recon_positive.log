@@ -1,0 +1,1 @@
+{"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","eventID":"1","computer":"SOCForge-windows.socforge.local"},"eventdata":{"image":"C:\\Windows\\System32\\whoami.exe","commandLine":"whoami.exe /all","parentImage":"C:\\Windows\\System32\\cmd.exe","user":"SOCFORGE\\Administrator"}}}

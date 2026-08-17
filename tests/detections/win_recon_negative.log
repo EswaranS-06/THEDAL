@@ -1,0 +1,1 @@
+{"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","eventID":"1","computer":"SOCForge-windows.socforge.local"},"eventdata":{"image":"C:\\Windows\\System32\\notepad.exe","commandLine":"notepad.exe C:\\Users\\Administrator\\notes.txt","parentImage":"C:\\Windows\\explorer.exe","user":"SOCFORGE\\Administrator"}}}

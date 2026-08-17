@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–12: Local Integrity)
+# SOCForge — Health Check Script (Phases 1–13: Local Integrity)
 # ==============================================================================
 # Performs local control machine and repository structure verification.
 # ==============================================================================
@@ -92,9 +92,10 @@ REQUIRED_DIRS=(
   "ansible/roles/web-attack"
   "ansible/roles/web-attack/tasks"
   "ansible/roles/web-attack/templates"
+  "tests"
+  "tests/detections"
   "detection"
   "attacks"
-  "tests"
 )
 
 for d in "${REQUIRED_DIRS[@]}"; do
@@ -121,6 +122,9 @@ REQUIRED_FILES=(
   "docs/web-test-catalog.md"
   "docs/web-security-testing.md"
   "docs/telemetry-architecture.md"
+  "docs/detection-catalog.md"
+  "docs/detection-engineering.md"
+  "docs/detection-test-results.md"
   "terraform/versions.tf"
   "terraform/provider.tf"
   "terraform/variables.tf"
@@ -165,6 +169,7 @@ REQUIRED_FILES=(
   "ansible/roles/wazuh/tasks/dashboard.yml"
   "ansible/roles/wazuh/tasks/telemetry.yml"
   "ansible/roles/wazuh/tasks/dashboards.yml"
+  "ansible/roles/wazuh/tasks/detection-rules.yml"
   "ansible/roles/wazuh/tasks/validation.yml"
   "ansible/roles/wazuh/templates/opensearch.yml.j2"
   "ansible/roles/wazuh/templates/ossec.conf.j2"
@@ -172,6 +177,8 @@ REQUIRED_FILES=(
   "ansible/roles/wazuh/templates/socforge-template.json.j2"
   "ansible/roles/wazuh/templates/socforge-ism-policy.json.j2"
   "ansible/roles/wazuh/templates/socforge-dashboards.ndjson.j2"
+  "ansible/roles/wazuh/templates/socforge_decoders.xml.j2"
+  "ansible/roles/wazuh/templates/socforge_rules.xml.j2"
   "ansible/roles/wazuh/templates/opensearch_dashboards.yml.j2"
   "ansible/roles/wazuh/templates/wazuh_dashboard.yml.j2"
   "ansible/roles/wazuh-agent/README.md"
@@ -245,6 +252,7 @@ REQUIRED_FILES=(
   "scripts/wazuh-tunnel.sh"
   "scripts/wazuh-health-check.sh"
   "scripts/wazuh-index-health-check.sh"
+  "scripts/detection-health-check.sh"
   "scripts/windows-agent-health-check.sh"
   "scripts/linux-web-health-check.sh"
   "scripts/juice-shop-health-check.sh"
@@ -261,7 +269,7 @@ echo ""
 
 # 4. Script Executable Permissions
 echo "4. Script Execution Permissions:"
-for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/wazuh-index-health-check.sh" "scripts/windows-agent-health-check.sh" "scripts/linux-web-health-check.sh" "scripts/juice-shop-health-check.sh" "scripts/run-atomic-test.sh" "scripts/atomic-health-check.sh" "scripts/run-web-test.sh" "scripts/web-target-health-check.sh"; do
+for s in "scripts/preflight.sh" "scripts/health-check.sh" "scripts/generate-inventory.py" "scripts/wazuh-tunnel.sh" "scripts/wazuh-health-check.sh" "scripts/wazuh-index-health-check.sh" "scripts/detection-health-check.sh" "scripts/windows-agent-health-check.sh" "scripts/linux-web-health-check.sh" "scripts/juice-shop-health-check.sh" "scripts/run-atomic-test.sh" "scripts/atomic-health-check.sh" "scripts/run-web-test.sh" "scripts/web-target-health-check.sh"; do
   printf "  Checking executable bit: %-35s " "${s}"
   if [ -x "${REPO_ROOT}/${s}" ]; then
     echo "[OK]"
@@ -276,7 +284,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, Linux Web Target, OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, and Telemetry Index Architecture are intact."
+  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, Linux Web Target, OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, Telemetry Index Architecture, and Detection Engineering are intact."
   echo "================================================================="
   exit 0
 else

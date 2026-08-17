@@ -1,0 +1,1 @@
+{"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","eventID":"1","computer":"SOCForge-windows.socforge.local"},"eventdata":{"image":"C:\\Windows\\System32\\cmd.exe","commandLine":"cmd.exe /c whoami","parentImage":"C:\\Program Files\\Microsoft Office\\root\\Office16\\WINWORD.EXE","user":"SOCFORGE\\Administrator"}}}

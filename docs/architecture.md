@@ -128,8 +128,13 @@ All EC2 instances are deterministically defined in `terraform/variables.tf`:
   * **Filebeat Conditional Routing**: Ingestion routing across source indices while preserving default `wazuh-alerts-4.x-*` pipeline.
   * **Index State Management (ISM)**: Lab disk protection policy with configurable retention (`socforge_telemetry_retention_days: 7`).
   * **Investigation Dashboards**: 4 dedicated OpenSearch Dashboards (Windows, Web, Adversary Attack Ground Truth, and Security Operations Overview).
+* **Phase 13: Detection Engineering, Custom Wazuh Rules & SOC Alert Logic**:
+  * **Dedicated Rule Namespace**: Structured `100100–100699` namespace with 18 curated detection rules across DVWA, Juice Shop, Nginx, Windows Endpoint/Sysmon, and Linux Auditd.
+  * **Custom Decoders**: Parsers for Juice Shop container JSON streams and simulation audit logs.
+  * **Multi-Source Correlation**: High-confidence correlation chains (Web exploit -> Auditd execution, Web upload -> FIM, Repeated 401s -> 200).
+  * **Test Suite**: Positive and negative offline test fixtures (`tests/detections/`) with automated health checks (`scripts/detection-health-check.sh`).
 
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 13+)
-* **Phase 13: SOCForge Detection Engineering & Custom Wazuh Rules**:
-  * Custom Wazuh rules and decoders for web attack scenarios (SQLi, command injection, LFI), Docker container attacks, Sysmon parent-child lineage, and Atomic Red Team correlation.
-  * Severity tuning, alert thresholding, and false-positive suppression.
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 14+)
+* **Phase 14: SOCForge Live Infrastructure Deployment & End-to-End Validation**:
+  * Authorized AWS deployment via `terraform apply` (5 EC2 instances, Bastion, Wazuh SIEM, Windows, Web, Attack).
+  * End-to-end execution of Atomic Red Team simulations and Web testing suite with live alert and index validation.

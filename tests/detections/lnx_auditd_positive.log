@@ -1,0 +1,1 @@
+type=EXECVE msg=audit(1723905000.123:456): argc=1 a0="whoami" euid=33 exe="/usr/bin/whoami" auid=4294967295 ses=4294967295 comm="whoami"

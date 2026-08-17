@@ -1,6 +1,6 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, and **Telemetry Classification & Index Routing Architecture (Phases 1–12)** are implemented.
+> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, Telemetry Index Architecture, and **Detection Engineering & Custom Wazuh Rules (Phases 1–13)** are implemented.
 
 ---
 
@@ -37,8 +37,9 @@
                         | (6. ansible-playbook playbooks/wazuh.yml)
                         v
        +-----------------------------------------------+
-       | Wazuh SIEM & Telemetry Architecture Initialized|
+       | Wazuh SIEM & Detection Stack Initialized      |
        | - Indexer (9200), Manager (1514/1515/55000)   |
+       | - Custom Rules (100100-100699) & Decoders     |
        | - Filebeat Source Routing & OpenSearch ISM    |
        | - 4 Curated Dashboards & 12 Index Patterns    |
        +-----------------------------------------------+

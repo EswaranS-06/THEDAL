@@ -1,0 +1,334 @@
+<!--
+  SOCForge — Custom Wazuh Detection Rules (Phase 13)
+  ==============================================================================
+  Rule ID Namespace: 100100 – 100699
+  - 100100–100199: DVWA Web Target Detections
+  - 100200–100299: OWASP Juice Shop Web Detections
+  - 100300–100399: Nginx Web Server & Threat Detections
+  - 100400–100499: Windows Endpoint & Sysmon Lineage Detections
+  - 100500–100599: Linux System & Auditd Detections
+  - 100600–100699: Multi-Source Correlation Detections
+  ==============================================================================
+-->
+
+<group name="socforge,">
+
+  <!-- ========================================================================= -->
+  <!-- 1. DVWA Web Target Detections (100100 - 100199)                           -->
+  <!-- ========================================================================= -->
+
+  <rule id="100100" level="0">
+    <decoded_as>web-access</decoded_as>
+    <url>/vulnerabilities/|/dvwa/</url>
+    <description>SOCForge: DVWA web traffic grouping.</description>
+    <group>socforge_dvwa,web,</group>
+  </rule>
+
+  <!-- DET-WEB-001: SQL Injection Attempt against DVWA -->
+  <rule id="100101" level="8">
+    <if_sid>100100</if_sid>
+    <url type="pcre2">(?i)(?:'|\bUNION\b|\bSELECT\b|\bOR\b\s+['\d]=['\d]|\bAND\b\s+['\d]=['\d]|--|#|\bINFORMATION_SCHEMA\b|\bCONCAT\b)</url>
+    <description>SOCForge (DET-WEB-001): SQL Injection attempt detected against DVWA.</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>socforge_web,sqli,pci_dss_6.5.1,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- DET-WEB-002: Command Injection Attempt against DVWA -->
+  <rule id="100102" level="9">
+    <if_sid>100100</if_sid>
+    <url type="pcre2">(?i)(?:;|\||&amp;&amp;|`)\s*(?:whoami|cat\s+/etc/passwd|id|nc\s+-|bash\s+-i|uname\s+-a|ping\s+-[c|n])</url>
+    <description>SOCForge (DET-WEB-002): Command Injection attempt detected against DVWA.</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>socforge_web,cmdi,attack,</group>
+  </rule>
+
+  <!-- DET-WEB-003: Path Traversal / Local File Inclusion (LFI) -->
+  <rule id="100103" level="7">
+    <if_sid>100100</if_sid>
+    <url type="pcre2">(?i)(?:\.\./|\.\.%2f|/etc/passwd|win\.ini|php://filter|php://input)</url>
+    <description>SOCForge (DET-WEB-003): Path traversal / LFI probe detected against DVWA.</description>
+    <mitre>
+      <id>T1083</id>
+    </mitre>
+    <group>socforge_web,lfi,traversal,</group>
+  </rule>
+
+  <!-- DET-WEB-004: Suspicious Web Shell / Executable File Upload -->
+  <rule id="100104" level="8">
+    <if_sid>100100</if_sid>
+    <url type="pcre2">(?i)(?:/vulnerabilities/upload/|/hackable/uploads/.*(?:\.php|\.phtml|\.php5|\.phar))</url>
+    <description>SOCForge (DET-WEB-004): Suspicious executable upload or execution path in DVWA uploads.</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>socforge_web,upload,webshell,</group>
+  </rule>
+
+
+  <!-- ========================================================================= -->
+  <!-- 2. OWASP Juice Shop Web Detections (100200 - 100299)                      -->
+  <!-- ========================================================================= -->
+
+  <rule id="100200" level="0">
+    <decoded_as>socforge-juice-shop</decoded_as>
+    <description>SOCForge: OWASP Juice Shop container log stream.</description>
+    <group>socforge_juice_shop,container,</group>
+  </rule>
+
+  <!-- DET-JS-001: Suspicious API Enumeration -->
+  <rule id="100201" level="6">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(?:/rest/user/authentication-details|/api/Users|/rest/admin)</match>
+    <description>SOCForge (DET-JS-001): Suspicious API user/configuration enumeration against Juice Shop.</description>
+    <mitre>
+      <id>T1087</id>
+      <id>T1595.002</id>
+    </mitre>
+    <group>socforge_juice_shop,enumeration,reconnaissance,</group>
+  </rule>
+
+  <!-- DET-JS-002: Authentication Abuse / Failed Logins -->
+  <rule id="100202" level="8" frequency="5" timeframe="60">
+    <if_matched_sid>100200</if_matched_sid>
+    <match type="pcre2">(?i)(?:/rest/user/login.*(?:401|Unauthorized|Invalid email or password))</match>
+    <description>SOCForge (DET-JS-002): Multiple failed login attempts detected on Juice Shop API.</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>socforge_juice_shop,authentication_failed,bruteforce,</group>
+  </rule>
+
+  <!-- DET-JS-003: SQL/NoSQL Injection Probing against REST API -->
+  <rule id="100203" level="8">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(?:\bUNION\b|\bSELECT\b|'\)\)--|'\s*OR\s*1=1|%27%20OR|\$ne|\$gt)</match>
+    <description>SOCForge (DET-JS-003): Injection probe detected in Juice Shop search or REST API.</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>socforge_juice_shop,sqli,injection,</group>
+  </rule>
+
+  <!-- DET-JS-004: Sensitive Directory & Configuration Probing -->
+  <rule id="100204" level="7">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?i)(?:/ftp/|/ftp/package\.json\.bak|/ftp/legal\.md|/rest/admin/application-configuration)</match>
+    <description>SOCForge (DET-JS-004): Probing of restricted sensitive directory or configuration endpoint.</description>
+    <mitre>
+      <id>T1083</id>
+    </mitre>
+    <group>socforge_juice_shop,sensitive_data,discovery,</group>
+  </rule>
+
+  <!-- DET-JS-005: Application Database Syntax Error Exposure -->
+  <rule id="100205" level="7">
+    <if_sid>100200</if_sid>
+    <match type="pcre2">(?:SequelizeDatabaseError|SQLITE_ERROR|SyntaxError|UnhandledPromiseRejectionWarning)</match>
+    <description>SOCForge (DET-JS-005): Application database error or unhandled exception exposed in Juice Shop.</description>
+    <mitre>
+      <id>T1592.002</id>
+    </mitre>
+    <group>socforge_juice_shop,error,stacktrace,</group>
+  </rule>
+
+
+  <!-- ========================================================================= -->
+  <!-- 3. Nginx Web Server & Threat Detections (100300 - 100399)                 -->
+  <!-- ========================================================================= -->
+
+  <!-- DET-NGX-001: Web Scanning / Directory Fuzzing (Threshold) -->
+  <rule id="100301" level="7" frequency="8" timeframe="30">
+    <if_matched_group>web</if_matched_group>
+    <id>404</id>
+    <same_srcip />
+    <description>SOCForge (DET-NGX-001): Web directory fuzzing / scanner behavior detected (multiple 404s).</description>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+    <group>socforge_nginx,scanning,reconnaissance,</group>
+  </rule>
+
+  <!-- DET-NGX-002: Unusual HTTP Method Probe -->
+  <rule id="100302" level="6">
+    <decoded_as>web-access</decoded_as>
+    <action type="pcre2">^(?:PUT|DELETE|DEBUG|TRACE|CONNECT|OPTIONS)$</action>
+    <description>SOCForge (DET-NGX-002): Unusual or privileged HTTP method received on web target.</description>
+    <mitre>
+      <id>T1071.001</id>
+    </mitre>
+    <group>socforge_nginx,methods,probing,</group>
+  </rule>
+
+  <!-- DET-NGX-003: Automated Security Scanner User-Agent -->
+  <rule id="100303" level="7">
+    <decoded_as>web-access</decoded_as>
+    <match type="pcre2">(?i)(?:sqlmap|nikto|gobuster|dirbuster|nmap|wpscan|hydra|masscan)</match>
+    <description>SOCForge (DET-NGX-003): Automated security scanning tool detected in User-Agent header.</description>
+    <mitre>
+      <id>T1595</id>
+    </mitre>
+    <group>socforge_nginx,scanner,reconnaissance,</group>
+  </rule>
+
+
+  <!-- ========================================================================= -->
+  <!-- 4. Windows Endpoint & Sysmon Lineage Detections (100400 - 100499)         -->
+  <!-- ========================================================================= -->
+
+  <rule id="100400" level="0">
+    <field name="win.system.providerName">Microsoft-Windows-Sysmon|Microsoft-Windows-Security-Auditing</field>
+    <description>SOCForge: Windows endpoint telemetry stream.</description>
+    <group>socforge_windows,windows,</group>
+  </rule>
+
+  <!-- DET-WIN-001: Suspicious PowerShell Download Cradle & Execution Flags -->
+  <rule id="100401" level="7">
+    <if_sid>100400</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe|pwsh\.exe</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:-ExecutionPolicy\s+Bypass|-WindowStyle\s+Hidden|DownloadString|Net\.WebClient|Invoke-Expression|\bIEX\b)</field>
+    <description>SOCForge (DET-WIN-001): Suspicious PowerShell execution flags or download cradle detected.</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+    <group>socforge_windows,powershell,execution,</group>
+  </rule>
+
+  <!-- DET-WIN-002: PowerShell Encoded Command Execution -->
+  <rule id="100402" level="8">
+    <if_sid>100400</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe|pwsh\.exe</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(?:-enc\b|-encodedcommand\b|-e\s+[A-Za-z0-9+/=]{8,})</field>
+    <description>SOCForge (DET-WIN-002): PowerShell encoded/obfuscated command execution detected.</description>
+    <mitre>
+      <id>T1027.013</id>
+    </mitre>
+    <group>socforge_windows,powershell,obfuscation,</group>
+  </rule>
+
+  <!-- DET-WIN-003: Suspicious Process Spawned by Office / Web Application -->
+  <rule id="100403" level="9">
+    <if_sid>100400</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(?:winword\.exe|excel\.exe|powerpnt\.exe|outlook\.exe|w3wp\.exe|nginx\.exe|httpd\.exe)</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(?:cmd\.exe|powershell\.exe|pwsh\.exe|cscript\.exe|wscript\.exe|mshta\.exe)</field>
+    <description>SOCForge (DET-WIN-003): Suspicious command interpreter spawned by Office/Web process.</description>
+    <mitre>
+      <id>T1059.003</id>
+      <id>T1059.001</id>
+    </mitre>
+    <group>socforge_windows,process_lineage,execution,</group>
+  </rule>
+
+  <!-- DET-WIN-004: Host & Network Discovery Reconnaissance Activity -->
+  <rule id="100404" level="6">
+    <if_sid>100400</if_sid>
+    <field name="win.system.eventID">^1$|^4688$</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)(?:whoami\.exe|systeminfo\.exe|ipconfig\.exe|net\.exe|nltest\.exe|tasklist\.exe)</field>
+    <description>SOCForge (DET-WIN-004): Discovery and reconnaissance binary execution on Windows endpoint.</description>
+    <mitre>
+      <id>T1082</id>
+      <id>T1016</id>
+      <id>T1087.001</id>
+    </mitre>
+    <group>socforge_windows,discovery,reconnaissance,</group>
+  </rule>
+
+  <!-- DET-WIN-005: Suspicious Process Access to LSASS Memory (Credential Dumping) -->
+  <rule id="100405" level="10">
+    <if_sid>100400</if_sid>
+    <field name="win.system.eventID">^10$</field>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)lsass\.exe$</field>
+    <field name="win.eventdata.grantedAccess" type="pcre2">(?i)(?:0x1010|0x1F0FFF|0x1410|0x1438)</field>
+    <description>SOCForge (DET-WIN-005): Potential credential dumping / unauthorized process access to LSASS memory.</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+    <group>socforge_windows,credential_access,lsass,</group>
+  </rule>
+
+  <!-- DET-WIN-006: Scheduled Task Creation via Command Line -->
+  <rule id="100406" level="7">
+    <if_sid>100400</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)schtasks\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)/create\b</field>
+    <description>SOCForge (DET-WIN-006): Scheduled task created via command-line interface.</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+    <group>socforge_windows,persistence,scheduled_task,</group>
+  </rule>
+
+
+  <!-- ========================================================================= -->
+  <!-- 5. Linux System & Auditd Detections (100500 - 100599)                     -->
+  <!-- ========================================================================= -->
+
+  <!-- DET-LNX-001: Suspicious Command Execution by Web Service Account -->
+  <rule id="100501" level="7">
+    <decoded_as>auditd</decoded_as>
+    <field name="audit.euid">33|www-data</field>
+    <field name="audit.exe" type="pcre2">^/(?:usr/)?bin/(?:whoami|uname|id|nc|bash|sh|curl|wget)</field>
+    <description>SOCForge (DET-LNX-001): Discovery or shell utility executed by web service account (www-data).</description>
+    <mitre>
+      <id>T1082</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>socforge_linux,auditd,privilege_anomaly,</group>
+  </rule>
+
+  <!-- DET-LNX-002: Sudo Privilege Escalation Failure -->
+  <rule id="100502" level="8">
+    <decoded_as>syslog</decoded_as>
+    <match type="pcre2">(?i)sudo:\s+.*(?:NOT in sudoers|incorrect password attempts|authentication failure)</match>
+    <description>SOCForge (DET-LNX-002): Sudo privilege escalation failure or unauthorized sudo attempt.</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>socforge_linux,auth,privilege_escalation,</group>
+  </rule>
+
+
+  <!-- ========================================================================= -->
+  <!-- 6. Multi-Source Correlation Rules (100600 - 100699)                       -->
+  <!-- ========================================================================= -->
+
+  <!-- DET-COR-001: Web Command Injection Followed by System Shell Execution -->
+  <rule id="100601" level="11" timeframe="30">
+    <if_matched_sid>100102</if_matched_sid>
+    <if_sid>100501</if_sid>
+    <same_location />
+    <description>SOCForge (DET-COR-001): High-confidence web exploit followed by immediate system command execution.</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1059.004</id>
+    </mitre>
+    <group>socforge_correlation,high_confidence,rce,</group>
+  </rule>
+
+  <!-- DET-COR-002: Web Shell Upload Followed by Web Root File Creation -->
+  <rule id="100602" level="10" timeframe="30">
+    <if_matched_sid>100104</if_matched_sid>
+    <if_group>syscheck</if_group>
+    <description>SOCForge (DET-COR-002): Web file upload request followed by immediate web root filesystem modification.</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>socforge_correlation,webshell,fim,</group>
+  </rule>
+
+  <!-- DET-COR-003: Multiple Authentication Failures Followed by Success -->
+  <rule id="100603" level="9" timeframe="120">
+    <if_matched_sid>100202</if_matched_sid>
+    <match type="pcre2">(?i)(?:/rest/user/login.*(?:200|token|success))</match>
+    <description>SOCForge (DET-COR-003): Multiple failed login attempts followed by successful authentication (potential password spray).</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>socforge_correlation,bruteforce,auth_compromise,</group>
+  </rule>
+
+</group>

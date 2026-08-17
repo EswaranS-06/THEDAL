@@ -1,11 +1,11 @@
 # ==============================================================================
-# SOCForge — Makefile (Phases 1–12)
+# SOCForge — Makefile (Phases 1–13)
 # ==============================================================================
 
 .DEFAULT_GOAL := help
 SHELL := /usr/bin/env bash
 
-.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check wazuh-index-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check atomic-deploy atomic-check atomic-test web-attack-deploy web-attack-check web-test
+.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check wazuh-index-check detection-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check atomic-deploy atomic-check atomic-test web-attack-deploy web-attack-check web-test
 
 help: ## Show this help message
 	@echo "================================================================="
@@ -30,6 +30,7 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 	@bash -n scripts/wazuh-tunnel.sh
 	@bash -n scripts/wazuh-health-check.sh
 	@bash -n scripts/wazuh-index-health-check.sh
+	@bash -n scripts/detection-health-check.sh
 	@bash -n scripts/windows-agent-health-check.sh
 	@bash -n scripts/linux-web-health-check.sh
 	@bash -n scripts/juice-shop-health-check.sh
@@ -95,6 +96,9 @@ wazuh-check: ## Check health and service status of Wazuh SIEM
 
 wazuh-index-check: ## Check telemetry routing, OpenSearch index templates, and ISM policies
 	@./scripts/wazuh-index-health-check.sh
+
+detection-check: ## Check custom decoders, detection rules, and positive/negative test suites
+	@./scripts/detection-health-check.sh
 
 windows-agent-deploy: ## Deploy Windows baseline, Sysmon, and Wazuh Agent
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/windows-agent.yml

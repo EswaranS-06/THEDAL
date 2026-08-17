@@ -1,0 +1,22 @@
+---
+# ==============================================================================
+# Tasks: SOCForge Custom Wazuh Decoders & Detection Rules (Phase 13)
+# ==============================================================================
+
+- name: Deploy SOCForge custom decoders configuration
+  ansible.builtin.template:
+    src: socforge_decoders.xml.j2
+    dest: /var/ossec/etc/decoders/socforge_decoders.xml
+    owner: root
+    group: wazuh
+    mode: "0640"
+  notify: Restart wazuh-manager
+
+- name: Deploy SOCForge custom detection rules configuration
+  ansible.builtin.template:
+    src: socforge_rules.xml.j2
+    dest: /var/ossec/etc/rules/socforge_rules.xml
+    owner: root
+    group: wazuh
+    mode: "0640"
+  notify: Restart wazuh-manager

@@ -1,0 +1,1 @@
+10.10.20.50 - - [17/Aug/2026:14:35:10 +0000] "GET /vulnerabilities/fi/?page=../../../../etc/passwd HTTP/1.1" 200 6120 "http://10.10.30.10:8000/vulnerabilities/fi/" "Mozilla/5.0 (X11; Linux x86_64)"

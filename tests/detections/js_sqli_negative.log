@@ -1,0 +1,1 @@
+{"log":"GET /rest/products/search?q=banana HTTP/1.1 200 OK\n","stream":"stdout","time":"2026-08-17T14:42:00.123456789Z"}

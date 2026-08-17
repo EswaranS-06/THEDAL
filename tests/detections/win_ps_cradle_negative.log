@@ -1,0 +1,1 @@
+{"win":{"system":{"providerName":"Microsoft-Windows-Sysmon","eventID":"1","computer":"SOCForge-windows.socforge.local"},"eventdata":{"image":"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe","commandLine":"powershell.exe -File C:\\Scripts\\maintenance.ps1","parentImage":"C:\\Windows\\System32\\services.exe","user":"NT AUTHORITY\\SYSTEM"}}}

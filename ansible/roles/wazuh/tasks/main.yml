@@ -4,7 +4,7 @@
 # ==============================================================================
 # Deploys the complete single-node Wazuh SIEM stack in sequence:
 # Prerequisites -> Repository -> Certificates -> Indexer -> Manager ->
-# Dashboard -> Telemetry Templates & ISM -> Saved Dashboards -> Validation
+# Dashboard -> Telemetry Templates & ISM -> Saved Dashboards -> Detection Rules -> Validation
 # ==============================================================================
 
 - name: 1. Validate host prerequisites and system sizing
@@ -31,5 +31,8 @@
 - name: 8. Deploy SOCForge investigation dashboards and index patterns
   ansible.builtin.include_tasks: dashboards.yml
 
-- name: 9. Validate Wazuh services, APIs, and health endpoints
+- name: 9. Deploy SOCForge custom decoders and detection rules
+  ansible.builtin.include_tasks: detection-rules.yml
+
+- name: 10. Validate Wazuh services, APIs, and health endpoints
   ansible.builtin.include_tasks: validation.yml

@@ -1,0 +1,1 @@
+type=EXECVE msg=audit(1723905000.123:456): argc=1 a0="systemctl" euid=0 exe="/usr/bin/systemctl" auid=1000 ses=1 comm="systemctl"
