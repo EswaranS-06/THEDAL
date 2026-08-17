@@ -1,10 +1,10 @@
 # SOCForge — Telemetry, Logging & Index Architecture
 
-> **Phase 9 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), and **OWASP Juice Shop Container Telemetry (Docker :3000)** are operational and instrumented for security event collection.
+> **Phase 9.5 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), and OWASP Juice Shop Container (Docker :3000) are operational, reconciled, and instrumented with standardized telemetry metadata.
 
 ---
 
-## 1. Multi-Node Telemetry Architecture
+## 1. Multi-Node Telemetry Flow
 
 ```text
 +------------------------------------+      +------------------------------------+
@@ -42,44 +42,29 @@
 
 ---
 
-## 2. Docker & Container Telemetry Matrix (Phase 9)
+## 2. Canonical Telemetry Source Taxonomy
 
-| Telemetry Source | Format | Monitored Location | SOC Detection & Investigation Value |
-| :--- | :--- | :--- | :--- |
-| **Juice Shop Container Log** | `json` | `/var/lib/docker/containers/*/*-json.log` | Captures Node.js HTTP transactions, search queries (`/rest/products/search`), admin configuration access, uncaught exceptions, and container stdout/stderr. |
-| **Nginx Access Log** | `apache` (Combined) | `/var/log/nginx/access.log` | Records client IP, HTTP request method, URI query parameters, status codes, user-agent for DVWA (:8000). |
-| **Nginx Error Log** | `apache` (Standard) | `/var/log/nginx/error.log` | Records 4xx/5xx web server errors, fastcgi exceptions, and backend timeouts. |
-| **Linux Auditd** | `audit` (Kernel) | `/var/log/audit/audit.log` | Kernel syscall tracking for web shell uploads, config modifications, and binary executions. |
-| **Linux Auth Log** | `syslog` | `/var/log/auth.log` | Captures SSH authentication attempts, sudo invocations, and PAM events. |
-| **Wazuh FIM (Syscheck)**| Native Wazuh | `/var/www/dvwa`, `/etc/nginx/`, `/etc/php/`, `/etc/systemd/system/` | Real-time file integrity monitoring detecting unauthorized modifications and persistence. |
+The following canonical taxonomy keys standardize telemetry collection across all agents and prepare the architecture for downstream logical index routing in Phase 10:
 
----
-
-## 3. Windows Endpoint Telemetry Matrix (Phase 7)
-
-| Telemetry Source | Event ID | Event Name | Detection & Investigation Purpose |
-| :--- | :--- | :--- | :--- |
-| **Windows Security** | `4688` | Process Creation | Logs process execution with full command line (`ProcessCreationIncludeCmdLine_Enabled`) |
-| **Windows Security** | `4624` | Successful Logon | Tracks interactive, network, and service logons |
-| **Windows Security** | `4625` | Failed Logon | Detects brute force, password spraying, and invalid credential attempts |
-| **Windows Security** | `4720` | User Account Created | Detects unauthorized backdoor account creation |
-| **Windows Security** | `4726` | User Account Deleted | Detects attacker cleanup or anti-forensic account deletion |
-| **PowerShell** | `4104` | Script Block Logging | Full content of executed PowerShell blocks (de-obfuscated at runtime) |
-| **PowerShell** | `4103` | Module Logging | Pipeline execution details and module invocations |
-| **Microsoft Sysmon** | `1` | Process Create | Process launch with parent process lineage, user SID, and cryptographic hashes |
-| **Microsoft Sysmon** | `3` | Network Connect | Outbound network connections from command shells, scripts, and binaries |
-| **Microsoft Sysmon** | `7` | Image Loaded | Detection of sensitive DLL loading (e.g. `samlib.dll`, `vaultcli.dll`) |
-| **Microsoft Sysmon** | `10` | Process Access | Detection of credential dumping attempts targeting `lsass.exe` |
-| **Microsoft Sysmon** | `11` | File Create | Tracking dropped scripts in `\Temp`, `\Downloads`, `\Public` |
-| **Microsoft Sysmon** | `12, 13, 14` | Registry Events | Tracking persistence in `CurrentVersion\Run`, Services, and Defender tampering |
-| **Microsoft Sysmon** | `22` | DNS Query | Domain resolution events for C2 beaconing and data exfiltration detection |
+| Taxonomy Source Key | Originating Host | Collection Mechanism | Wazuh Agent Source / Path | Log Format | SOC Detection & Telemetry Purpose |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`windows_security`** | `SOCForge-windows` | Windows Event Log | `Security` channel | `eventchannel` | Process creation (Event 4688 with command line), authentication success/failure (4624/4625), user account management (4720/4726). |
+| **`sysmon`** | `SOCForge-windows` | Sysmon Service | `Microsoft-Windows-Sysmon/Operational` | `eventchannel` | High-fidelity process lineage (1), network connections (3), DLL injection (7), LSASS access (10), file creation (11), registry (12-14), DNS (22). |
+| **`powershell`** | `SOCForge-windows` | PowerShell Engine | `Microsoft-Windows-PowerShell/Operational` | `eventchannel` | Script block execution (4104) and module execution (4103) with de-obfuscation at runtime. |
+| **`nginx_access`** | `SOCForge-web` | Nginx HTTP Server | `/var/log/nginx/access.log` | `apache` (Combined) | Client IP, HTTP method, URI parameters, status codes, user-agent for DVWA web application. |
+| **`nginx_error`** | `SOCForge-web` | Nginx HTTP Server | `/var/log/nginx/error.log` | `apache` (Standard) | Web server errors, backend FastCGI exceptions, client timeouts. |
+| **`dvwa`** | `SOCForge-web` | PHP-FPM / App | `/var/www/dvwa` & FastCGI | `syslog` / file | PHP application runtime exceptions, SQL injection attempts, LFI/RFI probes. |
+| **`auditd`** | `SOCForge-web` | Linux Kernel Audit | `/var/log/audit/audit.log` | `audit` | File integrity modifications on web roots, server configuration tampering, and execution of reconnaissance/staging binaries (`whoami`, `curl`, `nc`, `sudo`). |
+| **`linux_auth`** | `SOCForge-web` | Linux PAM / sshd | `/var/log/auth.log` | `syslog` | SSH authentication attempts, sudo privilege escalation, PAM session tracking. |
+| **`juice_shop`** | `SOCForge-web` | Docker Container | `/var/lib/docker/containers/*/*-json.log` | `json` | Node.js REST API traffic, search queries (`/rest/products/search`), admin config access, container stdout/stderr. |
+| **`atomic`** | `SOCForge-attack` | Atomic Red Team | Simulation Execution Logs | `json` / `syslog` | Ground-truth simulation execution telemetry for automated alert correlation and detection engineering (Phase 10). |
 
 ---
 
-## 4. Phased Index Separation Roadmap
+## 3. Phased Index Separation Roadmap
 
-* **Phase 6–9 (Current)**:
+* **Phase 6–9.5 (Current Baseline)**:
   * Ingests all telemetry into standard Wazuh indices (`wazuh-alerts-4.x-*`).
-  * Full event metadata, container attributes, channel identifiers, and original fields are strictly preserved.
-* **Phase 10**:
+  * All events are tagged with canonical `<label key="socforge.source">` and metadata attributes, ensuring zero data loss and single-stream non-duplication.
+* **Phase 10 (Adversary Emulation & Index Routing)**:
   * Formal index routing rules separating `soc-windows-*`, `soc-sysmon-*`, `soc-nginx-*`, `soc-juiceshop-*`, and `soc-atomic-*`.

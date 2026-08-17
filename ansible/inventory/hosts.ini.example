@@ -8,32 +8,24 @@
 [bastion]
 bastion ansible_host=203.0.113.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
 
-[wazuh]
+[internal_linux]
 wazuh ansible_host=10.10.10.100 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-
-[web]
 web ansible_host=10.10.30.50 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-
-[attack]
 attack ansible_host=10.10.20.25 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
+
+[internal_linux:vars]
+ansible_ssh_common_args='-o ProxyJump=ubuntu@203.0.113.10 -o StrictHostKeyChecking=no'
 
 [windows]
 windows ansible_host=10.10.10.200 ansible_user=Administrator ansible_connection=winrm ansible_winrm_server_cert_validation=ignore
 
 [linux:children]
 bastion
-wazuh
-web
-attack
+internal_linux
 
 [soc_stack:children]
-wazuh
-web
+internal_linux
 windows
-attack
-
-[soc_stack:vars]
-ansible_ssh_common_args='-o ProxyJump=ubuntu@203.0.113.10 -o StrictHostKeyChecking=no'
 
 [all:vars]
 bastion_public_ip=203.0.113.10

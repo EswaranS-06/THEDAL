@@ -34,6 +34,8 @@
       <localfile>
         <location>/var/lib/docker/containers/*/*-json.log</location>
         <log_format>json</log_format>
+        <label key="socforge.source">juice_shop</label>
+        <label key="socforge.app">owasp-juice-shop</label>
       </localfile>
   when: wazuh_conf_stat.stat.exists
   notify: Restart wazuh-agent

@@ -77,7 +77,7 @@ The Linux Web Target (`SOCForge-web`) provides an isolated, deliberately vulnera
 | :--- | :--- | :--- |
 | **Instance Tag** | `SOCForge-web` | Isolated Linux web target node |
 | **Operating System** | Ubuntu 22.04 LTS (`x86_64`) | Enterprise LTS Linux distribution |
-| **Instance Sizing** | `t3.micro` (2 vCPU, 1 GiB RAM) / `t3.small` (2 GiB) | Lean lab footprint adequate for Nginx, PHP-FPM, MariaDB, and Wazuh Agent |
+| **Instance Sizing** | `t3.small` (2 vCPU, 2 GiB RAM) | Deterministic lab footprint adequate for Nginx, PHP-FPM, MariaDB, Docker, and Wazuh Agent |
 | **Root Volume** | 20 GiB gp3 | Adequate for web files, database records, and log telemetry |
 | **IAM Profile** | `SOCForge-ec2-instance-profile` | SSM connectivity and CloudWatch logging |
 
@@ -189,5 +189,5 @@ Configured via `/etc/audit/rules.d/99-socforge-web.rules`:
 
 ## 11. Known Limitations & Sizing Notes
 
-* **Resource Footprint**: `SOCForge-web` is declared as `t3.micro` (1 GiB RAM). If memory pressure occurs under simultaneous Nginx, PHP-FPM, MariaDB, and Wazuh Agent operation, upgrading to `web_instance_type = "t3.small"` (2 GiB RAM) in `terraform.tfvars` is recommended.
+* **Resource Footprint**: `SOCForge-web` is sized at `t3.small` (2 vCPU, 2 GiB RAM, 20 GiB gp3) to comfortably run Nginx, PHP-FPM, MariaDB, Docker (OWASP Juice Shop), auditd, and Wazuh Agent concurrently without memory pressure.
 * **Security Isolation**: DVWA is deliberately vulnerable and must never be exposed to public CIDRs (`0.0.0.0/0`). Ingress is strictly confined to `SOCForge-attack-sg` and `SOCForge-management-sg`.

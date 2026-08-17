@@ -169,16 +169,7 @@ resource "aws_security_group_rule" "soc_ingress_wazuh_dashboard_mgmt" {
   description              = "Allow Wazuh Dashboard web access from management bastion"
 }
 
-# Ingress: Wazuh Dashboard Web UI (HTTPS 443) from Admin CIDR
-resource "aws_security_group_rule" "soc_ingress_wazuh_dashboard_admin" {
-  type              = "ingress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = [var.admin_cidr]
-  security_group_id = aws_security_group.soc.id
-  description       = "Allow Wazuh Dashboard web access from authorized admin CIDR"
-}
+
 
 # Egress: All outbound for updates, package repos, and internal telemetry
 resource "aws_security_group_rule" "soc_egress_all" {

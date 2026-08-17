@@ -50,7 +50,9 @@ aws_access_key*
 ansible-vault-pass*
 *.vault
 inventory/hosts.ini
+ansible/inventory/hosts.ini
 inventory/secrets.yml
+ansible/inventory/secrets.yml
 
 # ------------------------------------------------------------------------------
 # Python & Virtual Environments

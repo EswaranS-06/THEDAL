@@ -1,6 +1,6 @@
 # SOCForge — Architectural Blueprint
 
-> **Notice**: This document details the architectural blueprint for SOCForge. It clearly delineates components **implemented in Phases 1–7** versus components **planned for future phases**.
+> **Notice**: This document details the architectural blueprint for SOCForge across Phases 1–9.5.
 
 ---
 
@@ -56,9 +56,33 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
 
 ---
 
-## 2. Implementation Status by Phase
+## 2. Deterministic Compute Sizing Matrix
 
-### ✅ IMPLEMENTED IN PHASES 1–9
+All EC2 instances are deterministically defined in `terraform/variables.tf`:
+
+| Instance Name | Variable | Type | vCPU | RAM | Storage | Primary Role & Services |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `SOCForge-bastion` | `bastion_instance_type` | `t3.micro` | 1 | 1 GiB | 20 GiB gp3 | SSH jumpbox, Forward Proxy (`tinyproxy :3128`), Operator gateway. |
+| `SOCForge-wazuh` | `wazuh_instance_type` | `t3.medium` | 2 | 4 GiB | 50 GiB gp3 | All-in-one Wazuh SIEM: Indexer (9200), Manager (1514/1515), Dashboard (443). |
+| `SOCForge-windows` | `windows_instance_type` | `t3.medium` | 2 | 4 GiB | 50 GiB gp3 | Windows Server 2022 endpoint: Sysmon, ScriptBlock logging, Wazuh Agent. |
+| `SOCForge-web` | `web_instance_type` | `t3.small` | 2 | 2 GiB | 20 GiB gp3 | Linux target: Nginx (:8000), DVWA (PHP/MariaDB), Docker Juice Shop (:3000), auditd, Wazuh Agent. |
+| `SOCForge-attack` | `attack_instance_type` | `t3.micro` | 1 | 1 GiB | 20 GiB gp3 | Adversary simulation host: Atomic Red Team harness (Phase 10). |
+
+### Wazuh SIEM Sizing: Lab Profile vs. Vendor Production Guidelines
+
+* **SOCForge Lab Profile (`t3.medium` - 2 vCPU, 4 GiB RAM, 50 GiB gp3)**:
+  * Tailored for cost-effective single-operator security training labs (1–5 monitored agents).
+  * OpenSearch JVM heap is explicitly configured for `-Xms1g -Xmx1g` to prevent memory contention on 4 GiB instances.
+  * Single-node all-in-one architecture running Manager, Indexer, Filebeat, and Dashboard concurrently.
+* **Official Wazuh Production Guidelines (`t3.xlarge` / `m5.xlarge` - 4–8 vCPU, 8–16 GiB RAM, 100+ GiB storage)**:
+  * Recommended by the vendor for enterprise multi-node deployments monitoring 25+ agents with high EPS (events per second) throughput and multi-gigabyte daily index ingestion.
+  * `t3.xlarge` is a production scaling option, not a hard prerequisite for lab environments.
+
+---
+
+## 3. Implementation Status by Phase
+
+### ✅ IMPLEMENTED IN PHASES 1–9.5
 * **Phase 1: Project Foundation**: Directory structure, standards (`.editorconfig`, `.gitignore`, `LICENSE`), developer CLI (`Makefile`), preflight checker (`scripts/preflight.sh`), and health check (`scripts/health-check.sh`).
 * **Phase 2: AWS Network Foundation**: Dedicated VPC (`10.10.0.0/16`), single-AZ dynamic discovery, four segregated subnets (Management, SOC, Attack, Web), Internet Gateway (`SOCForge-igw`), and public/private route tables.
 * **Phase 3: Security Groups, IAM & Access Control**:
@@ -89,22 +113,10 @@ SOCForge simulates an enterprise network inside an isolated Amazon Web Services 
   * **Docker Engine with Bastion Proxy**: Official Docker CE and Compose plugin configured with systemd HTTP proxy drop-in for internal image pulls.
   * **OWASP Juice Shop on Port 3000**: Pinned image `bkimminich/juice-shop:v17.1.1` running as an isolated unprivileged container with `unless-stopped` restart policy.
   * **Container Log Streaming & Rotation**: Capped JSON-file log rotation (`max-size: 50m`, `max-file: 3`) streamed into Wazuh Agent (`/var/lib/docker/containers/*/*-json.log`).
+* **Phase 9.5: Architecture Consistency & Telemetry Reconciliation**:
+  * Comprehensive repository audit, version synchronization (`v4.14.7`), canonical telemetry taxonomy tagging (`socforge.source`), deterministic compute sizing, security group tightening, and documentation reconciliation.
 
 ### ⏳ PLANNED FOR FUTURE PHASES (Phase 10+)
 * **Phase 10: Adversary Emulation & MITRE ATT&CK Detection Engineering**:
   * Atomic Red Team simulation harness on `SOCForge-attack` targeting Windows and Web nodes.
   * Custom Wazuh rules and detection alert mapping.
-
----
-
-## 3. Windows Endpoint Specifications
-
-| Property | Value | Notes |
-| :--- | :--- | :--- |
-| **Instance Tag** | `SOCForge-windows` | Dedicated Windows workstation target |
-| **Operating System** | Windows Server 2022 Full Base (`x86_64`) | Latest Amazon official AMI |
-| **Subnet & IP** | SOC Subnet (`10.10.10.0/24`), Private IP only | No public IP assigned |
-| **Instance Type** | `t3.medium` (2 vCPU, 4 GiB RAM) | Expandable to `t3.large` (8 GiB) if required |
-| **Root Volume** | 50 GiB gp3 | Sufficient for OS, Event Logs, and lab tooling |
-| **Security Group** | `SOCForge-windows-sg` | Management via WinRM/RDP; attack ingress restricted |
-| **Key Services** | `W32Time`, `Sysmon64`, `WazuhSvc` | Auto-start on boot |

@@ -35,13 +35,36 @@
     <skip_nfs>yes</skip_nfs>
   </syscheck>
 
-  <!-- Windows Event Channels (High-Fidelity Telemetry) -->
-  {% for channel in wazuh_windows_event_channels %}
+  <!-- Windows Event Channels (High-Fidelity Telemetry with Taxonomy Labels) -->
   <localfile>
-    <location>{{ channel }}</location>
+    <location>Security</location>
     <log_format>eventchannel</log_format>
+    <label key="socforge.source">windows_security</label>
   </localfile>
-  {% endfor %}
+
+  <localfile>
+    <location>Microsoft-Windows-Sysmon/Operational</location>
+    <log_format>eventchannel</log_format>
+    <label key="socforge.source">sysmon</label>
+  </localfile>
+
+  <localfile>
+    <location>Microsoft-Windows-PowerShell/Operational</location>
+    <log_format>eventchannel</log_format>
+    <label key="socforge.source">powershell</label>
+  </localfile>
+
+  <localfile>
+    <location>System</location>
+    <log_format>eventchannel</log_format>
+    <label key="socforge.source">windows_system</label>
+  </localfile>
+
+  <localfile>
+    <location>Application</location>
+    <log_format>eventchannel</log_format>
+    <label key="socforge.source">windows_application</label>
+  </localfile>
 
   <!-- Active Response Verification -->
   <active-response>

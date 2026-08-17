@@ -100,8 +100,8 @@ variable "windows_instance_type" {
 
 variable "web_instance_type" {
   type        = string
-  description = "EC2 instance type for the Linux Web server (Nginx + DVWA + Juice Shop)"
-  default     = "t3.micro"
+  description = "EC2 instance type for the Linux Web server (Nginx + DVWA + Juice Shop Docker)"
+  default     = "t3.small"
 }
 
 variable "attack_instance_type" {

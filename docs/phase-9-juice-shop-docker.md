@@ -87,6 +87,8 @@ Container logs are ingested directly into the existing Wazuh Agent on `SOCForge-
 <localfile>
   <location>/var/lib/docker/containers/*/*-json.log</location>
   <log_format>json</log_format>
+  <label key="socforge.source">juice_shop</label>
+  <label key="socforge.app">owasp-juice-shop</label>
 </localfile>
 ```
 
@@ -95,6 +97,8 @@ Container logs are ingested directly into the existing Wazuh Agent on `SOCForge-
 * **`stream`**: stdout vs stderr descriptor.
 * **`time`**: High-precision UTC timestamp from Docker runtime.
 * **`container_id`**: Extracted from parent folder directory path.
+* **`socforge.source`**: `juice_shop` canonical taxonomy identifier.
+* **`socforge.app`**: `owasp-juice-shop` application identifier.
 
 ---
 
@@ -112,7 +116,7 @@ Container logs are ingested directly into the existing Wazuh Agent on `SOCForge-
 
 ### 🟢 Configuration & Automation Validation (Passed)
 * `terraform validate`: **Success**.
-* `terraform plan`: **Success** (59 resources to add).
+* `terraform plan`: **Success** (58 resources categorized and verified).
 * `ansible-playbook ansible/playbooks/juice-shop.yml --syntax-check`: **Success**.
 * `scripts/juice-shop-health-check.sh`: **Success**.
 

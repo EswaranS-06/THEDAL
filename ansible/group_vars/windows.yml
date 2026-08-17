@@ -1,6 +1,16 @@
 ---
 # ==============================================================================
-# SOCForge — Windows Group Variables
+# SOCForge — Windows Group Variables (Phase 7 & Phase 9.5 Reconciled)
+# ==============================================================================
+# Windows endpoint is isolated on the private SOC Subnet (10.10.10.0/24).
+# WinRM (HTTP 5985 / HTTPS 5986) is NOT exposed publicly.
+#
+# Connectivity Methods from Control Machine:
+# 1. SSH Port Forwarding via Bastion (Recommended for local execution):
+#      ssh -f -N -L 5985:10.10.10.x:5985 -i ~/.ssh/socforge_key ubuntu@<BASTION_PUBLIC_IP>
+#      (Then target ansible_host=localhost ansible_port=5985)
+# 2. Native Bastion Control Node Execution:
+#      Run playbooks directly from the Bastion jumpbox inside the VPC.
 # ==============================================================================
 
 ansible_user: Administrator

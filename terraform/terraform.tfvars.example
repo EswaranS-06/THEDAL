@@ -54,7 +54,7 @@ ssh_public_key = ""
 bastion_instance_type = "t3.micro"
 wazuh_instance_type   = "t3.medium"
 windows_instance_type = "t3.medium"
-web_instance_type     = "t3.micro"
+web_instance_type     = "t3.small"
 attack_instance_type  = "t3.micro"
 
 # Wazuh storage (GB)
