@@ -1,0 +1,31 @@
+---
+# ==============================================================================
+# SOCForge — Atomic Red Team Attack Host Deployment Playbook (Phase 10)
+# ==============================================================================
+# Deploys PowerShell Core, Atomic Red Team framework, curated test catalog,
+# safety allowlists, and execution wrapper on SOCForge-attack.
+#
+# NOTE: This playbook ONLY provisions the simulation environment.
+# Attacks are NOT executed automatically during provisioning.
+# ==============================================================================
+
+- name: Deploy Atomic Red Team Simulation Framework on SOCForge-attack
+  hosts: attack
+  become: yes
+  gather_facts: yes
+  vars:
+    # Strict safety interlock: Automated attack execution is disabled during provisioning
+    atomic_execute: false
+
+  pre_tasks:
+    - name: Safety check — Ensure automated attack execution is disabled
+      ansible.builtin.assert:
+        that:
+          - not atomic_execute
+        fail_msg: "CRITICAL: atomic_execute must be false during provisioning playbook execution."
+        success_msg: "Safety check passed: Simulation execution is disabled for provisioning."
+
+  roles:
+    - common
+    - linux-base
+    - atomic-red-team

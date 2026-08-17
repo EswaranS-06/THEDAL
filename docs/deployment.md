@@ -1,6 +1,6 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), and **OWASP Juice Shop Docker Deployment (Phases 1–9)** are implemented. Atomic Red Team adversary simulation follows in Phase 10.
+> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), OWASP Juice Shop, and **Atomic Red Team Attack Simulation Host (Phases 1–10)** are implemented. Controlled web security testing follows in Phase 11.
 
 ---
 
@@ -69,6 +69,16 @@
        | - Container JSON Log Rotation (max: 50m)      |
        | - Wazuh Agent Container Ingestion             |
        +-----------------------------------------------+
+                        |
+                        | (10. ansible-playbook playbooks/atomic-red-team.yml)
+                        v
+       +-----------------------------------------------+
+       | Atomic Red Team Attack Simulation Live        |
+       | - PowerShell Core (pwsh) + Invoke-Atomic      |
+       | - Curated Low-Risk ATT&CK Test Catalog        |
+       | - Target Allowlisting & Safety Interlocks     |
+       | - Simulation Logging (/var/log/socforge/)     |
+       +-----------------------------------------------+
 ```
 
 ---
@@ -94,6 +104,25 @@ ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/web-target.yml
 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/juice-shop.yml
 # Or: make juice-shop-deploy
 ./scripts/juice-shop-health-check.sh
+```
+
+### Atomic Red Team Attack Host Deployment (Phase 10)
+```bash
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/atomic-red-team.yml
+# Or: make atomic-deploy
+./scripts/atomic-health-check.sh
+```
+
+### Controlled Atomic Simulation Execution (Phase 10)
+```bash
+# List available curated tests
+./scripts/run-atomic-test.sh --list
+
+# Perform safe dry-run plan
+./scripts/run-atomic-test.sh --technique T1082 --dry-run
+
+# Authorize live simulation execution against Windows target
+./scripts/run-atomic-test.sh --technique T1082 --confirm
 ```
 
 ---

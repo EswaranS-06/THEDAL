@@ -82,7 +82,7 @@ All EC2 instances are deterministically defined in `terraform/variables.tf`:
 
 ## 3. Implementation Status by Phase
 
-### ✅ IMPLEMENTED IN PHASES 1–9.5
+### ✅ IMPLEMENTED IN PHASES 1–10
 * **Phase 1: Project Foundation**: Directory structure, standards (`.editorconfig`, `.gitignore`, `LICENSE`), developer CLI (`Makefile`), preflight checker (`scripts/preflight.sh`), and health check (`scripts/health-check.sh`).
 * **Phase 2: AWS Network Foundation**: Dedicated VPC (`10.10.0.0/16`), single-AZ dynamic discovery, four segregated subnets (Management, SOC, Attack, Web), Internet Gateway (`SOCForge-igw`), and public/private route tables.
 * **Phase 3: Security Groups, IAM & Access Control**:
@@ -115,8 +115,12 @@ All EC2 instances are deterministically defined in `terraform/variables.tf`:
   * **Container Log Streaming & Rotation**: Capped JSON-file log rotation (`max-size: 50m`, `max-file: 3`) streamed into Wazuh Agent (`/var/lib/docker/containers/*/*-json.log`).
 * **Phase 9.5: Architecture Consistency & Telemetry Reconciliation**:
   * Comprehensive repository audit, version synchronization (`v4.14.7`), canonical telemetry taxonomy tagging (`socforge.source`), deterministic compute sizing, security group tightening, and documentation reconciliation.
+* **Phase 10: Atomic Red Team Adversary Simulation Host**:
+  * **PowerShell Core & Execution Harness**: Deployed `pwsh` and official `Invoke-AtomicRedTeam` on `SOCForge-attack` (`10.10.20.x`).
+  * **Curated Test Catalog**: 5 low-risk Windows ATT&CK techniques (`T1059.001`, `T1082`, `T1087.001`, `T1016`, `T1053.005`).
+  * **Safety Controls & Wrapper**: Simulation execution disabled by default (`atomic_execute: false`), strict target allowlist (`SOCForge-windows`), execution wrapper (`run-atomic-test`), and audit logging (`/var/log/socforge/atomic/`).
 
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 10+)
-* **Phase 10: Adversary Emulation & MITRE ATT&CK Detection Engineering**:
-  * Atomic Red Team simulation harness on `SOCForge-attack` targeting Windows and Web nodes.
-  * Custom Wazuh rules and detection alert mapping.
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 11+)
+* **Phase 11: Controlled Web Security Testing**:
+  * Dedicated web application attack scenarios against DVWA (:8000) and OWASP Juice Shop (:3000).
+  * Custom Wazuh web detection rules and alert correlation.

@@ -1,0 +1,43 @@
+---
+# ==============================================================================
+# Tasks: Prerequisites & System Directories for Atomic Red Team
+# ==============================================================================
+
+- name: Ensure required base packages are installed
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - jq
+      - gnupg
+      - apt-transport-https
+      - ca-certificates
+      - software-properties-common
+      - python3-yaml
+    state: present
+    update_cache: yes
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
+- name: Create Atomic Red Team directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ atomic_red_team_path }}"
+    - "{{ invoke_atomic_path }}"
+    - "{{ powershell_modules_path }}"
+    - "{{ atomic_log_dir }}"
+
+- name: Ensure simulation log directory has appropriate permissions
+  ansible.builtin.file:
+    path: "{{ atomic_log_dir }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0775"

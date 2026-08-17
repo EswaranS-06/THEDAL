@@ -1,0 +1,38 @@
+---
+# ==============================================================================
+# Tasks: Deploy Test Catalog, Safety Controls & Execution Wrapper
+# ==============================================================================
+
+- name: Deploy curated SOCForge MITRE ATT&CK test catalog
+  ansible.builtin.template:
+    src: socforge-tests.yml.j2
+    dest: "{{ atomic_catalog_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Deploy controlled Atomic Red Team execution wrapper script
+  ansible.builtin.template:
+    src: run-atomic-test.sh.j2
+    dest: "{{ atomic_wrapper_bin }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy operator environment profile configuration
+  ansible.builtin.template:
+    src: atomic-env.sh.j2
+    dest: "/etc/profile.d/socforge-atomic.sh"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Initialize simulation audit log file if absent
+  ansible.builtin.file:
+    path: "{{ atomic_log_file }}"
+    state: touch
+    owner: ubuntu
+    group: ubuntu
+    mode: "0664"
+    modification_time: preserve
+    access_time: preserve

@@ -1,0 +1,8 @@
+---
+# ==============================================================================
+# SOCForge — Atomic Red Team Role Handlers
+# ==============================================================================
+
+- name: Reload environment
+  ansible.builtin.debug:
+    msg: "Atomic Red Team environment reloaded on SOCForge-attack"

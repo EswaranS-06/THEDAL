@@ -1,11 +1,11 @@
 # ==============================================================================
-# SOCForge — Makefile (Phases 1–9)
+# SOCForge — Makefile (Phases 1–10)
 # ==============================================================================
 
 .DEFAULT_GOAL := help
 SHELL := /usr/bin/env bash
 
-.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check
+.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check atomic-deploy atomic-check atomic-test
 
 help: ## Show this help message
 	@echo "================================================================="
@@ -32,6 +32,8 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 	@bash -n scripts/windows-agent-health-check.sh
 	@bash -n scripts/linux-web-health-check.sh
 	@bash -n scripts/juice-shop-health-check.sh
+	@bash -n scripts/run-atomic-test.sh
+	@bash -n scripts/atomic-health-check.sh
 	@echo "Shell syntax verification: OK"
 	@echo "Validating Python scripts..."
 	@python3 -m py_compile scripts/generate-inventory.py
@@ -51,6 +53,7 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-agent.yml --syntax-check && \
 		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/web-target.yml --syntax-check && \
 		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/juice-shop.yml --syntax-check && \
+		ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/atomic-red-team.yml --syntax-check && \
 		echo "Ansible syntax verification: OK"; \
 	fi
 
@@ -74,6 +77,7 @@ ansible-syntax: ## Validate syntax of all Ansible playbooks
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/windows-agent.yml --syntax-check
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/web-target.yml --syntax-check
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/juice-shop.yml --syntax-check
+	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini.example ansible/playbooks/atomic-red-team.yml --syntax-check
 
 wazuh-deploy: ## Deploy the Wazuh SIEM platform via Ansible
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/wazuh.yml
@@ -101,3 +105,12 @@ juice-shop-deploy: ## Deploy OWASP Juice Shop Container on Port 3000
 
 juice-shop-check: ## Check OWASP Juice Shop container and port 3000 status
 	@./scripts/juice-shop-health-check.sh
+
+atomic-deploy: ## Deploy Atomic Red Team Simulation Framework on SOCForge-attack
+	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/atomic-red-team.yml
+
+atomic-check: ## Check health and catalog status of Atomic Red Team attack simulation host
+	@./scripts/atomic-health-check.sh
+
+atomic-test: ## Run controlled Atomic Red Team simulation test (Usage: make atomic-test ARGS="--list")
+	@./scripts/run-atomic-test.sh $(ARGS)

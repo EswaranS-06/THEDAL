@@ -1,0 +1,19 @@
+---
+# ==============================================================================
+# SOCForge — Atomic Red Team Master Task Sequence (Phase 10)
+# ==============================================================================
+
+- name: Include prerequisites tasks
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: Include PowerShell Core installation tasks
+  ansible.builtin.include_tasks: powershell.yml
+
+- name: Include Git repository cloning & pinning tasks
+  ansible.builtin.include_tasks: git.yml
+
+- name: Include Atomic Red Team configuration & safety wrapper tasks
+  ansible.builtin.include_tasks: atomic-red-team.yml
+
+- name: Include validation tasks
+  ansible.builtin.include_tasks: validation.yml

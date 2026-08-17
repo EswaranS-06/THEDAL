@@ -1,0 +1,40 @@
+---
+# ==============================================================================
+# Tasks: Official Microsoft PowerShell Core Installation on Ubuntu 22.04 LTS
+# ==============================================================================
+
+- name: Download Microsoft repository configuration package
+  ansible.builtin.get_url:
+    url: "{{ powershell_repo_url }}"
+    dest: "/tmp/packages-microsoft-prod.deb"
+    mode: "0644"
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
+- name: Install Microsoft repository configuration package
+  ansible.builtin.apt:
+    deb: "/tmp/packages-microsoft-prod.deb"
+    state: present
+
+- name: Clean up temporary Microsoft deb package
+  ansible.builtin.file:
+    path: "/tmp/packages-microsoft-prod.deb"
+    state: absent
+
+- name: Install PowerShell Core via APT
+  ansible.builtin.apt:
+    name: "{{ powershell_package_name }}"
+    state: present
+    update_cache: yes
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
+- name: Verify PowerShell Core installation
+  ansible.builtin.command: pwsh --version
+  register: pwsh_version_check
+  changed_when: false
+  failed_when: pwsh_version_check.rc != 0

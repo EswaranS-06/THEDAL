@@ -1,0 +1,33 @@
+---
+# ==============================================================================
+# Tasks: Clone and Pin Official Atomic Red Team Repositories
+# ==============================================================================
+
+- name: Clone Atomic Red Team test library repository
+  ansible.builtin.git:
+    repo: "{{ atomic_red_team_repo }}"
+    dest: "{{ atomic_red_team_path }}"
+    version: "{{ atomic_red_team_version }}"
+    force: yes
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
+- name: Clone Invoke-AtomicRedTeam execution framework repository
+  ansible.builtin.git:
+    repo: "{{ invoke_atomic_repo }}"
+    dest: "{{ invoke_atomic_path }}"
+    version: "{{ invoke_atomic_version }}"
+    force: yes
+  environment:
+    http_proxy: "{{ http_proxy }}"
+    https_proxy: "{{ https_proxy }}"
+    no_proxy: "{{ no_proxy }}"
+
+- name: Symlink Invoke-AtomicRedTeam into system-wide PowerShell Modules directory
+  ansible.builtin.file:
+    src: "{{ invoke_atomic_path }}/Invoke-AtomicRedTeam"
+    dest: "{{ powershell_modules_path }}/Invoke-AtomicRedTeam"
+    state: link
+    force: yes

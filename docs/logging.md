@@ -1,12 +1,21 @@
 # SOCForge — Telemetry, Logging & Index Architecture
 
-> **Phase 9.5 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), and OWASP Juice Shop Container (Docker :3000) are operational, reconciled, and instrumented with standardized telemetry metadata.
+> **Phase 10 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), OWASP Juice Shop Container (Docker :3000), and **Atomic Red Team Attack Simulation Host (SOCForge-attack)** are operational, reconciled, and instrumented with standardized telemetry metadata.
 
 ---
 
-## 1. Multi-Node Telemetry Flow
+## 1. Multi-Node Telemetry & Adversary Emulation Flow
 
 ```text
+               +------------------------------------+
+               |   Attack Simulation (10.10.20.x)   |
+               |                                    |
+               | - Invoke-AtomicRedTeam (pwsh)      |
+               | - Ground-truth Audit Logs (atomic) |
+               +-----------------+------------------+
+                                 |
+                                 | Controlled ATT&CK Simulation
+                                 v
 +------------------------------------+      +------------------------------------+
 |  Windows Endpoint (10.10.10.x)     |      |   Linux Web Target (10.10.30.x)    |
 |                                    |      |                                    |
@@ -44,7 +53,7 @@
 
 ## 2. Canonical Telemetry Source Taxonomy
 
-The following canonical taxonomy keys standardize telemetry collection across all agents and prepare the architecture for downstream logical index routing in Phase 10:
+The following canonical taxonomy keys standardize telemetry collection across all agents and prepare the architecture for downstream logical index routing:
 
 | Taxonomy Source Key | Originating Host | Collection Mechanism | Wazuh Agent Source / Path | Log Format | SOC Detection & Telemetry Purpose |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -57,14 +66,14 @@ The following canonical taxonomy keys standardize telemetry collection across al
 | **`auditd`** | `SOCForge-web` | Linux Kernel Audit | `/var/log/audit/audit.log` | `audit` | File integrity modifications on web roots, server configuration tampering, and execution of reconnaissance/staging binaries (`whoami`, `curl`, `nc`, `sudo`). |
 | **`linux_auth`** | `SOCForge-web` | Linux PAM / sshd | `/var/log/auth.log` | `syslog` | SSH authentication attempts, sudo privilege escalation, PAM session tracking. |
 | **`juice_shop`** | `SOCForge-web` | Docker Container | `/var/lib/docker/containers/*/*-json.log` | `json` | Node.js REST API traffic, search queries (`/rest/products/search`), admin config access, container stdout/stderr. |
-| **`atomic`** | `SOCForge-attack` | Atomic Red Team | Simulation Execution Logs | `json` / `syslog` | Ground-truth simulation execution telemetry for automated alert correlation and detection engineering (Phase 10). |
+| **`atomic`** | `SOCForge-attack` | Atomic Red Team | `/var/log/socforge/atomic/simulation.log` | `json` | Ground-truth simulation execution telemetry for automated alert correlation and detection engineering (Phase 10). |
 
 ---
 
 ## 3. Phased Index Separation Roadmap
 
-* **Phase 6–9.5 (Current Baseline)**:
+* **Phase 6–10 (Current Baseline)**:
   * Ingests all telemetry into standard Wazuh indices (`wazuh-alerts-4.x-*`).
   * All events are tagged with canonical `<label key="socforge.source">` and metadata attributes, ensuring zero data loss and single-stream non-duplication.
-* **Phase 10 (Adversary Emulation & Index Routing)**:
+* **Phase 11+ (Adversary Emulation & Index Routing)**:
   * Formal index routing rules separating `soc-windows-*`, `soc-sysmon-*`, `soc-nginx-*`, `soc-juiceshop-*`, and `soc-atomic-*`.

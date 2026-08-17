@@ -1,0 +1,153 @@
+# ==============================================================================
+# SOCForge — Curated MITRE ATT&CK Low-Risk Test Catalog (Phase 10)
+# ==============================================================================
+# Canonical Windows Endpoint Simulation Techniques
+# Target: {{ atomic_target_name }} ({{ atomic_target_host }})
+# ==============================================================================
+
+version: "1.0"
+target_environment: "{{ atomic_target_name }}"
+target_host: "{{ atomic_target_host }}"
+allowed_targets:
+{% for host in atomic_target_allowed_hosts %}
+  - "{{ host }}"
+{% endfor %}
+
+tests:
+  - technique_id: "T1059.001"
+    technique_name: "Command and Scripting Interpreter: PowerShell"
+    atomic_test_id: "T1059.001-1"
+    risk_level: "low"
+    purpose: "Validates PowerShell ScriptBlock logging (Event 4104), Module logging (4103), and process command-line auditing (4688)."
+    description: "Executes a benign encoded PowerShell command echoing test telemetry marker without executing malicious code."
+    command: |
+      pwsh -Command "Write-Output 'SOCForge Telemetry Validation Marker: T1059.001'"
+    prerequisites:
+      - "PowerShell Core / Windows PowerShell operational"
+      - "ScriptBlock Logging enabled (Event 4104)"
+    expected_telemetry:
+      windows_security:
+        - event_id: 4688
+          description: "Process creation for powershell.exe / pwsh.exe with full command line"
+      sysmon:
+        - event_id: 1
+          description: "Sysmon process creation with parent process lineage and cryptographic hash"
+      powershell:
+        - event_id: 4104
+          description: "ScriptBlock logging capturing the executed PowerShell code block"
+        - event_id: 4103
+          description: "PowerShell pipeline execution details"
+      wazuh_rules:
+        - rule_id: "91801"
+          description: "Windows PowerShell script block execution"
+    cleanup:
+      required: false
+      command: "None required (read-only execution)"
+
+  - technique_id: "T1082"
+    technique_name: "System Information Discovery"
+    atomic_test_id: "T1082-1"
+    risk_level: "low"
+    purpose: "Validates process creation auditing for built-in administrative discovery utilities."
+    description: "Executes standard system discovery utilities (systeminfo, hostname, whoami /all)."
+    command: |
+      systeminfo.exe
+      whoami.exe /all
+      hostname.exe
+    prerequisites:
+      - "Process creation command line auditing enabled (4688)"
+    expected_telemetry:
+      windows_security:
+        - event_id: 4688
+          description: "Process creation events for systeminfo.exe, whoami.exe, and hostname.exe"
+      sysmon:
+        - event_id: 1
+          description: "Process Create for discovery binaries"
+      wazuh_rules:
+        - rule_id: "60100"
+          description: "Windows host information discovery command execution"
+    cleanup:
+      required: false
+      command: "None required (read-only execution)"
+
+  - technique_id: "T1087.001"
+    technique_name: "Account Discovery: Local Accounts"
+    atomic_test_id: "T1087.001-1"
+    risk_level: "low"
+    purpose: "Validates detection of local user and group enumeration commands."
+    description: "Queries local user accounts and local Administrators group members."
+    command: |
+      net.exe user
+      net.exe localgroup administrators
+    prerequisites:
+      - "Process creation auditing (4688)"
+    expected_telemetry:
+      windows_security:
+        - event_id: 4688
+          description: "Process creation for net.exe and net1.exe with user enumeration arguments"
+      sysmon:
+        - event_id: 1
+          description: "Sysmon Process Create for net.exe enumeration"
+      wazuh_rules:
+        - rule_id: "60101"
+          description: "Windows local user/group enumeration"
+    cleanup:
+      required: false
+      command: "None required (read-only enumeration)"
+
+  - technique_id: "T1016"
+    technique_name: "System Network Configuration Discovery"
+    atomic_test_id: "T1016-1"
+    risk_level: "low"
+    purpose: "Validates detection of network reconnaissance commands."
+    description: "Queries local network adapters, IP configuration, routing tables, and ARP cache."
+    command: |
+      ipconfig.exe /all
+      route.exe print
+      arp.exe -a
+    prerequisites:
+      - "Process creation auditing (4688)"
+    expected_telemetry:
+      windows_security:
+        - event_id: 4688
+          description: "Process creation for ipconfig.exe, route.exe, and arp.exe"
+      sysmon:
+        - event_id: 1
+          description: "Sysmon Process Create for network discovery utilities"
+      wazuh_rules:
+        - rule_id: "60102"
+          description: "Windows network configuration discovery"
+    cleanup:
+      required: false
+      command: "None required (read-only discovery)"
+
+  - technique_id: "T1053.005"
+    technique_name: "Scheduled Task/Job: Scheduled Task"
+    atomic_test_id: "T1053.005-1"
+    risk_level: "low"
+    purpose: "Validates scheduled task creation and deletion auditing without persistent changes."
+    description: "Creates a temporary benign scheduled task 'SOCForgeTestTask' and immediately removes it."
+    command: |
+      schtasks.exe /create /tn "SOCForgeTestTask" /tr "cmd.exe /c echo SOCForge" /sc once /st 00:00 /f
+      schtasks.exe /query /tn "SOCForgeTestTask"
+    prerequisites:
+      - "Administrative privileges on target"
+      - "Process creation auditing (4688) & Task Scheduler logging (4698/4702)"
+    expected_telemetry:
+      windows_security:
+        - event_id: 4688
+          description: "Process creation for schtasks.exe with /create and /query arguments"
+        - event_id: 4698
+          description: "Scheduled task was created (SOCForgeTestTask)"
+        - event_id: 4699
+          description: "Scheduled task was deleted (during cleanup)"
+      sysmon:
+        - event_id: 1
+          description: "Sysmon Process Create for schtasks.exe"
+      wazuh_rules:
+        - rule_id: "60103"
+          description: "Windows scheduled task created via schtasks.exe"
+    cleanup:
+      required: true
+      command: |
+        schtasks.exe /delete /tn "SOCForgeTestTask" /f

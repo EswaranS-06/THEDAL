@@ -1,0 +1,34 @@
+---
+# ==============================================================================
+# Tasks: Validation & Verification for Atomic Red Team Role
+# ==============================================================================
+
+- name: Validate PowerShell Core executable is available
+  ansible.builtin.command: which pwsh
+  register: which_pwsh
+  changed_when: false
+  failed_when: which_pwsh.rc != 0
+
+- name: Validate curated test catalog exists and is readable
+  ansible.builtin.stat:
+    path: "{{ atomic_catalog_path }}"
+  register: catalog_stat
+  failed_when: not catalog_stat.stat.exists
+
+- name: Validate execution wrapper exists and is executable
+  ansible.builtin.stat:
+    path: "{{ atomic_wrapper_bin }}"
+  register: wrapper_stat
+  failed_when: not wrapper_stat.stat.exists or not wrapper_stat.stat.executable
+
+- name: Validate simulation log directory exists
+  ansible.builtin.stat:
+    path: "{{ atomic_log_dir }}"
+  register: logdir_stat
+  failed_when: not logdir_stat.stat.exists
+
+- name: Perform dry-run invocation of test catalog listing
+  ansible.builtin.command: "{{ atomic_wrapper_bin }} --list"
+  register: wrapper_list_check
+  changed_when: false
+  failed_when: wrapper_list_check.rc != 0
