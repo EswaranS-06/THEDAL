@@ -3,6 +3,10 @@
 # Tasks: DVWA Deployment & File Permissions
 # ==============================================================================
 
+- name: Configure safe.directory for DVWA repository
+  ansible.builtin.command: git config --global --add safe.directory "{{ dvwa_install_dir }}"
+  changed_when: false
+
 - name: Clone official DVWA repository
   ansible.builtin.git:
     repo: "{{ dvwa_repo_url }}"

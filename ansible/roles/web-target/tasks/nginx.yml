@@ -25,11 +25,14 @@
     state: absent
   notify: Restart nginx
 
-- name: Ensure Nginx service is enabled and started
+- name: Ensure Nginx service is restarted and enabled
   ansible.builtin.service:
     name: nginx
-    state: started
+    state: restarted
     enabled: true
+
+- name: Flush handlers to apply Nginx configuration immediately
+  ansible.builtin.meta: flush_handlers
 
 - name: Wait for Nginx port {{ nginx_port }} to be listening
   ansible.builtin.wait_for:

@@ -29,10 +29,9 @@
     owner: root
     group: root
 
-- name: Update APT cache for Wazuh repository
-  ansible.builtin.apt:
-    update_cache: true
-    cache_valid_time: 3600
+- name: Force immediate APT cache refresh for Wazuh repository
+  ansible.builtin.command: apt-get update
+  changed_when: true
 
 - name: Install Wazuh Agent package
   ansible.builtin.apt:
@@ -49,7 +48,7 @@
     dest: /var/ossec/etc/ossec.conf
     mode: "0640"
     owner: root
-    group: ossec
+    group: wazuh
   notify: Restart wazuh-agent
 
 - name: Check if Wazuh Agent client keys exist

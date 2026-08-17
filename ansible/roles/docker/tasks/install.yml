@@ -11,10 +11,9 @@
     owner: root
     group: root
 
-- name: Update APT cache for Docker repository
-  ansible.builtin.apt:
-    update_cache: true
-    cache_valid_time: 3600
+- name: Force immediate APT cache refresh for Docker repository
+  ansible.builtin.command: apt-get update
+  changed_when: true
 
 - name: Install Docker CE packages and Compose plugin
   ansible.builtin.apt:

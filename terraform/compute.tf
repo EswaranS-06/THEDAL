@@ -58,6 +58,7 @@ data "aws_ami" "windows" {
 locals {
   ubuntu_ami_id  = var.ubuntu_ami_id != "" ? var.ubuntu_ami_id : data.aws_ami.ubuntu.id
   windows_ami_id = var.windows_ami_id != "" ? var.windows_ami_id : data.aws_ami.windows.id
+  ssh_key_name   = length(aws_key_pair.main) > 0 ? aws_key_pair.main[0].key_name : var.ssh_key_name
 }
 
 # ------------------------------------------------------------------------------
@@ -68,7 +69,7 @@ resource "aws_instance" "bastion" {
   instance_type               = var.bastion_instance_type
   subnet_id                   = aws_subnet.management.id
   vpc_security_group_ids      = [aws_security_group.management.id]
-  key_name                    = var.ssh_key_name
+  key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = true
 
@@ -102,7 +103,7 @@ resource "aws_instance" "wazuh" {
   instance_type               = var.wazuh_instance_type
   subnet_id                   = aws_subnet.soc.id
   vpc_security_group_ids      = [aws_security_group.soc.id]
-  key_name                    = var.ssh_key_name
+  key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = false
 
@@ -136,9 +137,24 @@ resource "aws_instance" "windows" {
   instance_type               = var.windows_instance_type
   subnet_id                   = aws_subnet.soc.id
   vpc_security_group_ids      = [aws_security_group.windows.id]
-  key_name                    = var.ssh_key_name
+  key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = false
+
+  user_data = <<-EOF
+    <powershell>
+    $admin = [adsi]("WinNT://./Administrator, user")
+    $admin.SetPassword("SOCForge@2026!Sec")
+    $admin.SetInfo()
+    Enable-PSRemoting -Force -SkipNetworkProfileCheck
+    Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true
+    Set-Item -Path WSMan:\localhost\Service\Auth\Negotiate -Value $true
+    Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true
+    New-NetFirewallRule -Name "WinRM-HTTP" -DisplayName "WinRM HTTP" -Enabled True -Direction Inbound -Protocol TCP -LocalPort 5985 -Action Allow
+    New-NetFirewallRule -Name "WinRM-HTTPS" -DisplayName "WinRM HTTPS" -Enabled True -Direction Inbound -Protocol TCP -LocalPort 5986 -Action Allow
+    Restart-Service WinRM
+    </powershell>
+  EOF
 
   root_block_device {
     volume_size           = 50
@@ -170,7 +186,7 @@ resource "aws_instance" "web" {
   instance_type               = var.web_instance_type
   subnet_id                   = aws_subnet.web.id
   vpc_security_group_ids      = [aws_security_group.web.id]
-  key_name                    = var.ssh_key_name
+  key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = false
 
@@ -204,7 +220,7 @@ resource "aws_instance" "attack" {
   instance_type               = var.attack_instance_type
   subnet_id                   = aws_subnet.attack.id
   vpc_security_group_ids      = [aws_security_group.attack.id]
-  key_name                    = var.ssh_key_name
+  key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = false
 

@@ -9,14 +9,17 @@
     dest: "{{ wazuh_win_temp_dir }}\\wazuh-agent-{{ wazuh_version }}.msi"
     proxy_url: "{{ http_proxy_url }}"
 
+- name: Check if Wazuh Agent is already installed
+  ansible.windows.win_stat:
+    path: "{{ wazuh_win_install_dir }}\\wazuh-agent.exe"
+  register: wazuh_agent_exe_stat
+
 - name: Install Wazuh Agent MSI package
-  ansible.windows.win_package:
-    path: "{{ wazuh_win_temp_dir }}\\wazuh-agent-{{ wazuh_version }}.msi"
-    arguments: >
-      /q
-      WAZUH_MANAGER="{{ wazuh_manager_address }}"
-      WAZUH_REGISTRATION_SERVER="{{ wazuh_manager_address }}"
-      WAZUH_REGISTRATION_PORT="{{ wazuh_registration_port }}"
-      WAZUH_AGENT_NAME="{{ wazuh_agent_name }}"
-      WAZUH_AGENT_GROUP="{{ wazuh_agent_group }}"
-    state: present
+  ansible.windows.win_command: >
+    msiexec.exe /i "{{ wazuh_win_temp_dir }}\wazuh-agent-{{ wazuh_version }}.msi" /qn
+    WAZUH_MANAGER="{{ wazuh_manager_address }}"
+    WAZUH_REGISTRATION_SERVER="{{ wazuh_manager_address }}"
+    WAZUH_REGISTRATION_PORT="{{ wazuh_registration_port }}"
+    WAZUH_AGENT_NAME="{{ wazuh_agent_name }}"
+    WAZUH_AGENT_GROUP="{{ wazuh_agent_group }}"
+  when: not wazuh_agent_exe_stat.stat.exists

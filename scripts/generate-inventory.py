@@ -128,7 +128,7 @@ def generate_ini(hosts: dict, key_path: str = "~/.ssh/socforge_key") -> str:
         f"ansible_ssh_common_args='-o ProxyJump={bastion_user}@{bastion_public_ip} -o StrictHostKeyChecking=no'",
         "",
         "[windows]",
-        f"windows ansible_host={windows_ip} ansible_user=Administrator ansible_connection=winrm ansible_winrm_server_cert_validation=ignore",
+        f"windows ansible_host=127.0.0.1 ansible_port=5985 windows_internal_ip={windows_ip} ansible_user=Administrator ansible_connection=winrm ansible_winrm_server_cert_validation=ignore",
         "",
         "[linux:children]",
         "bastion",
@@ -140,6 +140,7 @@ def generate_ini(hosts: dict, key_path: str = "~/.ssh/socforge_key") -> str:
         "",
         "[all:vars]",
         f"bastion_public_ip={bastion_public_ip}",
+        f"bastion_private_ip={bastion_host.get('private_ip', '')}",
         "ansible_python_interpreter=/usr/bin/python3",
     ]
 
