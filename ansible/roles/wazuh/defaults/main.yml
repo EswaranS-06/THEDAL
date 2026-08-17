@@ -41,7 +41,7 @@ wazuh_dashboard_app_timeout: 30000
 
 # Administrative Credentials
 wazuh_admin_username: "admin"
-wazuh_admin_password: "{{ lookup('env', 'WAZUH_ADMIN_PASSWORD') | default('SOCForgeAdminPass2026!', true) }}"
+wazuh_admin_password: "{{ lookup('env', 'WAZUH_ADMIN_PASSWORD') | default('SOCForge_Adm1n_Lab2026!', true) }}"
 wazuh_api_username: "wazuh-wui"
 wazuh_api_password: "{{ lookup('env', 'WAZUH_API_PASSWORD') | default('SOCForgeWuiPass2026!', true) }}"
 

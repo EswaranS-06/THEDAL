@@ -4,8 +4,8 @@
 # ==============================================================================
 
 # Bastion Forward Proxy Settings (Private Subnet Package Routing)
-http_proxy: "http://10.10.1.10:3128"
-https_proxy: "http://10.10.1.10:3128"
+http_proxy: "{{ http_proxy_url | default('http://10.10.1.131:3128') }}"
+https_proxy: "{{ https_proxy_url | default('http://10.10.1.131:3128') }}"
 no_proxy: "localhost,127.0.0.1,10.10.0.0/16,169.254.169.254,local.socforge"
 
 # PowerShell Core Version & Repository Configuration
@@ -14,11 +14,11 @@ powershell_package_name: "powershell"
 
 # Official Atomic Red Team Source Repositories & Pinned Releases
 atomic_red_team_repo: "https://github.com/redcanaryco/atomic-red-team.git"
-atomic_red_team_version: "6ba681b9b1e9e8f1b6c68ad93b4974f07a2c6769" # Tagged release commit
+atomic_red_team_version: "master"
 atomic_red_team_path: "/opt/atomic-red-team"
 
 invoke_atomic_repo: "https://github.com/redcanaryco/invoke-atomicredteam.git"
-invoke_atomic_version: "7c0be6c87e411b7dfb1ddf35921867160ba7dae1" # Tagged release commit
+invoke_atomic_version: "master"
 invoke_atomic_path: "/opt/invoke-atomicredteam"
 
 powershell_modules_path: "/usr/local/share/powershell/Modules"
@@ -26,10 +26,12 @@ powershell_modules_path: "/usr/local/share/powershell/Modules"
 # Safety Boundary & Target Controls
 atomic_execute: false # Default: Simulation execution is DISABLED
 atomic_target_name: "SOCForge-windows"
-atomic_target_host: "10.10.10.200" # Target Windows IP (private SOC Subnet)
+atomic_target_host: "{{ windows_private_ip | default('10.10.10.254') }}"
 atomic_target_allowed_hosts:
+  - "10.10.10.254"
   - "10.10.10.200"
-  - "10.10.10.x"
+  - "127.0.0.1"
+  - "localhost"
   - "windows"
   - "SOCForge-windows"
 

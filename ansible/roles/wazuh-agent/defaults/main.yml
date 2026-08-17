@@ -9,8 +9,8 @@ wazuh_version: "4.14.7"
 wazuh_major_version: "4.x"
 
 # Wazuh Manager Connection & Registration
-wazuh_manager_ip: "10.10.10.10"
-wazuh_manager_address: "{{ hostvars['wazuh']['ansible_default_ipv4']['address'] | default(hostvars['wazuh']['ansible_host'] | default(wazuh_manager_ip)) }}"
+wazuh_manager_ip: "{{ wazuh_server_ip | default('10.10.10.33') }}"
+wazuh_manager_address: "{{ hostvars['wazuh']['ansible_host'] | default(wazuh_server_ip | default('10.10.10.33')) }}"
 wazuh_manager_port: 1514
 wazuh_registration_port: 1515
 wazuh_agent_protocol: "tcp"
