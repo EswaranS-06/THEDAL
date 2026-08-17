@@ -1,6 +1,6 @@
 # SOCForge — Telemetry, Logging & Index Architecture
 
-> **Phase 11 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), OWASP Juice Shop Container (Docker :3000), Atomic Red Team Attack Simulation Host, and **Web Security Testing Suite** are operational, reconciled, and instrumented with standardized telemetry metadata.
+> **Phase 12 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), OWASP Juice Shop Container (Docker :3000), Atomic Red Team Attack Simulation Host, Web Security Testing Suite, and **OpenSearch Telemetry Index Architecture & Investigation Dashboards** are operational, reconciled, and instrumented with standardized telemetry metadata.
 
 ---
 
@@ -41,14 +41,23 @@
                                         |
                                         v
                        +---------------------------------+
+                       |   Filebeat Ingestion & Router   |
+                       | - Source Index Routing (11 src) |
+                       | - Preserves wazuh-alerts-*      |
+                       +----------------+----------------+
+                                        |
+                                        v
+                       +---------------------------------+
                        |   Wazuh Indexer (OpenSearch)    |
-                       |         (10.10.10.x:9200)       |
+                       | - socforge-template.json        |
+                       | - socforge_retention_policy     |
                        +----------------+----------------+
                                         |
                                         v
                        +---------------------------------+
                        |   Wazuh Dashboard (HTTPS :443)  |
-                       |     (SSH Tunnel -> :8443)       |
+                       | - 4 Curated Dashboards          |
+                       | - 12 Source Index Patterns      |
                        +---------------------------------+
 ```
 
@@ -56,28 +65,26 @@
 
 ## 2. Canonical Telemetry Source Taxonomy
 
-The following canonical taxonomy keys standardize telemetry collection across all agents and prepare the architecture for downstream logical index routing:
+The canonical taxonomy standardizes telemetry collection across all agents and endpoints:
 
-| Taxonomy Source Key | Originating Host | Collection Mechanism | Wazuh Agent Source / Path | Log Format | SOC Detection & Telemetry Purpose |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **`windows_security`** | `SOCForge-windows` | Windows Event Log | `Security` channel | `eventchannel` | Process creation (Event 4688 with command line), authentication success/failure (4624/4625), user account management (4720/4726). |
-| **`sysmon`** | `SOCForge-windows` | Sysmon Service | `Microsoft-Windows-Sysmon/Operational` | `eventchannel` | High-fidelity process lineage (1), network connections (3), DLL injection (7), LSASS access (10), file creation (11), registry (12-14), DNS (22). |
-| **`powershell`** | `SOCForge-windows` | PowerShell Engine | `Microsoft-Windows-PowerShell/Operational` | `eventchannel` | Script block execution (4104) and module execution (4103) with de-obfuscation at runtime. |
-| **`nginx_access`** | `SOCForge-web` | Nginx HTTP Server | `/var/log/nginx/access.log` | `apache` (Combined) | Client IP, HTTP method, URI parameters, status codes, user-agent for DVWA web application. |
-| **`nginx_error`** | `SOCForge-web` | Nginx HTTP Server | `/var/log/nginx/error.log` | `apache` (Standard) | Web server errors, backend FastCGI exceptions, client timeouts. |
-| **`dvwa`** | `SOCForge-web` | PHP-FPM / App | `/var/www/dvwa` & FastCGI | `syslog` / file | PHP application runtime exceptions, SQL injection attempts, LFI/RFI probes. |
-| **`auditd`** | `SOCForge-web` | Linux Kernel Audit | `/var/log/audit/audit.log` | `audit` | File integrity modifications on web roots, server configuration tampering, and execution of reconnaissance/staging binaries (`whoami`, `curl`, `nc`, `sudo`). |
-| **`linux_auth`** | `SOCForge-web` | Linux PAM / sshd | `/var/log/auth.log` | `syslog` | SSH authentication attempts, sudo privilege escalation, PAM session tracking. |
-| **`juice_shop`** | `SOCForge-web` | Docker Container | `/var/lib/docker/containers/*/*-json.log` | `json` | Node.js REST API traffic, search queries (`/rest/products/search`), admin config access, container stdout/stderr. |
-| **`atomic`** | `SOCForge-attack` | Atomic Red Team | `/var/log/socforge/atomic/simulation.log` | `json` | Ground-truth Windows simulation execution telemetry for automated alert correlation (Phase 10). |
-| **`web_attack`** | `SOCForge-attack` | Web Testing Suite | `/var/log/socforge/web/simulation.log` | `json` | Ground-truth Web application simulation execution telemetry for DVWA and Juice Shop testing (Phase 11). |
+| Taxonomy Source Key | Originating Host | Ingestion Format | Target Index Pattern | SOC Detection & Telemetry Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **`windows_security`** | `SOCForge-windows` | `eventchannel` | `socforge-windows-security-4.x-*` | Process creation (Event 4688 with CLI), authentication (4624/4625), account management (4720). |
+| **`sysmon`** | `SOCForge-windows` | `eventchannel` | `socforge-sysmon-4.x-*` | High-fidelity process lineage (1), network connections (3), DLL injection (7), LSASS access (10), DNS (22). |
+| **`powershell`** | `SOCForge-windows` | `eventchannel` | `socforge-powershell-4.x-*` | ScriptBlock execution (4104) and module execution (4103) with runtime de-obfuscation. |
+| **`nginx_access`** | `SOCForge-web` | `apache` (Combined) | `socforge-nginx-access-4.x-*` | Client IP, HTTP method, URI parameters, status codes, User-Agent for DVWA (:8000). |
+| **`nginx_error`** | `SOCForge-web` | `apache` (Standard) | `socforge-nginx-error-4.x-*` | Web server errors, backend FastCGI exceptions, client timeouts. |
+| **`dvwa`** | `SOCForge-web` | `syslog` / file | `socforge-dvwa-4.x-*` | PHP-FPM application exceptions, SQL injection attempts, LFI/RFI probes. |
+| **`auditd`** | `SOCForge-web` | `audit` | `socforge-auditd-4.x-*` | Kernel audit on command injection discovery binaries (`whoami`) and web root modifications. |
+| **`linux_auth`** | `SOCForge-web` / `attack` | `syslog` | `socforge-linux-auth-4.x-*` | SSH authentication attempts, sudo privilege escalation, PAM session tracking. |
+| **`juice_shop`** | `SOCForge-web` | `json` | `socforge-juice-shop-4.x-*` | Node.js REST API traffic, search queries, admin config access, container stdout/stderr. |
+| **`atomic`** | `SOCForge-attack` | `json` | `socforge-atomic-4.x-*` | Ground-truth simulation execution telemetry for MITRE ATT&CK testing. |
+| **`web_attack`** | `SOCForge-attack` | `json` | `socforge-web-attack-4.x-*` | Ground-truth web attack simulation execution telemetry for DVWA & Juice Shop testing. |
 
 ---
 
-## 3. Phased Index Separation Roadmap
+## 3. Index Lifecycle & Storage Management
 
-* **Phase 6–11 (Current Baseline)**:
-  * Ingests all telemetry into standard Wazuh indices (`wazuh-alerts-4.x-*`).
-  * All events are tagged with canonical `<label key="socforge.source">` and metadata attributes, ensuring zero data loss and single-stream non-duplication.
-* **Phase 12 (Adversary Emulation & Index Routing)**:
-  * Formal index routing rules separating `soc-windows-*`, `soc-sysmon-*`, `soc-nginx-*`, `soc-juiceshop-*`, `soc-atomic-*`, and `soc-web-*`.
+* **Default Wazuh Stream**: Preserves `wazuh-alerts-4.x-*` for core Wazuh Dashboard compatibility.
+* **Source Routing Layer**: Additive Filebeat routing into source-specific `socforge-<source>-4.x-*` indices.
+* **Index State Management (ISM)**: Policy `socforge_retention_policy` rollovers indices after 10 GiB / 7 days and purges expired telemetry indices after **7 days** (`socforge_telemetry_retention_days: 7`).

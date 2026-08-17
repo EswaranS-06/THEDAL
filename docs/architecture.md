@@ -123,8 +123,13 @@ All EC2 instances are deterministically defined in `terraform/variables.tf`:
   * **Controlled Web Attack Suite**: Deployed curated web scenario catalogs for DVWA (:8000) and OWASP Juice Shop (:3000) on `SOCForge-attack`.
   * **Strict Target Allowlisting & Safety Boundaries**: Dynamic target discovery, port restrictions (8000/3000), execution safety interlocks (`--confirm`), and structured audit logging (`/var/log/socforge/web/simulation.log`).
   * **Web Telemetry Validation**: Ingestion validation across Nginx access/error logs, PHP-FPM, Linux auditd command execution / FIM, and Docker container JSON logs.
+* **Phase 12: Telemetry Classification, Source Routing & Index Architecture**:
+  * **OpenSearch Index Templates**: Strict schema mapping and type safety for `socforge-*` and all 11 canonical sources.
+  * **Filebeat Conditional Routing**: Ingestion routing across source indices while preserving default `wazuh-alerts-4.x-*` pipeline.
+  * **Index State Management (ISM)**: Lab disk protection policy with configurable retention (`socforge_telemetry_retention_days: 7`).
+  * **Investigation Dashboards**: 4 dedicated OpenSearch Dashboards (Windows, Web, Adversary Attack Ground Truth, and Security Operations Overview).
 
-### ⏳ PLANNED FOR FUTURE PHASES (Phase 12+)
-* **Phase 12: SOCForge Telemetry & Index Architecture**:
-  * Final index separation and routing for `windows_security`, `sysmon`, `powershell`, `nginx_access`, `nginx_error`, `dvwa`, `auditd`, `linux_auth`, `juice_shop`, and `atomic`.
-  * Custom field extraction, OpenSearch dashboards, retention rules, and investigation workbooks.
+### ⏳ PLANNED FOR FUTURE PHASES (Phase 13+)
+* **Phase 13: SOCForge Detection Engineering & Custom Wazuh Rules**:
+  * Custom Wazuh rules and decoders for web attack scenarios (SQLi, command injection, LFI), Docker container attacks, Sysmon parent-child lineage, and Atomic Red Team correlation.
+  * Severity tuning, alert thresholding, and false-positive suppression.

@@ -1,6 +1,6 @@
 # SOCForge — Deployment Architecture & Lifecycle Guide
 
-> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), OWASP Juice Shop, and **Atomic Red Team Attack Simulation Host (Phases 1–10)** are implemented. Controlled web security testing follows in Phase 11.
+> **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, and **Telemetry Classification & Index Routing Architecture (Phases 1–12)** are implemented.
 
 ---
 
@@ -37,9 +37,10 @@
                         | (6. ansible-playbook playbooks/wazuh.yml)
                         v
        +-----------------------------------------------+
-       | Wazuh SIEM Platform Initialized (4.14.7)      |
+       | Wazuh SIEM & Telemetry Architecture Initialized|
        | - Indexer (9200), Manager (1514/1515/55000)   |
-       | - Filebeat Forwarder, Dashboard (443)         |
+       | - Filebeat Source Routing & OpenSearch ISM    |
+       | - 4 Curated Dashboards & 12 Index Patterns    |
        +-----------------------------------------------+
                         |
                         | (7. ansible-playbook playbooks/windows-agent.yml)

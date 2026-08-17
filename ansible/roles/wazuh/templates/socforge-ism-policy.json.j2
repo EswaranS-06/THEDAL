@@ -1,0 +1,55 @@
+{
+  "policy": {
+    "description": "SOCForge Lab Telemetry Retention and Storage Protection Policy",
+    "default_state": "hot",
+    "states": [
+      {
+        "name": "hot",
+        "actions": [
+          {
+            "rollover": {
+              "min_index_age": "{{ socforge_ism_rollover_age_days }}d",
+              "min_primary_shard_size": "{{ socforge_ism_rollover_size_gb }}gb"
+            }
+          }
+        ],
+        "transitions": [
+          {
+            "state_name": "delete",
+            "conditions": {
+              "min_index_age": "{{ socforge_telemetry_retention_days }}d"
+            }
+          }
+        ]
+      },
+      {
+        "name": "delete",
+        "actions": [
+          {
+            "delete": {}
+          }
+        ],
+        "transitions": []
+      }
+    ],
+    "ism_template": [
+      {
+        "index_patterns": [
+          "socforge-*",
+          "socforge-windows-security-*",
+          "socforge-sysmon-*",
+          "socforge-powershell-*",
+          "socforge-nginx-access-*",
+          "socforge-nginx-error-*",
+          "socforge-dvwa-*",
+          "socforge-auditd-*",
+          "socforge-linux-auth-*",
+          "socforge-juice-shop-*",
+          "socforge-atomic-*",
+          "socforge-web-attack-*"
+        ],
+        "priority": 100
+      }
+    ]
+  }
+}

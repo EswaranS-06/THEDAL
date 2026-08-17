@@ -1,6 +1,10 @@
 # ==============================================================================
-# SOCForge — Filebeat Configuration (Wazuh Module)
+# SOCForge — Filebeat Configuration (Wazuh Module & Telemetry Routing)
 # ==============================================================================
+# Ingests Wazuh Manager alerts and conditionally routes events to source-specific
+# indices (socforge-<source>-*) while preserving default wazuh-alerts-* fallback.
+# ==============================================================================
+
 output.elasticsearch:
   hosts: ["https://127.0.0.1:{{ wazuh_indexer_port }}"]
   protocol: "https"
@@ -10,6 +14,41 @@ output.elasticsearch:
   ssl.certificate: "{{ wazuh_manager_certs_dir }}/filebeat.pem"
   ssl.key: "{{ wazuh_manager_certs_dir }}/filebeat-key.pem"
   ssl.verification_mode: "none"
+  indices:
+    - index: "socforge-windows-security-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "windows_security"
+    - index: "socforge-sysmon-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "sysmon"
+    - index: "socforge-powershell-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "powershell"
+    - index: "socforge-nginx-access-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "nginx_access"
+    - index: "socforge-nginx-error-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "nginx_error"
+    - index: "socforge-dvwa-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "dvwa"
+    - index: "socforge-auditd-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "auditd"
+    - index: "socforge-linux-auth-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "linux_auth"
+    - index: "socforge-juice-shop-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "juice_shop"
+    - index: "socforge-atomic-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "atomic"
+    - index: "socforge-web-attack-4.x-%{+yyyy.MM.dd}"
+      when.equals:
+        data.labels.socforge.source: "web_attack"
+    - index: "wazuh-alerts-4.x-%{+yyyy.MM.dd}"
 
 setup.template.json.enabled: true
 setup.template.json.path: "/etc/filebeat/wazuh-template.json"

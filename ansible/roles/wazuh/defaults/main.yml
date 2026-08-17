@@ -1,7 +1,7 @@
 ---
 # Defaults for role: wazuh
 # ==============================================================================
-# SOCForge — Wazuh SIEM Role Defaults (Phase 6)
+# SOCForge — Wazuh SIEM Role Defaults (Phases 6 & 12)
 # ==============================================================================
 
 # Wazuh Version Specification
@@ -32,7 +32,6 @@ wazuh_manager_certs_dir: "/etc/filebeat/certs"
 wazuh_dashboard_certs_dir: "/etc/wazuh-dashboard/certs"
 
 # Indexer JVM Sizing (Configured for t3.medium 4GB RAM lab instances)
-# Standard recommendation is 50% of available RAM (e.g. 1g for t3.medium, 8g for t3.xlarge)
 wazuh_indexer_jvm_min_heap: "1g"
 wazuh_indexer_jvm_max_heap: "1g"
 
@@ -41,8 +40,53 @@ wazuh_dashboard_https: true
 wazuh_dashboard_app_timeout: 30000
 
 # Administrative Credentials
-# In production/lab operations, provide wazuh_admin_password via Ansible Vault or CLI flag
 wazuh_admin_username: "admin"
 wazuh_admin_password: "{{ lookup('env', 'WAZUH_ADMIN_PASSWORD') | default('SOCForgeAdminPass2026!', true) }}"
 wazuh_api_username: "wazuh-wui"
 wazuh_api_password: "{{ lookup('env', 'WAZUH_API_PASSWORD') | default('SOCForgeWuiPass2026!', true) }}"
+
+# ==============================================================================
+# Phase 12: Index State Management (ISM) & Retention Configuration
+# ==============================================================================
+# Cost-conscious lab retention parameters to protect 50 GiB gp3 root volumes
+socforge_telemetry_retention_days: 7
+socforge_alert_retention_days: 14
+socforge_archive_retention_days: 3
+socforge_ism_rollover_size_gb: 10
+socforge_ism_rollover_age_days: 7
+
+# Canonical SOCForge Log Sources & Index Names
+socforge_sources:
+  - id: "windows_security"
+    index_prefix: "socforge-windows-security"
+    description: "Windows Security Event Channel (4688 with CLI, 4624, 4720)"
+  - id: "sysmon"
+    index_prefix: "socforge-sysmon"
+    description: "Microsoft Sysmon Operational Channel (Event 1, 3, 7, 10, 11)"
+  - id: "powershell"
+    index_prefix: "socforge-powershell"
+    description: "PowerShell Operational Channel (ScriptBlock 4104, Module 4103)"
+  - id: "nginx_access"
+    index_prefix: "socforge-nginx-access"
+    description: "Nginx Web Reverse Proxy Access Logs (:8000 DVWA)"
+  - id: "nginx_error"
+    index_prefix: "socforge-nginx-error"
+    description: "Nginx Web Reverse Proxy Error Logs (:8000 DVWA)"
+  - id: "dvwa"
+    index_prefix: "socforge-dvwa"
+    description: "DVWA PHP-FPM Application Logs"
+  - id: "auditd"
+    index_prefix: "socforge-auditd"
+    description: "Linux Kernel Auditd Telemetry (/var/log/audit/audit.log)"
+  - id: "linux_auth"
+    index_prefix: "socforge-linux-auth"
+    description: "Linux Authentication & Sudo Logs (/var/log/auth.log)"
+  - id: "juice_shop"
+    index_prefix: "socforge-juice-shop"
+    description: "OWASP Juice Shop Docker Container JSON Logs (:3000)"
+  - id: "atomic"
+    index_prefix: "socforge-atomic"
+    description: "Atomic Red Team Ground-Truth Simulation Audit Logs"
+  - id: "web_attack"
+    index_prefix: "socforge-web-attack"
+    description: "SOCForge Web Attack Testing Suite Audit Logs"

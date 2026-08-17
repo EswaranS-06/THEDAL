@@ -1,0 +1,239 @@
+{
+  "index_patterns": [
+    "socforge-*",
+    "socforge-windows-security-*",
+    "socforge-sysmon-*",
+    "socforge-powershell-*",
+    "socforge-nginx-access-*",
+    "socforge-nginx-error-*",
+    "socforge-dvwa-*",
+    "socforge-auditd-*",
+    "socforge-linux-auth-*",
+    "socforge-juice-shop-*",
+    "socforge-atomic-*",
+    "socforge-web-attack-*"
+  ],
+  "order": 1,
+  "settings": {
+    "index.number_of_shards": 1,
+    "index.number_of_replicas": 0,
+    "index.refresh_interval": "5s",
+    "plugins.index_state_management.policy_id": "socforge_retention_policy"
+  },
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "string_fields": {
+          "match_mapping_type": "string",
+          "match": "*",
+          "mapping": {
+            "type": "keyword",
+            "ignore_above": 1024
+          }
+        }
+      }
+    ],
+    "properties": {
+      "@timestamp": {
+        "type": "date"
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSZ||yyyy-MM-dd'T'HH:mm:ssZ||epoch_millis"
+      },
+      "rule": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "level": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "groups": {
+            "type": "keyword"
+          },
+          "mitre": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "tactic": {
+                "type": "keyword"
+              },
+              "technique": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "agent": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword"
+          },
+          "ip": {
+            "type": "ip"
+          }
+        }
+      },
+      "manager": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "decoder": {
+        "properties": {
+          "name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "location": {
+        "type": "keyword"
+      },
+      "full_log": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 2048
+          }
+        }
+      },
+      "socforge": {
+        "properties": {
+          "source": {
+            "type": "keyword"
+          },
+          "application": {
+            "type": "keyword"
+          },
+          "host_role": {
+            "type": "keyword"
+          },
+          "telemetry_type": {
+            "type": "keyword"
+          },
+          "simulation_id": {
+            "type": "keyword"
+          },
+          "scenario_id": {
+            "type": "keyword"
+          },
+          "technique_id": {
+            "type": "keyword"
+          }
+        }
+      },
+      "data": {
+        "properties": {
+          "srcip": {
+            "type": "ip"
+          },
+          "dstip": {
+            "type": "ip"
+          },
+          "srcport": {
+            "type": "integer"
+          },
+          "dstport": {
+            "type": "integer"
+          },
+          "http_status": {
+            "type": "integer"
+          },
+          "protocol": {
+            "type": "keyword"
+          },
+          "win": {
+            "properties": {
+              "system": {
+                "properties": {
+                  "eventID": {
+                    "type": "keyword"
+                  },
+                  "channel": {
+                    "type": "keyword"
+                  },
+                  "computer": {
+                    "type": "keyword"
+                  },
+                  "severityValue": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "eventdata": {
+                "properties": {
+                  "image": {
+                    "type": "keyword"
+                  },
+                  "commandLine": {
+                    "type": "text",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 2048
+                      }
+                    }
+                  },
+                  "parentImage": {
+                    "type": "keyword"
+                  },
+                  "parentCommandLine": {
+                    "type": "text",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 2048
+                      }
+                    }
+                  },
+                  "user": {
+                    "type": "keyword"
+                  },
+                  "hashes": {
+                    "type": "text",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "destinationIp": {
+                    "type": "ip"
+                  },
+                  "destinationPort": {
+                    "type": "integer"
+                  },
+                  "sourceIp": {
+                    "type": "ip"
+                  },
+                  "sourcePort": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

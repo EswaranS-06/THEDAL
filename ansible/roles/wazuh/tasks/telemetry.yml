@@ -1,0 +1,50 @@
+---
+# ==============================================================================
+# Tasks: SOCForge Telemetry Classification, Index Templates & ISM (Phase 12)
+# ==============================================================================
+
+- name: Create OpenSearch templates directory
+  ansible.builtin.file:
+    path: /etc/wazuh-indexer/templates
+    state: directory
+    owner: wazuh-indexer
+    group: wazuh-indexer
+    mode: "0750"
+
+- name: Deploy SOCForge OpenSearch index template configuration
+  ansible.builtin.template:
+    src: socforge-template.json.j2
+    dest: /etc/wazuh-indexer/templates/socforge-template.json
+    owner: wazuh-indexer
+    group: wazuh-indexer
+    mode: "0644"
+
+- name: Deploy SOCForge Index State Management (ISM) retention policy
+  ansible.builtin.template:
+    src: socforge-ism-policy.json.j2
+    dest: /etc/wazuh-indexer/templates/socforge-ism-policy.json
+    owner: wazuh-indexer
+    group: wazuh-indexer
+    mode: "0644"
+
+- name: Upload SOCForge index template to OpenSearch Indexer
+  ansible.builtin.shell: |
+    curl -k -s -X PUT "https://127.0.0.1:{{ wazuh_indexer_port }}/_template/socforge_template" \
+      -u "{{ wazuh_admin_username }}:{{ wazuh_admin_password }}" \
+      -H "Content-Type: application/json" \
+      -d @/etc/wazuh-indexer/templates/socforge-template.json
+  register: template_upload
+  changed_when: "'\"acknowledged\":true' in template_upload.stdout"
+  failed_when: template_upload.rc != 0 and '"acknowledged":true' not in template_upload.stdout
+  no_log: true
+
+- name: Upload SOCForge ISM retention policy to OpenSearch Indexer
+  ansible.builtin.shell: |
+    curl -k -s -X PUT "https://127.0.0.1:{{ wazuh_indexer_port }}/_plugins/_ism/policies/socforge_retention_policy" \
+      -u "{{ wazuh_admin_username }}:{{ wazuh_admin_password }}" \
+      -H "Content-Type: application/json" \
+      -d @/etc/wazuh-indexer/templates/socforge-ism-policy.json
+  register: ism_upload
+  changed_when: "'\"_version\":' in ism_upload.stdout or '\"acknowledged\":true' in ism_upload.stdout"
+  failed_when: ism_upload.rc != 0 and '"error"' in ism_upload.stdout and '"version_conflict_engine_exception"' not in ism_upload.stdout
+  no_log: true

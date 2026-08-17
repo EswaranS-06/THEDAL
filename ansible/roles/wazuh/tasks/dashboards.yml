@@ -1,0 +1,31 @@
+---
+# ==============================================================================
+# Tasks: SOCForge Dashboards & Index Patterns Import (Phase 12)
+# ==============================================================================
+
+- name: Create Dashboard saved objects directory
+  ansible.builtin.file:
+    path: /usr/share/wazuh-dashboard/data/socforge
+    state: directory
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+    mode: "0750"
+
+- name: Deploy SOCForge investigation dashboards and index patterns NDJSON
+  ansible.builtin.template:
+    src: socforge-dashboards.ndjson.j2
+    dest: /usr/share/wazuh-dashboard/data/socforge/socforge-dashboards.ndjson
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+    mode: "0644"
+
+- name: Import SOCForge saved objects into Wazuh / OpenSearch Dashboards
+  ansible.builtin.shell: |
+    curl -k -s -X POST "https://127.0.0.1:{{ wazuh_dashboard_port }}/api/saved_objects/_import?overwrite=true" \
+      -u "{{ wazuh_admin_username }}:{{ wazuh_admin_password }}" \
+      -H "osd-xsrf: true" \
+      --form file=@/usr/share/wazuh-dashboard/data/socforge/socforge-dashboards.ndjson
+  register: dashboard_import
+  changed_when: "'\"success\":true' in dashboard_import.stdout"
+  failed_when: dashboard_import.rc != 0 and '"success":true' not in dashboard_import.stdout and '"successCount"' not in dashboard_import.stdout
+  no_log: true

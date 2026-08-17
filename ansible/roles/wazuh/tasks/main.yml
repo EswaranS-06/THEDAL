@@ -3,7 +3,8 @@
 # SOCForge — Main Tasks for role: wazuh
 # ==============================================================================
 # Deploys the complete single-node Wazuh SIEM stack in sequence:
-# Prerequisites -> Repository -> Certificates -> Indexer -> Manager -> Dashboard -> Validation
+# Prerequisites -> Repository -> Certificates -> Indexer -> Manager ->
+# Dashboard -> Telemetry Templates & ISM -> Saved Dashboards -> Validation
 # ==============================================================================
 
 - name: 1. Validate host prerequisites and system sizing
@@ -24,5 +25,11 @@
 - name: 6. Deploy and configure Wazuh Dashboard
   ansible.builtin.include_tasks: dashboard.yml
 
-- name: 7. Validate Wazuh services, APIs, and health endpoints
+- name: 7. Deploy SOCForge telemetry index templates and ISM retention policies
+  ansible.builtin.include_tasks: telemetry.yml
+
+- name: 8. Deploy SOCForge investigation dashboards and index patterns
+  ansible.builtin.include_tasks: dashboards.yml
+
+- name: 9. Validate Wazuh services, APIs, and health endpoints
   ansible.builtin.include_tasks: validation.yml
