@@ -34,7 +34,7 @@
   <!-- Agent Enrollment Service -->
   <auth>
     <port>{{ wazuh_agent_auth_port }}</port>
-    <purging>yes</purging>
+    <purge>yes</purge>
     <use_source_ip>no</use_source_ip>
     <ssl_verify_host>no</ssl_verify_host>
     <ssl_auto_negotiate>no</ssl_auto_negotiate>
@@ -103,11 +103,16 @@
 
   <!-- Internal Rules & Decoders -->
   <ruleset>
+    <!-- Default Wazuh Ruleset -->
     <decoder_dir>ruleset/decoders</decoder_dir>
     <rule_dir>ruleset/rules</rule_dir>
     <rule_exclude>0215-policy_rules.xml</rule_exclude>
     <list>etc/lists/audit-keys</list>
     <list>etc/lists/amazon/aws-eventnames</list>
     <list>etc/lists/security-eventchannel</list>
+
+    <!-- Custom SOCForge Decoders & Rules -->
+    <decoder_dir>etc/decoders</decoder_dir>
+    <rule_dir>etc/rules</rule_dir>
   </ruleset>
 </ossec_config>

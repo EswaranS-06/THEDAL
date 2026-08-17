@@ -60,6 +60,14 @@
     group: wazuh-dashboard
   notify: Restart wazuh-dashboard
 
+- name: Ensure Wazuh Dashboard log directory exists with correct permissions
+  ansible.builtin.file:
+    path: /var/log/wazuh-dashboard
+    state: directory
+    mode: "0755"
+    owner: wazuh-dashboard
+    group: wazuh-dashboard
+
 - name: Grant node binary capability to bind privileged port 443
   ansible.builtin.shell: |
     setcap 'cap_net_bind_service=+ep' /usr/share/wazuh-dashboard/node/bin/node
@@ -75,5 +83,5 @@
   ansible.builtin.wait_for:
     port: "{{ wazuh_dashboard_port }}"
     host: 0.0.0.0
-    timeout: 60
+    timeout: 180
     state: started

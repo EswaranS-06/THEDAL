@@ -5,6 +5,12 @@
 # indices (socforge-<source>-*) while preserving default wazuh-alerts-* fallback.
 # ==============================================================================
 
+processors:
+  - decode_json_fields:
+      fields: ["message"]
+      target: ""
+      overwrite_keys: true
+
 output.elasticsearch:
   hosts: ["https://127.0.0.1:{{ wazuh_indexer_port }}"]
   protocol: "https"
@@ -15,39 +21,121 @@ output.elasticsearch:
   ssl.key: "{{ wazuh_manager_certs_dir }}/filebeat-key.pem"
   ssl.verification_mode: "none"
   indices:
-    - index: "socforge-windows-security-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "windows_security"
     - index: "socforge-sysmon-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "sysmon"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "sysmon"
+        - equals:
+            data.win.system.channel: "Microsoft-Windows-Sysmon/Operational"
+        - equals:
+            data.win.system.providerName: "Microsoft-Windows-Sysmon"
+        - contains:
+            rule.groups: "sysmon"
+
     - index: "socforge-powershell-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "powershell"
-    - index: "socforge-nginx-access-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "nginx_access"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "powershell"
+        - equals:
+            data.win.system.channel: "Microsoft-Windows-PowerShell/Operational"
+        - equals:
+            data.win.system.channel: "Windows PowerShell"
+        - equals:
+            data.win.system.providerName: "Microsoft-Windows-PowerShell"
+        - contains:
+            rule.groups: "powershell"
+
+    - index: "socforge-windows-security-4.x-%{+yyyy.MM.dd}"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "windows_security"
+        - equals:
+            data.win.system.channel: "Security"
+        - equals:
+            data.win.system.providerName: "Microsoft-Windows-Security-Auditing"
+        - contains:
+            rule.groups: "windows_security"
+        - contains:
+            rule.groups: "WEF"
+
     - index: "socforge-nginx-error-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "nginx_error"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "nginx_error"
+        - equals:
+            location: "/var/log/nginx/error.log"
+        - equals:
+            decoder.name: "nginx-errorlog"
+
     - index: "socforge-dvwa-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "dvwa"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "dvwa"
+        - contains:
+            location: "dvwa"
+        - contains:
+            rule.groups: "dvwa"
+
+    - index: "socforge-nginx-access-4.x-%{+yyyy.MM.dd}"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "nginx_access"
+        - equals:
+            location: "/var/log/nginx/access.log"
+        - equals:
+            decoder.name: "web-accesslog"
+
     - index: "socforge-auditd-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "auditd"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "auditd"
+        - equals:
+            location: "/var/log/audit/audit.log"
+        - equals:
+            decoder.name: "auditd"
+        - contains:
+            rule.groups: "audit"
+
     - index: "socforge-linux-auth-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "linux_auth"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "linux_auth"
+        - equals:
+            location: "/var/log/auth.log"
+        - contains:
+            rule.groups: "pam"
+        - contains:
+            rule.groups: "sshd"
+        - contains:
+            rule.groups: "sudo"
+
     - index: "socforge-juice-shop-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "juice_shop"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "juice_shop"
+        - contains:
+            location: "docker"
+        - contains:
+            rule.groups: "juice_shop"
+
     - index: "socforge-atomic-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "atomic"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "atomic"
+        - contains:
+            location: "atomic"
+        - contains:
+            rule.groups: "atomic"
+
     - index: "socforge-web-attack-4.x-%{+yyyy.MM.dd}"
-      when.equals:
-        data.labels.socforge.source: "web_attack"
+      when.or:
+        - equals:
+            data.labels.socforge.source: "web_attack"
+        - contains:
+            location: "web"
+        - contains:
+            rule.groups: "web_attack"
+
     - index: "wazuh-alerts-4.x-%{+yyyy.MM.dd}"
 
 setup.template.json.enabled: true

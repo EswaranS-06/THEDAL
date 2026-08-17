@@ -30,21 +30,41 @@
 - name: Upload SOCForge index template to OpenSearch Indexer
   ansible.builtin.shell: |
     curl -k -s -X PUT "https://127.0.0.1:{{ wazuh_indexer_port }}/_template/socforge_template" \
-      -u "{{ wazuh_admin_username }}:{{ wazuh_admin_password }}" \
+      --cert {{ wazuh_indexer_certs_dir }}/admin.pem \
+      --key {{ wazuh_indexer_certs_dir }}/admin-key.pem \
       -H "Content-Type: application/json" \
       -d @/etc/wazuh-indexer/templates/socforge-template.json
   register: template_upload
   changed_when: "'\"acknowledged\":true' in template_upload.stdout"
   failed_when: template_upload.rc != 0 and '"acknowledged":true' not in template_upload.stdout
-  no_log: true
 
 - name: Upload SOCForge ISM retention policy to OpenSearch Indexer
   ansible.builtin.shell: |
     curl -k -s -X PUT "https://127.0.0.1:{{ wazuh_indexer_port }}/_plugins/_ism/policies/socforge_retention_policy" \
-      -u "{{ wazuh_admin_username }}:{{ wazuh_admin_password }}" \
+      --cert {{ wazuh_indexer_certs_dir }}/admin.pem \
+      --key {{ wazuh_indexer_certs_dir }}/admin-key.pem \
       -H "Content-Type: application/json" \
       -d @/etc/wazuh-indexer/templates/socforge-ism-policy.json
   register: ism_upload
   changed_when: "'\"_version\":' in ism_upload.stdout or '\"acknowledged\":true' in ism_upload.stdout"
   failed_when: ism_upload.rc != 0 and '"error"' in ism_upload.stdout and '"version_conflict_engine_exception"' not in ism_upload.stdout
-  no_log: true
+
+- name: Deploy SOCForge Filebeat ingest pipeline configuration
+  ansible.builtin.template:
+    src: socforge-pipeline.json.j2
+    dest: /etc/wazuh-indexer/templates/socforge-pipeline.json
+    owner: wazuh-indexer
+    group: wazuh-indexer
+    mode: "0644"
+
+- name: Upload SOCForge ingest pipeline to OpenSearch Indexer
+  ansible.builtin.shell: |
+    curl -k -s -X PUT "https://127.0.0.1:{{ wazuh_indexer_port }}/_ingest/pipeline/filebeat-7.10.2-wazuh-alerts-pipeline" \
+      --cert {{ wazuh_indexer_certs_dir }}/admin.pem \
+      --key {{ wazuh_indexer_certs_dir }}/admin-key.pem \
+      -H "Content-Type: application/json" \
+      -d @/etc/wazuh-indexer/templates/socforge-pipeline.json
+  register: pipeline_upload
+  changed_when: "'\"acknowledged\":true' in pipeline_upload.stdout"
+  failed_when: pipeline_upload.rc != 0 and '"acknowledged":true' not in pipeline_upload.stdout
+

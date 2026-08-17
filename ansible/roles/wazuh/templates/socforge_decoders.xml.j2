@@ -8,34 +8,35 @@
 
 <!-- OWASP Juice Shop Docker JSON Decoder -->
 <decoder name="socforge-juice-shop">
-  <prematch>^{\s*"log":\s*"</prematch>
+  <prematch>{"log":</prematch>
 </decoder>
 
 <decoder name="socforge-juice-shop-http">
   <parent>socforge-juice-shop</parent>
-  <regex offset="after_parent">"log":\s*"(\w+)\s+([^"]+)\s+HTTP/[0-9.]+"\s*,\s*"stream":\s*"(\w+)"</regex>
-  <order>http_method, url, stream</order>
+  <regex offset="after_parent">"log":"(\w+) (\S+) HTTP</regex>
+  <order>http_method, url</order>
 </decoder>
 
 <decoder name="socforge-juice-shop-status">
   <parent>socforge-juice-shop</parent>
-  <regex offset="after_parent">"log":\s*"HTTP/[0-9.]+\s+(\d+)\s+([^"]+)"</regex>
+  <regex offset="after_parent">"log":"HTTP/\S+ (\d+) (\.+)"</regex>
   <order>http_status, status_message</order>
 </decoder>
 
 <decoder name="socforge-juice-shop-error">
   <parent>socforge-juice-shop</parent>
-  <regex offset="after_parent">"log":\s*"([^"]*(?:SequelizeDatabaseError|SQLITE_ERROR|SyntaxError|Error:[^"]*))"</regex>
+  <prematch>Error|SQLITE|Sequelize</prematch>
+  <regex offset="after_parent">"log":"(\.+)"</regex>
   <order>error_message</order>
 </decoder>
 
 <!-- SOCForge Ground-Truth Simulation Audit Log Decoder -->
 <decoder name="socforge-simulation">
-  <prematch>^{\s*"timestamp":\s*"[^"]*",\s*"simulation_id":\s*"</prematch>
+  <prematch>{"timestamp":</prematch>
 </decoder>
 
 <decoder name="socforge-simulation-fields">
   <parent>socforge-simulation</parent>
-  <regex offset="after_parent">"simulation_id":\s*"([^"]+)",\s*"scenario_id":\s*"([^"]+)",\s*"technique_id":\s*"([^"]+)",\s*"test_name":\s*"([^"]+)",\s*"target_ip":\s*"([^"]+)"</regex>
+  <regex offset="after_parent">"simulation_id":"(\S+)","scenario_id":"(\S+)","technique_id":"(\S+)","test_name":"(\.+)","target_ip":"(\S+)"</regex>
   <order>simulation_id, scenario_id, technique_id, test_name, target_ip</order>
 </decoder>

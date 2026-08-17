@@ -18,8 +18,8 @@
   ansible.builtin.uri:
     url: "https://127.0.0.1:{{ wazuh_indexer_port }}/_cluster/health"
     method: GET
-    user: "{{ wazuh_admin_username }}"
-    password: "{{ wazuh_admin_password }}"
+    client_cert: "{{ wazuh_indexer_certs_dir }}/admin.pem"
+    client_key: "{{ wazuh_indexer_certs_dir }}/admin-key.pem"
     validate_certs: false
     status_code: [200, 201]
     timeout: 15

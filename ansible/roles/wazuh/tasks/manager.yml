@@ -23,16 +23,13 @@
     http_proxy: "{{ http_proxy_url }}"
     https_proxy: "{{ https_proxy_url }}"
 
-- name: Download Wazuh Indexer template for Filebeat
-  ansible.builtin.get_url:
-    url: "https://raw.githubusercontent.com/wazuh/wazuh/v{{ wazuh_version }}/src/indexer/wazuh-template.json"
+- name: Deploy Wazuh Indexer template for Filebeat
+  ansible.builtin.copy:
+    src: wazuh-template.json
     dest: /etc/filebeat/wazuh-template.json
     mode: "0644"
     owner: root
     group: root
-  environment:
-    http_proxy: "{{ http_proxy_url }}"
-    https_proxy: "{{ https_proxy_url }}"
 
 - name: Create Filebeat certificates directory
   ansible.builtin.file:
@@ -92,3 +89,12 @@
   loop:
     - "{{ wazuh_agent_event_port }}"
     - "{{ wazuh_agent_auth_port }}"
+
+- name: Ensure standard Wazuh Agent groups exist on Manager
+  ansible.builtin.shell: |
+    /var/ossec/bin/agent_groups -a -g {{ item }} -q || true
+  loop:
+    - windows-endpoints
+    - web-targets
+    - attack-hosts
+  changed_when: false
