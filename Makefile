@@ -5,7 +5,7 @@
 .DEFAULT_GOAL := help
 SHELL := /usr/bin/env bash
 
-.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check wazuh-index-check detection-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check atomic-deploy atomic-check atomic-test web-attack-deploy web-attack-check web-test
+.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check wazuh-index-check detection-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check atomic-deploy atomic-check atomic-test web-attack-deploy web-attack-check web-test control-plane test-control-plane
 
 help: ## Show this help message
 	@echo "================================================================="
@@ -41,6 +41,15 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 	@echo "Shell syntax verification: OK"
 	@echo "Validating Python scripts..."
 	@python3 -m py_compile scripts/generate-inventory.py
+	@python3 -m py_compile control-plane/app/config.py
+	@python3 -m py_compile control-plane/app/models.py
+	@python3 -m py_compile control-plane/app/main.py
+	@python3 -m py_compile control-plane/app/services/terraform.py
+	@python3 -m py_compile control-plane/app/services/ansible.py
+	@python3 -m py_compile control-plane/app/services/aws.py
+	@python3 -m py_compile control-plane/app/services/ssh.py
+	@python3 -m py_compile control-plane/app/services/health.py
+	@python3 -m py_compile control-plane/app/services/operations.py
 	@echo "Python syntax verification: OK"
 	@if command -v terraform >/dev/null 2>&1; then \
 		echo "Validating Terraform formatting and syntax..."; \
@@ -135,3 +144,10 @@ web-attack-check: ## Check health and scenario status of Web Security Testing Su
 
 web-test: ## Run controlled Web Security Testing scenario (Usage: make web-test ARGS="--list")
 	@./scripts/run-web-test.sh $(ARGS)
+
+control-plane: ## Start local SOCForge Control Plane web server on 127.0.0.1:8080
+	@cd control-plane && /home/rex/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8080
+
+test-control-plane: ## Run pytest test suite on control-plane
+	@cd control-plane && /home/rex/.local/bin/uv run pytest tests/
+
