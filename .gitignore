@@ -89,8 +89,10 @@ venv.bak/
 # Logs & Diagnostic Outputs
 # ------------------------------------------------------------------------------
 *.log
-logs/
+/logs/
 *.out
+.operation.lock
+!control-plane/logs/.gitkeep
 !tests/detections/*.log
 
 # ------------------------------------------------------------------------------
