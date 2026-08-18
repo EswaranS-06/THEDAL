@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Settings & Configuration &bull; SOCForge{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Control Plane Settings</h1>
+        <p class="page-subtitle">Local environment paths, tool versions, and security configuration</p>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Path & Environment Configuration -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Local Directory Paths</span>
+            <span class="badge badge-pass">Read-Only</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="font-weight: 600;">Project Root</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ config.PROJECT_ROOT }}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">Terraform Directory</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ config.TERRAFORM_DIR }}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">Ansible Directory</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ config.ANSIBLE_DIR }}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">Logs Directory</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ config.LOGS_DIR }}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">SSH Key Path</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ config.SSH_KEY_PATH }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Security Guardrails & Tool Versions -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Security & Tool Inventory</span>
+            <span class="badge badge-pass">Hardened</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="font-weight: 600;">Binding Interface</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-green);">{{ config.HOST }}:{{ config.PORT }} (Localhost Only)</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">AWS Region</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ config.AWS_DEFAULT_REGION }}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">Arbitrary CLI Execution</td>
+                        <td style="color: var(--color-green); font-weight: 600; font-size: 0.8rem;">DISABLED (Allowlist Only)</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">Destroy Guardrail</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-amber);">Required Phrase: "DESTROY SOCFORGE"</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight: 600;">Lock Mechanism</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">.operation.lock (Thread-Safe)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- SSH Connection Cheat Sheet -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <span class="card-title">Direct SSH & Tunnel Quick-Reference</span>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Target Node</th>
+                    <th>Connection Type</th>
+                    <th>Command String</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for node in ssh_info.nodes %}
+                <tr>
+                    <td style="font-weight: 600;">{{ node.name }}</td>
+                    <td><span class="badge badge-ready">{{ node.type }}</span></td>
+                    <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-primary);">
+                        <code>{{ node.command }}</code>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

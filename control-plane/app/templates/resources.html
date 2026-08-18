@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}AWS Resources & Topology &bull; SOCForge{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">AWS Infrastructure & Resources</h1>
+        <p class="page-subtitle">Detailed breakdown of provisioned EC2 virtual machines, VPC subnets, and cost estimations</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        <button class="btn btn-secondary" onclick="triggerOperation('/api/ec2/start', {})">▶ Start Stopped Nodes</button>
+        <button class="btn btn-secondary" onclick="triggerOperation('/api/ec2/stop', {})">⏸ Stop Running Nodes</button>
+    </div>
+</div>
+
+<!-- Detailed Compute Instances -->
+<div style="margin-bottom: 2.5rem;">
+    <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">EC2 Virtual Machine Fleet</h2>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Host / Node Name</th>
+                    <th>State</th>
+                    <th>Instance ID</th>
+                    <th>Instance Type</th>
+                    <th>Private IP</th>
+                    <th>Public IP</th>
+                    <th>Availability Zone</th>
+                    <th>Role</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for node in instances %}
+                <tr>
+                    <td style="font-weight: 600;">{{ node.name }}</td>
+                    <td><span class="badge badge-{{ node.state }}">{{ node.state }}</span></td>
+                    <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ node.instance_id }}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ node.instance_type }}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-blue);">{{ node.private_ip }}</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.85rem;">{{ node.public_ip or '—' }}</td>
+                    <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ node.availability_zone }}</td>
+                    <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ node.role }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        No active instances found in the current AWS region.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Network & VPC Topology -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">VPC & Subnet Topology</span>
+            <span class="badge badge-deployed">CIDR: {{ network.vpc_cidr }}</span>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">VPC Resource ID:</div>
+            <div style="font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600;">{{ network.vpc_id or 'Not Deployed' }}</div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subnet Name</th>
+                        <th>CIDR Block</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in network.subnets %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ sub.name }}</td>
+                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ sub.cidr }}</td>
+                        <td>
+                            <span class="badge {% if sub.is_public %}badge-warning{% else %}badge-deployed{% endif %}">
+                                {% if sub.is_public %}PUBLIC{% else %}PRIVATE{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: var(--text-muted);">No subnets found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Resource & Cost Advisory -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">AWS Resource & Cost Advisory</span>
+            <span class="badge badge-pass">Architecture Cost Optimized</span>
+        </div>
+        <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            SOCForge is engineered to minimize cloud expenses while providing a complete multi-host enterprise testing ground.
+        </div>
+        <ul style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 1.25rem; line-height: 1.7; margin-bottom: 1.25rem;">
+            <li><strong>Zero NAT Gateway Policy</strong>: Saves ~$32+/month by utilizing the forward Squid proxy on the Bastion jumpbox.</li>
+            <li><strong>Single Public IPv4</strong>: Only the Bastion jumpbox allocates a public IP, avoiding excess IPv4 reservation fees.</li>
+            <li><strong>Stopping vs. Destroying</strong>:
+                <ul style="margin-top: 0.25rem; margin-left: 1rem;">
+                    <li><strong>Stopping EC2</strong>: Stops hourly compute charges; attached EBS disk storage charges (~$0.10/GB/month) continue.</li>
+                    <li><strong>Terraform Destroy</strong>: Terminates compute and deletes attached EBS volumes completely, eliminating all recurring charges.</li>
+                </ul>
+            </li>
+        </ul>
+        <div class="node-card" style="border-left: 4px solid var(--color-amber);">
+            <div style="font-size: 0.8rem; color: var(--text-primary);">
+                <strong>Operator Tip</strong>: When you are finished with a training lab for the day, use <code>Destroy Environment</code> in the Operations Console to prevent unexpected cloud billing.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

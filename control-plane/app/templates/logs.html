@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs &bull; SOCForge{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Operation Audit Logs</h1>
+        <p class="page-subtitle">Structured execution history and raw output records for all control plane actions</p>
+    </div>
+</div>
+
+<div class="grid-2" style="grid-template-columns: 350px 1fr;">
+    <!-- Log Files List -->
+    <div class="card" style="padding: 1rem;">
+        <div class="card-header" style="margin-bottom: 0.75rem;">
+            <span class="card-title" style="font-size: 0.9rem;">Recent Operation Logs</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 550px; overflow-y: auto;">
+            {% for log in logs %}
+            <a href="/logs?file={{ log.filename }}" style="text-decoration: none; display: block; padding: 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: {% if selected_log == log.filename %}var(--bg-surface){% else %}var(--bg-card){% endif %};">
+                <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">{{ log.operation }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 0.2rem;">
+                    {{ log.modified }}
+                </div>
+            </a>
+            {% else %}
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 1.5rem;">
+                No operation logs recorded yet.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Active Log Viewer Window -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Log Output: <code style="font-size: 0.85rem; color: var(--color-blue);">{{ selected_log or 'Select a log file' }}</code></span>
+            {% if selected_log %}
+            <a href="/api/logs/download?file={{ selected_log }}" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">
+                Download Log
+            </a>
+            {% endif %}
+        </div>
+        <div class="terminal-window" style="max-height: 520px; min-height: 350px;">
+{{ log_content }}
+        </div>
+    </div>
+</div>
+{% endblock %}

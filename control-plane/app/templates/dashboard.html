@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard &bull; SOCForge Control Center{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">SOCForge Control Center</h1>
+        <p class="page-subtitle">Real-time infrastructure health, telemetry status, and quick operator controls</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+        <button id="btn-wazuh-tunnel" class="btn btn-primary" onclick="startWazuhTunnel()">
+            🔒 Open Wazuh UI (Tunnel)
+        </button>
+        <a href="/operations" class="btn btn-secondary">
+            ⚡ Operations Console
+        </a>
+    </div>
+</div>
+
+<!-- Top Status Metrics Grid -->
+<div class="grid-4">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">AWS Authentication</span>
+            <span class="badge {% if aws.connected %}badge-pass{% else %}badge-fail{% endif %}">
+                {% if aws.connected %}CONNECTED{% else %}OFFLINE{% endif %}
+            </span>
+        </div>
+        <div class="card-value">{{ aws.region }}</div>
+        <div class="card-caption">Account: {{ aws.account or 'Not Authenticated' }}</div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Terraform State</span>
+            <span class="badge {% if terraform.status == 'DEPLOYED' %}badge-deployed{% elif terraform.status == 'READY' %}badge-ready{% else %}badge-fail{% endif %}">
+                {{ terraform.status }}
+            </span>
+        </div>
+        <div class="card-value">{{ terraform.resource_count }} <span style="font-size: 1rem; font-weight: 500; color: var(--text-muted);">Assets</span></div>
+        <div class="card-caption">Engine Version: {{ tf_version }}</div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">EC2 Fleet Status</span>
+            <span class="badge {% if running_instances == total_instances and total_instances > 0 %}badge-running{% elif running_instances > 0 %}badge-warning{% else %}badge-stopped{% endif %}">
+                {{ running_instances }}/{{ total_instances }} ACTIVE
+            </span>
+        </div>
+        <div class="card-value">{{ running_instances }} <span style="font-size: 1rem; font-weight: 500; color: var(--text-muted);">Running</span></div>
+        <div class="card-caption">Zero NAT Gateways ($0.00 NAT Cost)</div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Environment Health</span>
+            <span class="badge {% if status.environment_health == 'HEALTHY' %}badge-pass{% elif status.environment_health == 'DEGRADED' %}badge-warning{% else %}badge-fail{% endif %}">
+                {{ status.environment_health }}
+            </span>
+        </div>
+        <div class="card-value">{{ status.environment_health }}</div>
+        <div class="card-caption">All core services reporting</div>
+    </div>
+</div>
+
+<!-- Active Node Overview -->
+<div style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 600;">Monitored Nodes & Compute Fleet</h2>
+        <a href="/resources" style="font-size: 0.85rem; color: var(--color-blue); text-decoration: none;">View Detailed Topology &rarr;</a>
+    </div>
+
+    <div class="grid-4">
+        {% for node in instances %}
+        <div class="node-card">
+            <div>
+                <div class="node-header">
+                    <span class="node-name">{{ node.name }}</span>
+                    <span class="badge badge-{{ node.state }}">{{ node.state }}</span>
+                </div>
+                <div class="node-role">{{ node.role }}</div>
+            </div>
+            <div class="node-meta">
+                <div>
+                    <div>Private IP</div>
+                    <div class="node-meta-value">{{ node.private_ip }}</div>
+                </div>
+                <div>
+                    <div>Type</div>
+                    <div class="node-meta-value">{{ node.instance_type }}</div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem;">
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">No active SOCForge EC2 instances discovered in AWS.</p>
+            <a href="/operations" class="btn btn-primary">Go to Operations to Deploy</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Quick Health Check Summary -->
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">Diagnostics & Component Checks</span>
+        <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="triggerOperation('/api/health/check', {})">
+            Run Health Check
+        </button>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Component</th>
+                    <th>Status</th>
+                    <th>Details / Message</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for check in health_summary.checks %}
+                <tr>
+                    <td style="font-weight: 600;">{{ check.component }}</td>
+                    <td>
+                        <span class="badge badge-{{ check.status.lower() }}">{{ check.status }}</span>
+                    </td>
+                    <td style="color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.82rem;">
+                        {{ check.message }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

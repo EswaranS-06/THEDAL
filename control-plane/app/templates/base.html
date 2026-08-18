@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SOCForge Control Center{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+</head>
+<body>
+    <header class="navbar">
+        <a href="/" class="brand">
+            <div class="brand-icon">SF</div>
+            <span>SOCForge <span style="color: var(--color-blue); font-weight: 400;">Control Plane</span></span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="/resources" class="{% if active_page == 'resources' %}active{% endif %}">AWS Resources</a></li>
+            <li><a href="/operations" class="{% if active_page == 'operations' %}active{% endif %}">Operations</a></li>
+            <li><a href="/logs" class="{% if active_page == 'logs' %}active{% endif %}">Audit Logs</a></li>
+            <li><a href="/settings" class="{% if active_page == 'settings' %}active{% endif %}">Settings</a></li>
+        </ul>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div class="nav-status-badge">
+                <span class="status-dot {% if status.environment_health == 'DEGRADED' %}amber{% elif status.environment_health == 'OFFLINE' %}red{% endif %}"></span>
+                <span>SOC: <span id="nav-env-status">{{ status.environment_health }}</span></span>
+            </div>
+            <button class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="fetchSystemStatus(); window.location.reload();">
+                ↻ Refresh
+            </button>
+        </div>
+    </header>
+
+    <main class="container" data-auto-refresh="true">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Global Destroy Confirmation Modal -->
+    <div id="destroy-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 class="modal-title" style="color: var(--color-red);">⚠️ Confirm Infrastructure Destruction</h3>
+            <p class="modal-body">
+                This operation executes <code>terraform destroy</code> across all AWS VPC, EC2, and security assets. All temporary lab instances will be permanently terminated.
+            </p>
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; color: var(--text-secondary);">
+                    To proceed, type the exact phrase <strong>DESTROY SOCFORGE</strong> below:
+                </label>
+                <input type="text" id="destroy-phrase-input" class="form-input" placeholder="DESTROY SOCFORGE" autocomplete="off">
+            </div>
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="destroy-check-input">
+                    I understand this will destroy all AWS resources.
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDestroyModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="executeDestroy()">Permanently Destroy</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>SOCForge Control Plane (Localhost Only: 127.0.0.1:8080) &bull; Production Infrastructure as Code</p>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
