@@ -1,652 +1,1033 @@
-SOCForge — Phase 15: Live Telemetry Routing, Detection Integrity & SOC Validation
+SOCForge — Phase 16: SOC Analyst Learning Experience, Guided Investigations & Training Labs
 
-Phase 14 successfully deployed SOCForge into AWS and fixed 19 live infrastructure defects.
+SOCForge is now a functioning live AWS SOC environment.
+
+Phase 14 proved the infrastructure works.
+
+Phase 15 proved live telemetry, detections, correlation and resource behavior.
 
 DO NOT redesign the infrastructure.
 
-DO NOT add new EC2 instances.
+DO NOT add EC2 instances.
 
 DO NOT add NAT Gateway.
 
-DO NOT add new major features.
+DO NOT replace Wazuh.
 
-This phase exists to prove that the LIVE SOC telemetry architecture created in Phases 12–13 actually works end-to-end.
+DO NOT add SOAR.
+
+DO NOT add MISP.
+
+DO NOT create another major backend.
+
+This phase transforms the existing SOCForge environment into a structured SOC learning platform.
+
+The original motivation for SOCForge is:
+
+    A beginner should be able to deploy the environment
+    and learn SOC investigation step-by-step
+    without having to figure out everything from scratch.
 
 ==================================================
 1. PRIMARY OBJECTIVE
 ==================================================
 
-Prove this complete chain for every telemetry source:
+Create a guided SOC analyst learning experience.
 
-SOURCE
- ↓
-COLLECTOR
- ↓
-WAZUH AGENT / MANAGER
- ↓
-CLASSIFICATION
- ↓
-INDEX ROUTING
- ↓
-SOCFORGE INDEX
- ↓
-WAZUH ALERT
- ↓
-DASHBOARD
- ↓
-DETECTION
+The learner should be able to:
 
-Do not consider configuration files as proof.
+    Generate an event
+        ↓
+    Observe the alert
+        ↓
+    Understand why it triggered
+        ↓
+    Investigate the evidence
+        ↓
+    Identify the attack
+        ↓
+    Map it to MITRE ATT&CK
+        ↓
+    Determine severity
+        ↓
+    Determine false positive / true positive
+        ↓
+    Write an investigation conclusion
 
-Only actual live events count as validation.
-
-==================================================
-2. LIVE INDEX INVENTORY
-==================================================
-
-On the live Wazuh Indexer/OpenSearch instance:
-
-List all indices.
-
-Verify whether the following actually exist:
-
-socforge-windows-security-*
-socforge-sysmon-*
-socforge-powershell-*
-socforge-nginx-access-*
-socforge-nginx-error-*
-socforge-dvwa-*
-socforge-auditd-*
-socforge-linux-auth-*
-socforge-juice-shop-*
-socforge-atomic-*
-socforge-web-attack-*
-
-Also verify:
-
-wazuh-alerts-*
-wazuh-archives-*
-
-Do not assume they exist.
-
-For every expected index record:
-
-FOUND
-EMPTY
-MISSING
-NOT APPLICABLE
+The environment must teach investigation,
+not simply demonstrate attacks.
 
 ==================================================
-3. TELEMETRY SOURCE MATRIX
+2. LEARNING LEVELS
 ==================================================
 
-Create a live validation matrix:
+Create three levels.
 
-Source
-Generator
-Collector
-Classification
-Expected Index
-Actual Index
-Alert
-Dashboard
-Status
+LEVEL 1 — SOC FOUNDATION
 
-Required sources:
+Beginner.
 
-windows_security
-sysmon
-powershell
-nginx_access
-nginx_error
-dvwa
-auditd
-linux_auth
-juice_shop
-atomic
-web_attack
+Teach:
 
-==================================================
-4. WINDOWS SECURITY
-==================================================
+- what is a log?
+- what is an alert?
+- event vs alert
+- severity
+- source IP
+- destination IP
+- username
+- process
+- command line
+- timestamp
+- HTTP status
+- Wazuh rule
+- MITRE ATT&CK
 
-Generate a harmless Windows security event.
+LEVEL 2 — SOC INVESTIGATION
 
-Verify:
+Teach:
 
-Windows Event Log
- ↓
-Wazuh Agent
- ↓
-Wazuh Manager
- ↓
-OpenSearch
+- timeline construction
+- event correlation
+- process investigation
+- authentication investigation
+- web attack investigation
+- endpoint investigation
+- distinguishing FP vs TP
 
-Confirm:
+LEVEL 3 — ATTACK INVESTIGATION
 
-socforge.source
-agent.name
-timestamp
-event ID
+Teach:
 
-Verify expected index.
+- Atomic Red Team
+- Sysmon
+- PowerShell
+- DVWA
+- Juice Shop
+- multi-source correlation
+- MITRE ATT&CK
+- attack timeline
 
 ==================================================
-5. SYSMON
-==================================================
-
-Generate:
-
-whoami.exe
-systeminfo.exe
-ipconfig.exe
-
-Verify Sysmon Event ID 1.
-
-Verify Wazuh ingestion.
-
-Verify:
-
-socforge.source=sysmon
-
-Verify actual index.
-
-==================================================
-6. POWERSHELL
-==================================================
-
-Generate harmless PowerShell activity.
-
-Verify:
-
-ScriptBlock
-Module logging where configured
-Sysmon process creation
-
-Verify:
-
-socforge.source=powershell
-
-Verify actual index.
-
-==================================================
-7. NGINX ACCESS
-==================================================
-
-Generate normal HTTP requests against DVWA.
-
-Verify:
-
-/var/log/nginx/access.log
-
-then:
-
-Wazuh Agent
- ↓
-Wazuh Manager
- ↓
-OpenSearch
-
-Verify:
-
-socforge.source=nginx_access
-
-Verify the correct index.
-
-==================================================
-8. NGINX ERROR
-==================================================
-
-Generate a controlled HTTP error.
-
-Verify:
-
-/var/log/nginx/error.log
-
-Verify:
-
-socforge.source=nginx_error
-
-Verify separate routing from nginx_access.
-
-==================================================
-9. DVWA
-==================================================
-
-Generate one controlled request for each:
-
-SQL injection
-Command injection
-LFI/traversal
-
-Verify:
-
-Nginx event
-Wazuh event
-custom rule
-alert
-index
-dashboard
-
-Record exact Wazuh rule ID and alert level.
-
-==================================================
-10. AUDITD
-==================================================
-
-Generate a harmless command execution that auditd records.
-
-Verify:
-
-audit.log
- ↓
-Wazuh
- ↓
-socforge.source=auditd
- ↓
-expected index
-
-==================================================
-11. LINUX AUTH
-==================================================
-
-Generate a controlled authentication event.
-
-Verify:
-
-/var/log/auth.log
-
-Verify:
-
-socforge.source=linux_auth
-
-Verify actual index.
-
-==================================================
-12. JUICE SHOP
-==================================================
-
-Generate normal Juice Shop traffic.
-
-Then run one controlled Juice Shop test.
-
-Verify:
-
-Docker JSON log
- ↓
-Wazuh Agent
- ↓
-Wazuh Manager
- ↓
-socforge.source=juice_shop
- ↓
-socforge-juice-shop-*
- ↓
-Dashboard
-
-This chain is mandatory.
-
-Do not accept "Wazuh received the log" as sufficient.
-
-==================================================
-13. ATOMIC
-==================================================
-
-Run only:
-
-T1082
-T1087.001
-T1016
-T1053.005
-
-Verify:
-
-Atomic ground truth
- ↓
-Windows
- ↓
-Sysmon/Security
- ↓
-Wazuh
- ↓
-custom detection
- ↓
-socforge-atomic-*
-
-Verify the simulation metadata:
-
-simulation_id
-scenario_id
-technique_id
-target
-
-==================================================
-14. WEB ATTACK
-==================================================
-
-Run:
-
-DVWA-03
-DVWA-05
-JS-01
-
-Verify:
-
-web_attack metadata
-
-and:
-
-socforge-web-attack-*
-
-Do not run the entire attack catalog.
-
-==================================================
-15. NATIVE WAZUH INDEX REGRESSION
-==================================================
-
-This is mandatory.
-
-Verify that:
-
-wazuh-alerts-*
-
-still receives alerts.
-
-Verify Wazuh Dashboard's native alert functionality still works.
-
-Verify that source-specific routing did NOT break native Wazuh functionality.
-
-==================================================
-16. DETECTION VALIDATION
-==================================================
-
-For every live-tested detection:
-
-Detection ID
-Rule ID
-Expected
-Observed
-Index
-Severity
-Dashboard
-Status
-
-Use only:
-
-PASS
-FAIL
-BLOCKED
-
-Do not claim success from configuration alone.
-
-==================================================
-17. CORRELATION VALIDATION
-==================================================
-
-Test:
-
-Nginx suspicious request
-+
-Auditd execution
-
-Test:
-
-Web upload
-+
-FIM
-
-Test:
-
-Juice Shop failed authentication
-+
-successful authentication
-
-Verify actual correlation alerts.
-
-==================================================
-18. DASHBOARD VALIDATION
-==================================================
-
-Open:
-
-SOCForge Overview
-Windows Endpoint
-Web Applications
-Attack Activity
-
-Verify every panel against live data.
-
-Record:
-
-Panel
-Expected data
-Actual data
-Status
-
-==================================================
-19. ADMIN CREDENTIAL REMEDIATION
-==================================================
-
-The current live report exposes:
-
-admin / admin
-
-This MUST NOT remain the learner default.
-
-Implement secure credential handling.
-
-Requirements:
-
-- no plaintext password in Git
-- no password in Terraform output
-- no password in Ansible logs
-- support environment variable or Ansible Vault
-- document how the operator supplies the password
-- change the current live admin password
-
-Verify Git secret scan after the change.
-
-==================================================
-20. RESOURCE / COST REVIEW
-==================================================
-
-Record actual running instance types.
-
-Record:
-
-CPU
-RAM
-EBS size
-EBS usage
-running hours
-
-Compare against the current AWS Free Tier eligibility.
-
-Do not claim "free" simply because there is no NAT Gateway.
-
-Document:
-
-Free Tier eligible
-Credit usage
-Potential charge
-Storage considerations
-
-Do not change instance types during this phase unless a real resource/cost issue is discovered.
-
-==================================================
-21. ATTACK HOST AGENT DECISION
-==================================================
-
-Determine whether SOCForge-attack intentionally does NOT run a Wazuh Agent.
-
-If intentional:
-
-document:
-
-Attack Host
-    ↓
-does not send normal endpoint telemetry
-    ↓
-ground-truth simulation logs only
-
-If it SHOULD run an agent:
-
-identify the required implementation.
-
-Do not change it automatically without documenting the reason.
-
-==================================================
-22. DETECTION COUNT RECONCILIATION
-==================================================
-
-Phase 13 reported:
-
-18 detection rules
-
-but the health check reported:
-
-26 rules in namespace 100100–100699
-
-Resolve this discrepancy.
-
-Produce:
-
-custom detection rules
-support/correlation rules
-total rules
-
-Clearly distinguish them.
-
-==================================================
-23. LIVE HEALTH REPORT
+3. LEARNING LAB STRUCTURE
 ==================================================
 
 Create:
 
-docs/live-telemetry-validation.md
+docs/labs/
+
+Each lab must contain:
+
+README.md
+
+with:
+
+Objective
+Prerequisites
+Scenario
+Attack generation
+Expected telemetry
+Investigation steps
+Questions
+Expected findings
+MITRE ATT&CK
+Conclusion
+Cleanup
+
+==================================================
+4. LAB 01 — FIRST WAZUH ALERT
+
+Create:
+
+labs/01-first-alert/
+
+Scenario:
+
+Generate a harmless Windows event.
+
+Learner must:
+
+1. Open Wazuh Dashboard.
+2. Find the agent.
+3. Find the event.
+4. Identify timestamp.
+5. Identify hostname.
+6. Identify event source.
+7. Identify rule.
+8. Identify severity.
+
+Questions:
+
+What happened?
+
+When?
+
+Where?
+
+Which host?
+
+Which user?
+
+Which rule?
+
+What is the severity?
+
+==================================================
+5. LAB 02 — WINDOWS PROCESS INVESTIGATION
+==================================================
+
+Use Sysmon Event ID 1.
+
+Generate:
+
+whoami
+systeminfo
+ipconfig
+
+Learner investigates:
+
+process.name
+process.parent
+command line
+user
+timestamp
+
+Questions:
+
+What process executed?
+
+Who started it?
+
+What was the parent process?
+
+Is this automatically malicious?
+
+Why/why not?
+
+==================================================
+6. LAB 03 — POWERSHELL INVESTIGATION
+==================================================
+
+Use PowerShell telemetry.
+
+Generate a harmless PowerShell command.
+
+Learner investigates:
+
+PowerShell event
+ScriptBlock
+process creation
+user
+command line
+
+Questions:
+
+Was PowerShell used?
+
+What command executed?
+
+Was the command encoded?
+
+Is PowerShell itself malicious?
+
+What additional evidence would you want?
+
+==================================================
+7. LAB 04 — FAILED AUTHENTICATION
+==================================================
+
+Generate controlled authentication failures.
+
+Learner investigates:
+
+source
+username
+timestamp
+count
+target
+
+Teach:
+
+single failure
+vs
+repeated failures
+
+Questions:
+
+Is this suspicious?
+
+What threshold would increase confidence?
+
+Could this be a false positive?
+
+==================================================
+8. LAB 05 — DVWA SQL INJECTION
+==================================================
+
+Use:
+
+DVWA-03
+
+Learner must identify:
+
+HTTP request
+source IP
+URI
+query parameter
+HTTP response
+Wazuh rule
+severity
+
+Then investigate:
+
+Nginx
++
+Wazuh
++
+application
+
+Questions:
+
+What evidence proves SQL injection?
+
+What is the source?
+
+What endpoint was targeted?
+
+What MITRE ATT&CK technique is associated?
+
+==================================================
+9. LAB 06 — DVWA COMMAND INJECTION
+==================================================
+
+Use:
+
+DVWA-04
+
+Learner investigates:
+
+Nginx access
+Wazuh alert
+auditd
+process execution
+
+Teach multi-source correlation.
+
+Timeline:
+
+HTTP request
+ ↓
+application
+ ↓
+command execution
+ ↓
+auditd
+ ↓
+Wazuh alert
+
+Learner must explain the complete attack chain.
+
+==================================================
+10. LAB 07 — DVWA LFI / PATH TRAVERSAL
+==================================================
+
+Use:
+
+DVWA-05
+
+Learner investigates:
+
+URI
+encoding
+HTTP response
+source
+target
+
+Questions:
+
+What file was targeted?
+
+Why is traversal suspicious?
+
+What evidence would distinguish scanning from successful exploitation?
+
+==================================================
+11. LAB 08 — JUICE SHOP API INVESTIGATION
+==================================================
+
+Use:
+
+JS-03
+
+Learner investigates Docker-generated telemetry.
+
+Teach:
+
+container
+application
+endpoint
+request
+source
+timestamp
+
+Questions:
+
+Why is this different from the Nginx/DVWA architecture?
+
+Where does the log originate?
+
+How does Docker logging reach Wazuh?
+
+==================================================
+12. LAB 09 — ATOMIC RED TEAM
+==================================================
+
+Use:
+
+T1082
+
+Learner investigates:
+
+Atomic ground truth
++
+Windows Security
++
+Sysmon
+
+Construct timeline:
+
+simulation
+ ↓
+process creation
+ ↓
+Windows event
+ ↓
+Sysmon
+ ↓
+Wazuh alert
+
+Learner identifies:
+
+technique
+command
+process
+user
+host
+
+==================================================
+13. LAB 10 — POWERSHELL ATTACK
+==================================================
+
+Use:
+
+T1059.001
+
+Learner investigates:
+
+PowerShell
+Sysmon
+ScriptBlock
+Wazuh rule
+
+Questions:
+
+What makes this activity suspicious?
+
+What evidence increases confidence?
+
+What evidence would reduce confidence?
+
+==================================================
+14. LAB 11 — SCHEDULED TASK
+==================================================
+
+Use:
+
+T1053.005
+
+Learner investigates:
+
+process
+command line
+scheduled task
+user
+timestamp
+
+Map to:
+
+MITRE ATT&CK
+
+Determine:
+
+TP / FP
+
+==================================================
+15. LAB 12 — MULTI-SOURCE CORRELATION
+==================================================
+
+Use:
+
+DET-COR-001
+
+Scenario:
+
+Web command injection
++
+system command execution
+
+Learner must correlate:
+
+Nginx
++
+Wazuh
++
+auditd
+
+Question:
+
+Why is the combined evidence stronger than either event alone?
+
+==================================================
+16. LAB 13 — TRUE POSITIVE VS FALSE POSITIVE
+==================================================
+
+Create paired scenarios.
+
+Example:
+
+Normal administrator PowerShell
+vs
+suspicious PowerShell execution.
+
+Normal 404
+vs
+directory scanning.
+
+Normal API request
+vs
+API enumeration.
+
+Learner must determine:
+
+TRUE POSITIVE
+FALSE POSITIVE
+BENIGN
+SUSPICIOUS
+
+==================================================
+17. LAB 14 — INCIDENT TIMELINE
+==================================================
+
+Give the learner a simulated attack containing multiple events.
+
+They must construct:
+
+Time
+Event
+Source
+Host
+User
+Technique
+Evidence
+
+Example:
+
+10:00:01
+Initial web request
+
+10:00:02
+Command injection
+
+10:00:03
+Process execution
+
+10:00:04
+Auditd event
+
+10:00:05
+Wazuh alert
+
+==================================================
+18. INVESTIGATION WORKSHEET
+==================================================
+
+Create:
+
+docs/templates/investigation-report.md
+
+Template:
+
+Incident ID:
+Analyst:
+Date:
+
+Alert:
+
+Detection:
+
+Severity:
+
+Affected Host:
+
+Source IP:
+
+Destination:
+
+User:
+
+Timeline:
+
+Evidence:
+
+Initial Assessment:
+
+MITRE ATT&CK:
+
+True Positive / False Positive:
+
+Confidence:
+
+Impact:
+
+Recommended Action:
+
+Final Conclusion:
+
+==================================================
+19. SOC TRIAGE WORKSHEET
+==================================================
+
+Create:
+
+docs/templates/triage-checklist.md
+
+Checklist:
+
+[ ] Identify alert
+[ ] Validate timestamp
+[ ] Identify affected asset
+[ ] Identify user
+[ ] Identify source
+[ ] Identify destination
+[ ] Review related events
+[ ] Build timeline
+[ ] Check MITRE technique
+[ ] Determine TP/FP
+[ ] Determine severity
+[ ] Document conclusion
+
+==================================================
+20. ANALYST RUNBOOK
+==================================================
+
+Create:
+
+docs/runbooks/
 
 Include:
 
-Infrastructure
-Connectivity
-Sources
-Indexes
-Rules
-Correlations
-Dashboards
-Credentials
-Resource usage
-Cost considerations
+windows-alert-investigation.md
+powershell-investigation.md
+web-attack-investigation.md
+juice-shop-investigation.md
+authentication-investigation.md
+sysmon-investigation.md
+atomic-investigation.md
+
+Each runbook should answer:
+
+What happened?
+
+What should I check first?
+
+Which index?
+
+Which fields?
+
+Which dashboard?
+
+What evidence matters?
+
+What is a false positive?
+
+What should I document?
 
 ==================================================
-24. FAILURE HANDLING
+21. INDEX → INVESTIGATION GUIDE
 ==================================================
 
-If something fails:
+Create a simple mapping:
 
-DO NOT fake the result.
+windows_security
+    → Windows investigation
 
-Record:
+sysmon
+    → process investigation
 
-LIVE-020
-LIVE-021
-etc.
+powershell
+    → PowerShell investigation
 
-Format:
+nginx_access
+    → web investigation
 
-Issue
-Symptom
-Expected
-Observed
-Root cause
-Fix
-Files changed
-Retest
-Final status
+nginx_error
+    → web error investigation
 
-Every permanent fix must be implemented in Terraform/Ansible/configuration.
+auditd
+    → Linux process investigation
 
-No undocumented manual-only fixes.
+linux_auth
+    → authentication investigation
 
-==================================================
-25. GIT
-==================================================
+juice_shop
+    → container/application investigation
 
-Commit meaningful fixes individually.
+atomic
+    → attack ground truth
 
-Examples:
-
-fix: repair juice shop index routing
-fix: correct sysmon source classification
-fix: secure wazuh dashboard credentials
-fix: repair telemetry dashboard
-fix: reconcile detection rule inventory
-
-Do not push.
-
-Do not create a GitHub remote.
+web_attack
+    → attack scenario metadata
 
 ==================================================
-26. FINAL ACCEPTANCE CRITERIA
+22. BEGINNER GLOSSARY
 ==================================================
 
-Phase 15 is PASS only when:
+Create:
 
-[ ] all expected telemetry sources tested
-[ ] source classification verified
-[ ] source-specific indexes verified
-[ ] native Wazuh indexes still work
-[ ] Juice Shop routing verified
-[ ] Windows telemetry verified
-[ ] Sysmon verified
-[ ] PowerShell verified
-[ ] Nginx access verified
-[ ] Nginx error verified
-[ ] DVWA verified
-[ ] auditd verified
-[ ] Linux auth verified
-[ ] Atomic telemetry verified
-[ ] web attack telemetry verified
-[ ] custom detections verified
-[ ] correlation verified
-[ ] dashboards verified
-[ ] admin password secured
-[ ] detection count reconciled
-[ ] cost status documented
-[ ] no secrets committed
-[ ] repository clean
+docs/learning/glossary.md
 
-==================================================
-27. DO NOT DESTROY AWS
-==================================================
+Explain in simple language:
 
-Do NOT run:
+SIEM
+SOC
+Alert
+Event
+Log
+Rule
+Decoder
+Agent
+Indexer
+Dashboard
+Sysmon
+Auditd
+FIM
+IOC
+TTP
+MITRE ATT&CK
+False Positive
+True Positive
+Severity
+Correlation
+Incident
+Incident Response
 
-terraform destroy
-
-The infrastructure must remain available for the next SOC learning phase.
+Use SOC terminology but explain it for beginners.
 
 ==================================================
-28. NEXT PHASE
+23. ATTACK → TELEMETRY MAP
 ==================================================
 
-After Phase 15:
+Create:
 
-Phase 16 — SOC Analyst Learning Experience
+docs/learning/attack-to-telemetry.md
 
-Focus on turning the working infrastructure into a genuinely usable learning environment:
+Example:
 
-- guided investigation scenarios
-- analyst runbooks
-- alert triage workflow
-- incident investigation exercises
-- evidence collection
-- timelines
-- severity/priority decisions
-- false-positive exercises
-- MITRE ATT&CK mapping
-- beginner-to-intermediate SOC labs
+SQL Injection
+    ↓
+Nginx access
+    ↓
+Wazuh
+    ↓
+DET-WEB-001
+    ↓
+socforge-nginx-access
 
-Do NOT implement Phase 16 automatically.
+PowerShell
+    ↓
+Sysmon
+    ↓
+PowerShell logs
+    ↓
+DET-WIN-001/002
+    ↓
+socforge-powershell / sysmon
 
-STOP after Phase 15.
+Atomic T1082
+    ↓
+Windows Security
+    +
+Sysmon
+    ↓
+Wazuh
+    ↓
+Detection
+
+==================================================
+24. NO AUTOMATIC ATTACK EXECUTION
+==================================================
+
+Learning labs may reference:
+
+run-atomic-test
+
+run-web-test
+
+but must NEVER execute attacks automatically when a learner opens documentation.
+
+The learner must explicitly run the test.
+
+==================================================
+25. RESET / CLEANUP
+==================================================
+
+Each lab must specify:
+
+What changes?
+
+What persists?
+
+What must be cleaned?
+
+How to restore the environment?
+
+Use existing cleanup mechanisms.
+
+Do not create destructive reset scripts unless required.
+
+==================================================
+26. LEARNING PATH
+==================================================
+
+Create:
+
+docs/learning-path.md
+
+Structure:
+
+BEGINNER
+
+1. First Wazuh Alert
+2. Windows Process
+3. PowerShell
+4. Authentication
+
+INTERMEDIATE
+
+5. DVWA SQLi
+6. DVWA Command Injection
+7. LFI
+8. Juice Shop
+
+ADVANCED
+
+9. Atomic
+10. PowerShell Attack
+11. Scheduled Task
+12. Correlation
+13. FP/TP
+14. Timeline
+
+==================================================
+27. CHALLENGE MODE
+==================================================
+
+Create optional challenge labs.
+
+Do NOT reveal the answer immediately.
+
+Example:
+
+"You received Alert 100101.
+
+Determine:
+
+1. What happened?
+2. Which host?
+3. Which source?
+4. Which endpoint?
+5. Is this TP or FP?
+6. Which ATT&CK technique?
+7. What evidence supports your conclusion?"
+
+Then provide:
+
+HINT
+
+and separately:
+
+SOLUTION
+
+This should allow the project to function as a self-learning SOC lab.
+
+==================================================
+28. VALIDATION
+==================================================
+
+Every lab must be checked for:
+
+- correct target
+- correct telemetry source
+- correct index
+- correct detection
+- correct rule
+- correct ATT&CK mapping
+- correct expected result
+- cleanup instructions
+
+Do not invent expected events.
+
+Where live evidence is required, reference actual validated Phase 15 results.
+
+==================================================
+29. DOCUMENTATION QUALITY
+==================================================
+
+Keep explanations:
+
+clear
+practical
+SOC-oriented
+beginner-friendly
+
+Do not turn the documentation into generic cybersecurity theory.
+
+The learner should be able to perform the lab directly.
+
+==================================================
+30. PROJECT ENTRY POINT
+==================================================
+
+Create:
+
+docs/START-HERE.md
+
+This is the first document a learner reads.
+
+It should explain:
+
+What is SOCForge?
+
+What will I learn?
+
+Architecture
+
+Prerequisites
+
+AWS requirements
+
+Deployment
+
+Accessing Wazuh
+
+Starting the first lab
+
+Where to find dashboards
+
+Where to find runbooks
+
+How to clean up AWS
+
+==================================================
+31. LEARNER SAFETY
+==================================================
+
+Clearly state:
+
+SOCForge attacks are intended ONLY for:
+
+- SOCForge lab infrastructure
+- intentionally vulnerable applications
+- authorized training
+
+Never run the attack scripts against external systems.
+
+==================================================
+32. COST WARNING
+==================================================
+
+START-HERE.md must prominently explain that AWS infrastructure can incur charges.
+
+Do NOT state that SOCForge is universally free.
+
+Explain:
+
+- Free Tier eligibility varies
+- EC2 usage can exceed free limits
+- EBS storage can incur charges
+- data transfer may incur charges
+- NAT Gateway is intentionally avoided
+- destroy the infrastructure when finished
+
+==================================================
+33. VALIDATION
+==================================================
+
+Run:
+
+make lint
+make health-check
+
+Validate all Markdown links.
+
+Validate all referenced scripts exist.
+
+Validate all referenced Wazuh rules exist.
+
+Validate all referenced index names match the live architecture.
+
+==================================================
+34. GIT
+==================================================
+
+Commit meaningful groups.
+
+Example:
+
+docs: add SOCForge learning path
+docs: add Windows investigation labs
+docs: add web investigation labs
+docs: add Atomic investigation labs
+docs: add analyst runbooks
+docs: add SOC investigation templates
+
+Do NOT push.
+
+Do NOT create GitHub remote.
+
+==================================================
+35. FINAL REPORT
+==================================================
+
+Report:
+
+1. Learning path
+2. Number of labs
+3. Beginner labs
+4. Intermediate labs
+5. Advanced labs
+6. Challenge labs
+7. Runbooks
+8. Investigation templates
+9. Glossary
+10. START-HERE guide
+11. Validation results
+12. Git commits
+
+==================================================
+36. IMPORTANT
+==================================================
+
+Do not change the working SOC infrastructure unless a documentation reference is incorrect.
+
+This phase is primarily:
+
+DOCUMENTATION
++
+TRAINING
++
+INVESTIGATION WORKFLOW
+
+The live infrastructure has already been validated.
+
+STOP after Phase 16.
