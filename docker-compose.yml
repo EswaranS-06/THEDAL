@@ -1,0 +1,28 @@
+# ==============================================================================
+# THEDAL Control Plane — Docker Compose
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  control-plane:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: thedal-control-plane
+    ports:
+      # Bind strictly to localhost by default for security
+      - "127.0.0.1:8080:8080"
+    environment:
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-ap-south-1}
+      - HOST=0.0.0.0
+      - PORT=8080
+    volumes:
+      # Mount host AWS credentials (read-only)
+      - ${HOME}/.aws:/root/.aws:ro
+      # Mount host SSH key (read-only)
+      - ${HOME}/.ssh:/root/.ssh:ro
+      # Persist Terraform state and logs
+      - ./terraform:/workspace/terraform
+      - ./control-plane/logs:/workspace/control-plane/logs
+    restart: unless-stopped
