@@ -5,11 +5,166 @@
 {% block content %}
 <div class="page-header">
     <div class="page-title-group">
-        <h1 class="page-title">Control Plane Settings & Environment</h1>
-        <p class="page-subtitle">Local paths, AWS configuration, security boundaries, and SSH connection parameters</p>
+        <h1 class="page-title">Control Plane Settings & Commands</h1>
+        <p class="page-subtitle">Dynamic CLI commands, AWS credential profiles, SSH key lifecycle, and safety auto-stop</p>
     </div>
 </div>
 
+<!-- 1. Dynamic Operator Commands Section -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <span class="card-title">
+            <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            <span>Dynamic Operator Commands (Live IPs)</span>
+        </span>
+        <span class="badge badge-pass">DISCOVERED</span>
+    </div>
+    <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.875rem;">
+        Commands are generated dynamically using real Terraform state and AWS EC2 discoveries.
+    </p>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 160px;">Target</th>
+                    <th style="width: 140px;">Discovered IP</th>
+                    <th style="width: 140px;">Category</th>
+                    <th>CLI Command</th>
+                    <th style="width: 80px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cmd in dynamic_commands %}
+                <tr>
+                    <td style="font-weight: 600;">{{ cmd.target }}</td>
+                    <td class="table-cell-mono" style="font-size: 0.75rem;">{{ cmd.ip }}</td>
+                    <td><span class="badge badge-info">{{ cmd.category }}</span></td>
+                    <td class="table-cell-mono" style="color: var(--text-primary);">
+                        <code id="cmd-text-{{ cmd.id }}">{{ cmd.command }}</code>
+                    </td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="copyCommand('cmd-text-{{ cmd.id }}')" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">
+                            Copy
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 2. AWS Profile Management & Safety Auto-Stop -->
+<div class="grid-2" style="margin-bottom: 1.5rem;">
+    <!-- AWS Profile Management -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>AWS Credential Profiles</span>
+            </span>
+            <span class="badge badge-pass">NO SECRETS STORED</span>
+        </div>
+        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            Managed via standard <code>~/.aws/credentials</code>. Validated with <code>sts:GetCallerIdentity</code>.
+        </p>
+
+        <div class="table-container" style="margin-bottom: 1rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Profile</th>
+                        <th>Account ID</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prof in aws_profiles %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ prof.name }}</td>
+                        <td class="table-cell-mono">{{ prof.account or 'Unverified' }}</td>
+                        <td>
+                            {% if prof.valid %}
+                            <span class="badge badge-pass">VALID</span>
+                            {% else %}
+                            <span class="badge badge-fail" title="{{ prof.error }}">INVALID</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: var(--text-muted);">No profiles found in ~/.aws/credentials</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.75rem;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">Add / Update Profile</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <input type="text" id="new-prof-name" placeholder="Profile Name (e.g. default)" class="form-input" style="font-size: 0.75rem;">
+                <input type="text" id="new-prof-region" placeholder="Region (default: ap-south-1)" value="ap-south-1" class="form-input" style="font-size: 0.75rem;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <input type="text" id="new-prof-key" placeholder="AWS Access Key ID" class="form-input" style="font-size: 0.75rem; font-family: var(--font-mono);">
+                <input type="password" id="new-prof-secret" placeholder="AWS Secret Access Key" class="form-input" style="font-size: 0.75rem; font-family: var(--font-mono);">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="saveAWSProfile()" style="width: 100%;">
+                Save & Validate Profile
+            </button>
+        </div>
+    </div>
+
+    <!-- SSH Key Lifecycle & Safe Auto-Stop -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>SSH Lifecycle & Safety Auto-Stop</span>
+            </span>
+            <span class="badge badge-info">SAFETY</span>
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+            <div style="font-size: 0.8125rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">Local Ed25519 Keypair</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                Path: <code class="table-cell-mono">{{ config.SSH_KEY_PATH }}</code>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="ensureSSHKey()">
+                Verify / Generate SSH Key
+            </button>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8125rem; font-weight: 600; color: var(--text-primary);">Configurable EC2 Auto-Stop</span>
+                <span class="badge {% if autostop.enabled %}badge-pass{% else %}badge-info{% endif %}" id="autostop-status-badge">
+                    {{ 'ENABLED' if autostop.enabled else 'DISABLED (Default)' }}
+                </span>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                Automatically executes <code>make stop-ec2</code> when critical health failures persist. <strong>Never runs terraform destroy.</strong>
+            </p>
+            <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem;">
+                <label style="font-size: 0.75rem; color: var(--text-muted);">Grace Period:</label>
+                <select id="autostop-grace" class="form-input" style="width: 120px; font-size: 0.75rem;">
+                    <option value="15" {% if autostop.grace_period_minutes == 15 %}selected{% endif %}>15 Minutes</option>
+                    <option value="30" {% if autostop.grace_period_minutes == 30 %}selected{% endif %}>30 Minutes</option>
+                    <option value="60" {% if autostop.grace_period_minutes == 60 %}selected{% endif %}>60 Minutes</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="toggleAutoStop(!{{ 'true' if autostop.enabled else 'false' }})">
+                    {{ 'Disable' if autostop.enabled else 'Enable' }}
+                </button>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                Last Evaluation: <strong>{{ autostop.last_action }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Local Paths & Hardened Guardrails -->
 <div class="grid-2">
     <!-- Local Paths & Directories -->
     <div class="card">
@@ -39,10 +194,6 @@
                         <td style="font-weight: 600;">Logs Directory</td>
                         <td class="table-cell-mono">{{ config.LOGS_DIR }}</td>
                     </tr>
-                    <tr>
-                        <td style="font-weight: 600;">SSH Key Path</td>
-                        <td class="table-cell-mono">{{ config.SSH_KEY_PATH }}</td>
-                    </tr>
                 </tbody>
             </table>
         </div>
@@ -69,10 +220,6 @@
                         <td class="table-cell-mono">{{ config.AWS_DEFAULT_REGION }}</td>
                     </tr>
                     <tr>
-                        <td style="font-weight: 600;">AWS Profile</td>
-                        <td class="table-cell-mono">default (Environment / Credentials File)</td>
-                    </tr>
-                    <tr>
                         <td style="font-weight: 600;">CLI Policy</td>
                         <td style="color: var(--status-pass); font-weight: 600; font-size: 0.75rem;">DISABLED (Strict Allowlist Only)</td>
                     </tr>
@@ -86,36 +233,79 @@
     </div>
 </div>
 
-<!-- SSH Connection Cheat Sheet -->
-<div class="card" style="margin-top: 1.5rem;">
-    <div class="card-header">
-        <span class="card-title">
-            <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-            <span>Direct SSH & Tunnel Quick-Reference</span>
-        </span>
-        <span class="badge badge-info">BASTION PROXYJUMP</span>
-    </div>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 180px;">Target Node</th>
-                    <th style="width: 140px;">Type</th>
-                    <th>CLI Command</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for node in ssh_info.nodes %}
-                <tr>
-                    <td style="font-weight: 600;">{{ node.name }}</td>
-                    <td><span class="badge badge-info">{{ node.type }}</span></td>
-                    <td class="table-cell-mono" style="color: var(--text-primary);">
-                        <code>{{ node.command }}</code>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+<script>
+function copyCommand(elemId) {
+    const elem = document.getElementById(elemId);
+    if (elem) {
+        navigator.clipboard.writeText(elem.textContent.trim());
+        alert("Command copied to clipboard!");
+    }
+}
+
+async function saveAWSProfile() {
+    const name = document.getElementById('new-prof-name').value.trim();
+    const region = document.getElementById('new-prof-region').value.trim() || 'ap-south-1';
+    const key = document.getElementById('new-prof-key').value.trim();
+    const secret = document.getElementById('new-prof-secret').value.trim();
+
+    if (!name || !key || !secret) {
+        alert("Please provide profile name, access key ID, and secret access key.");
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/aws/profiles/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                profile_name: name,
+                access_key_id: key,
+                secret_access_key: secret,
+                region: region
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert(`Profile '${name}' saved and verified! Account: ${data.account}`);
+            window.location.reload();
+        } else {
+            alert(`Saved with verification warning: ${data.error || 'Check AWS credentials'}`);
+            window.location.reload();
+        }
+    } catch (e) {
+        alert("Error saving profile: " + e.message);
+    }
+}
+
+async function ensureSSHKey() {
+    try {
+        const res = await fetch('/api/ssh/ensure-key', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message || (data.exists ? "SSH Key exists" : "Key operation failed"));
+    } catch (e) {
+        alert("Error checking SSH key: " + e.message);
+    }
+}
+
+async function toggleAutoStop(enable) {
+    const grace = parseInt(document.getElementById('autostop-grace').value, 10);
+    try {
+        const res = await fetch('/api/safety/autostop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                enabled: enable,
+                grace_period_minutes: grace
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(`Auto-stop ${enable ? 'Enabled' : 'Disabled'}`);
+            window.location.reload();
+        }
+    } catch (e) {
+        alert("Error updating auto-stop: " + e.message);
+    }
+}
+</script>
 {% endblock %}

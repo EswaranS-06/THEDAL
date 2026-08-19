@@ -3,8 +3,9 @@ THEDAL Control Plane — FastAPI Application Entrypoint
 """
 
 from pathlib import Path
-from typing import Optional
-from fastapi import FastAPI, Request, HTTPException, status, Query
+from typing import Optional, Dict, Any
+from pydantic import BaseModel
+from fastapi import FastAPI, Request, HTTPException, status, Query, Body
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -20,6 +21,10 @@ from app.services.aws import AWSService
 from app.services.ssh import SSHService
 from app.services.health import HealthService
 from app.services.operations import OperationsManager, SecurityValidationError, OperationLockError
+from app.services.learning import LearningService
+from app.services.commands import CommandService
+from app.services.profiles import AWSProfileService
+from app.services.autostop import SafetyService
 
 
 app = FastAPI(
@@ -32,6 +37,26 @@ app = FastAPI(
 # Mount Static Files & Templates
 app.mount("/static", StaticFiles(directory=str(settings.CONTROL_PLANE_DIR / "app" / "static")), name="static")
 templates = Jinja2Templates(directory=str(settings.CONTROL_PLANE_DIR / "app" / "templates"))
+
+
+# Request Models
+class LabProgressUpdate(BaseModel):
+    lab_id: str
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    bookmarked: Optional[bool] = None
+
+
+class AWSProfileCreate(BaseModel):
+    profile_name: str
+    access_key_id: str
+    secret_access_key: str
+    region: str = "ap-south-1"
+
+
+class AutoStopConfig(BaseModel):
+    enabled: bool
+    grace_period_minutes: int = 15
 
 
 # ==============================================================================
@@ -117,6 +142,8 @@ async def page_operations(request: Request):
 async def page_learning(request: Request):
     tf_status = TerraformService.get_status()
     health_summary = HealthService.run_all_checks()
+    labs = LearningService.get_all_labs_with_progress()
+    stats = LearningService.get_curriculum_stats()
 
     sys_status = SystemStatus(
         aws_connected=True,
@@ -128,7 +155,33 @@ async def page_learning(request: Request):
 
     return templates.TemplateResponse(request=request, name="learning.html", context={
         "active_page": "learning",
-        "status": sys_status
+        "status": sys_status,
+        "labs": labs,
+        "stats": stats
+    })
+
+
+@app.get("/learning/lab/{lab_id}", response_class=HTMLResponse)
+async def page_lab_view(request: Request, lab_id: str):
+    lab_detail = LearningService.get_lab_detail(lab_id)
+    if not lab_detail:
+        raise HTTPException(status_code=404, detail="Lab not found in curriculum.")
+
+    tf_status = TerraformService.get_status()
+    health_summary = HealthService.run_all_checks()
+
+    sys_status = SystemStatus(
+        aws_connected=True,
+        aws_region=settings.AWS_DEFAULT_REGION,
+        terraform_status=tf_status["status"],
+        ansible_status="READY",
+        environment_health=health_summary.overall_status
+    )
+
+    return templates.TemplateResponse(request=request, name="lab_view.html", context={
+        "active_page": "learning",
+        "status": sys_status,
+        "lab": lab_detail
     })
 
 
@@ -162,6 +215,9 @@ async def page_settings(request: Request):
     tf_status = TerraformService.get_status()
     health_summary = HealthService.run_all_checks()
     ssh_info = SSHService.get_connection_info()
+    dynamic_commands = CommandService.get_dynamic_commands()
+    aws_profiles = AWSProfileService.list_profiles()
+    autostop_status = SafetyService.get_autostop_status()
 
     sys_status = SystemStatus(
         aws_connected=True,
@@ -175,7 +231,10 @@ async def page_settings(request: Request):
         "active_page": "settings",
         "status": sys_status,
         "config": settings,
-        "ssh_info": ssh_info
+        "ssh_info": ssh_info,
+        "dynamic_commands": dynamic_commands,
+        "aws_profiles": aws_profiles,
+        "autostop": autostop_status
     })
 
 
@@ -353,3 +412,68 @@ async def api_logs_download(file: str = Query(...)):
     if not safe_path.exists():
         raise HTTPException(status_code=404, detail="Log file not found.")
     return FileResponse(path=safe_path, filename=file, media_type="text/plain")
+
+
+# ==============================================================================
+# 3. Learning Portal, Dynamic Commands & Safety APIs
+# ==============================================================================
+
+@app.post("/api/learning/progress")
+async def api_learning_progress(update: LabProgressUpdate):
+    try:
+        res = LearningService.update_progress(
+            lab_id=update.lab_id,
+            status=update.status,
+            notes=update.notes,
+            bookmarked=update.bookmarked
+        )
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/learning/stats")
+async def api_learning_stats():
+    return LearningService.get_curriculum_stats()
+
+
+@app.get("/api/commands/dynamic")
+async def api_commands_dynamic():
+    return CommandService.get_dynamic_commands()
+
+
+@app.get("/api/aws/profiles")
+async def api_aws_profiles():
+    return AWSProfileService.list_profiles()
+
+
+@app.post("/api/aws/profiles/create")
+async def api_aws_profiles_create(prof: AWSProfileCreate):
+    try:
+        res = AWSProfileService.save_profile(
+            profile_name=prof.profile_name,
+            access_key_id=prof.access_key_id,
+            secret_access_key=prof.secret_access_key,
+            region=prof.region
+        )
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/safety/autostop")
+async def api_safety_autostop_get():
+    return SafetyService.get_autostop_status()
+
+
+@app.post("/api/safety/autostop")
+async def api_safety_autostop_post(config: AutoStopConfig):
+    return SafetyService.configure_autostop(
+        enabled=config.enabled,
+        grace_period_minutes=config.grace_period_minutes
+    )
+
+
+@app.post("/api/ssh/ensure-key")
+async def api_ssh_ensure_key():
+    return SafetyService.ensure_ssh_key()

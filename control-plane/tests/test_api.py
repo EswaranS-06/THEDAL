@@ -88,6 +88,12 @@ def test_page_learning(client):
     assert "SOC Analyst Learning Path" in res.text
 
 
+def test_page_lab_view(client):
+    res = client.get("/learning/lab/01-first-alert")
+    assert res.status_code == 200
+    assert "Your First Wazuh Alert" in res.text
+
+
 def test_page_logs(client):
     res = client.get("/logs")
     assert res.status_code == 200
@@ -116,3 +122,54 @@ def test_api_health(client):
     assert "overall_status" in data
     assert "checks" in data
     assert isinstance(data["checks"], list)
+
+
+def test_api_learning_progress_and_stats(client):
+    res = client.post("/api/learning/progress", json={
+        "lab_id": "01-first-alert",
+        "status": "In Progress",
+        "notes": "Testing notes persistence"
+    })
+    assert res.status_code == 200
+    assert res.json().get("success") is True
+
+    stats_res = client.get("/api/learning/stats")
+    assert stats_res.status_code == 200
+    stats = stats_res.json()
+    assert "total_labs" in stats
+    assert stats["total_labs"] > 0
+
+
+def test_api_commands_dynamic(client):
+    res = client.get("/api/commands/dynamic")
+    assert res.status_code == 200
+    cmds = res.json()
+    assert isinstance(cmds, list)
+    assert len(cmds) > 0
+    assert any(c["id"] == "bastion-ssh" for c in cmds)
+
+
+def test_api_aws_profiles(client):
+    res = client.get("/api/aws/profiles")
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
+
+
+def test_api_safety_autostop(client):
+    get_res = client.get("/api/safety/autostop")
+    assert get_res.status_code == 200
+    assert "enabled" in get_res.json()
+
+    post_res = client.post("/api/safety/autostop", json={
+        "enabled": True,
+        "grace_period_minutes": 30
+    })
+    assert post_res.status_code == 200
+    assert post_res.json()["enabled"] is True
+    assert post_res.json()["grace_period_minutes"] == 30
+
+
+def test_api_ssh_ensure_key(client):
+    res = client.post("/api/ssh/ensure-key")
+    assert res.status_code == 200
+    assert "exists" in res.json()
