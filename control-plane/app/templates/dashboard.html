@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard &bull; SOCForge Control Center{% endblock %}
+{% block title %}Dashboard &bull; THEDAL Control Center{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">SOCForge Control Center</h1>
+        <h1 class="page-title">THEDAL Control Center</h1>
         <p class="page-subtitle">Real-time infrastructure health, telemetry status, and quick operator controls</p>
     </div>
     <div style="display: flex; gap: 0.75rem;">
@@ -95,7 +95,7 @@
         </div>
         {% else %}
         <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 2.5rem;">
-            <p style="color: var(--text-secondary); margin-bottom: 1rem;">No active SOCForge EC2 instances discovered in AWS.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">No active THEDAL EC2 instances discovered in AWS.</p>
             <a href="/operations" class="btn btn-primary">Go to Operations to Deploy</a>
         </div>
         {% endfor %}

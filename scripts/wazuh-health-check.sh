@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Wazuh SIEM Health Check Script (Phase 6)
+# THEDAL — Wazuh SIEM Health Check Script
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Verifies the operational status of Wazuh Indexer, Manager, Filebeat, and Dashboard
 # either locally or remotely through the Bastion jumpbox.
 #
 # Usage:
-#   ./scripts/wazuh-health-check.sh [--key-path ~/.ssh/socforge_key]
+#   ./scripts/wazuh-health-check.sh [--key-path ~/.ssh/thedal_key]
 # ==============================================================================
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-KEY_PATH="${1:-${HOME}/.ssh/socforge_key}"
+
+DEFAULT_KEY="${HOME}/.ssh/socforge_key"
+if [[ -f "${HOME}/.ssh/thedal_key" ]]; then
+  DEFAULT_KEY="${HOME}/.ssh/thedal_key"
+fi
+KEY_PATH="${1:-${DEFAULT_KEY}}"
 
 echo "================================================================="
-echo "                SOCForge Wazuh SIEM Health Check                 "
+echo "                 THEDAL Wazuh SIEM Health Check                  "
 echo "================================================================="
 
 # 1. Resolve host addresses

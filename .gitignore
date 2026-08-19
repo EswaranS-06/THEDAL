@@ -41,6 +41,7 @@ aws_access_key*
 .env
 .env.*
 *.env
+.agents/
 
 # ------------------------------------------------------------------------------
 # Ansible
@@ -125,6 +126,7 @@ Thumbs.db
 .idea/
 *.sublime-project
 *.sublime-workspace
+PROMPT.md
 
 # ------------------------------------------------------------------------------
 # Preserved directory markers

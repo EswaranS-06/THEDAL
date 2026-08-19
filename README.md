@@ -1,14 +1,14 @@
-# SOCForge
+# THEDAL
 
-> **SOCForge** is an open, reproducible, cloud-native **Security Operations Center (SOC) & Detection Engineering Laboratory** deployed on Amazon Web Services (AWS) using Terraform, Ansible, and Wazuh.
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
-SOCForge bridges Infrastructure-as-Code (IaC), endpoint telemetry collection, central log routing, SIEM detection engineering, and adversary emulation into an integrated hands-on learning platform.
+> **An open-source, reproducible SOC learning environment for threat hunting, detection engineering and incident investigation.**
 
 ---
 
-## 1. What SOCForge Does
+## 1. What THEDAL Does
 
-SOCForge simulates an enterprise corporate cloud environment under active security monitoring and adversary testing:
+**THEDAL** (Threat Hunting, Exploration, Detection, Analysis and Learn) simulates an enterprise corporate cloud environment under active security monitoring, detection engineering, and adversary testing:
 
 - **Central SIEM / XDR Platform**: Deploys an all-in-one **Wazuh 4.14.7** stack (Wazuh Manager, Wazuh Indexer with OpenSearch, and Wazuh Dashboard).
 - **Windows Endpoint Monitoring**: A Windows Server 2022 workstation configured with **Microsoft Sysmon** and the Wazuh Windows Agent, streaming Process Creation (Event ID 1), Network Connections (Event ID 3), and PowerShell ScriptBlock logs (Event ID 4104).
@@ -28,7 +28,7 @@ graph TD
     User -->|"SSH Tunnel (8443:10.10.10.33:443)"| WazuhUI["📊 OpenSearch Dashboards (Wazuh UI)"]
 
     subgraph Control_Environment["Local Control Environment"]
-        ControlVM -->|"FastAPI & Jinja2"| ControlPlane["🛡️ SOCForge Control Plane"]
+        ControlVM -->|"FastAPI & Jinja2"| ControlPlane["🛡️ THEDAL Control Plane"]
         ControlVM -->|"Terraform CLI"| TF["Terraform (IaC Engine)"]
         ControlVM -->|"Ansible Playbooks"| Ansible["Ansible (Provisioning Engine)"]
     end
@@ -37,20 +37,20 @@ graph TD
 
     subgraph AWS_VPC["AWS VPC (10.10.0.0/16)"]
         subgraph Public_Tier["Management Subnet (10.10.1.0/24)"]
-            Bastion["🌐 SOCForge-bastion<br/>(Public IP / Squid Proxy / SSH Jump)"]
+            Bastion["🌐 THEDAL-bastion / SOCForge-bastion<br/>(Public IP / Squid Proxy / SSH Jump)"]
         end
 
         subgraph Private_SOC_Tier["SOC Subnet (10.10.10.0/24)"]
-            WazuhHost["🛡️ SOCForge-wazuh (10.10.10.33)<br/>Manager | Indexer | Dashboard"]
-            WinHost["💻 SOCForge-windows (10.10.10.254)<br/>Windows Server 2022 + Sysmon"]
+            WazuhHost["🛡️ THEDAL-wazuh / SOCForge-wazuh (10.10.10.33)<br/>Manager | Indexer | Dashboard"]
+            WinHost["💻 THEDAL-windows / SOCForge-windows (10.10.10.254)<br/>Windows Server 2022 + Sysmon"]
         end
 
         subgraph Private_Attack_Tier["Attack Subnet (10.10.20.0/24)"]
-            AttackHost["⚔️ SOCForge-attack (10.10.20.114)<br/>Atomic Red Team + Web Test Engine"]
+            AttackHost["⚔️ THEDAL-attack / SOCForge-attack (10.10.20.114)<br/>Atomic Red Team + Web Test Engine"]
         end
 
         subgraph Private_Web_Tier["Web Subnet (10.10.30.0/24)"]
-            WebHost["🎯 SOCForge-web (10.10.30.148)<br/>Nginx :8000 (DVWA) | Docker :3000 (Juice Shop)"]
+            WebHost["🎯 THEDAL-web / SOCForge-web (10.10.30.148)<br/>Nginx :8000 (DVWA) | Docker :3000 (Juice Shop)"]
         end
     end
 
@@ -88,7 +88,7 @@ graph TD
 ## 4. Directory Structure
 
 ```text
-SOCForge/
+THEDAL/
 ├── control-plane/             # Local FastAPI web dashboard & operator controls
 │   ├── app/
 │   │   ├── main.py            # FastAPI entrypoint, page routing, and REST API
@@ -121,6 +121,7 @@ SOCForge/
 │   │   └── challenges/        # 3 unassisted mystery investigation challenges
 │   ├── runbooks/              # 7 analyst triage runbooks (Sysmon, PowerShell, Web, etc.)
 │   ├── templates/             # Incident report and alert triage markdown templates
+│   ├── migration/             # Migration and rebrand mapping documentation
 │   └── learning/              # SOC terminology glossary and index cheat sheets
 │
 ├── scripts/                   # CLI verification and testing utilities
@@ -152,7 +153,7 @@ SOCForge/
 ### AWS Account & IAM
 - An active AWS Account.
 - IAM User or Role with permissions to manage VPC, Subnets, Route Tables, Security Groups, IAM Roles/Instance Profiles, and EC2 instances.
-- SSH Key Pair named `socforge_key` located at `~/.ssh/socforge_key`.
+- SSH Key Pair named `thedal_key` (or `socforge_key`) located at `~/.ssh/thedal_key` (or `~/.ssh/socforge_key`).
 
 ---
 
@@ -162,16 +163,16 @@ SOCForge/
 >
 > 1. **Never commit AWS credentials** (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`) into Git repositories, Terraform variables (`terraform.tfvars`), Ansible playbooks, or documentation.
 > 2. Always use the standard **AWS CLI credential chain** (`aws configure` or temporary session environment variables).
-> 3. The SOCForge Control Plane uses the local credential chain via Boto3 and **never displays or logs** secret keys or passwords.
+> 3. The THEDAL Control Plane uses the local credential chain via Boto3 and **never displays or logs** secret keys or passwords.
 
 ---
 
 ## 7. Deployment Workflow
 
-Deploying SOCForge follows a structured 11-step progression:
+Deploying THEDAL follows a structured progression:
 
 ```text
-1. Clone Repository & Setup SSH Key (~/.ssh/socforge_key)
+1. Clone Repository & Setup SSH Key (~/.ssh/thedal_key or ~/.ssh/socforge_key)
                  ↓
 2. Configure AWS CLI Credentials (aws configure)
                  ↓
@@ -196,9 +197,9 @@ Deploying SOCForge follows a structured 11-step progression:
 
 ---
 
-## 8. SOCForge Control Plane
+## 8. THEDAL Control Plane
 
-The SOCForge Control Plane is a local web application built with FastAPI and Jinja2 that simplifies day-to-day lab operations without bypassing Terraform or Ansible.
+The THEDAL Control Plane is a local web application built with FastAPI and Jinja2 that simplifies day-to-day lab operations without bypassing Terraform or Ansible.
 
 ### Launching the Dashboard
 ```bash
@@ -216,23 +217,23 @@ Access the UI at **`http://127.0.0.1:8080`**.
 - **Strict Localhost Binding**: Listens only on `127.0.0.1`.
 - **Zero Arbitrary Commands**: Only pre-authorized, allowlisted actions can be triggered.
 - **Concurrency Protection**: File lock (`.operation.lock`) prevents overlapping Terraform or Ansible runs.
-- **Destroy Guardrail**: `terraform destroy` requires checking a confirmation box and typing **`DESTROY SOCFORGE`**.
+- **Destroy Guardrail**: `terraform destroy` requires checking a confirmation box and typing **`DESTROY THEDAL`**.
 - **Audit Logging**: Every operation outputs structured, sanitized logs to `control-plane/logs/`.
 
 ---
 
 ## 9. AWS Cost Management & Sizing
 
-SOCForge is engineered with cloud cost discipline:
+THEDAL is engineered with cloud cost discipline:
 
 - **Zero NAT Gateway Architecture**: Saves ~$32+/month by utilizing an open-source Squid forward proxy on the Bastion host for outbound package updates.
 - **Single Public IPv4 Address**: Only the Bastion jumpbox allocates an Elastic Public IP, avoiding excess AWS IPv4 reservation fees.
 - **Instance Sizing**:
-  - `SOCForge-bastion`: `t3.micro` (1 vCPU, 1 GB RAM)
-  - `SOCForge-wazuh`: `m7i-flex.large` / `t3.xlarge` (2–4 vCPU, 8–16 GB RAM)
-  - `SOCForge-windows`: `t3.medium` (2 vCPU, 4 GB RAM)
-  - `SOCForge-web`: `t3.small` (2 vCPU, 2 GB RAM)
-  - `SOCForge-attack`: `t3.small` (2 vCPU, 2 GB RAM)
+  - `Bastion`: `t3.micro` (1 vCPU, 1 GB RAM)
+  - `Wazuh SIEM`: `m7i-flex.large` / `t3.xlarge` (2–4 vCPU, 8–16 GB RAM)
+  - `Windows Endpoint`: `t3.medium` (2 vCPU, 4 GB RAM)
+  - `Web Target`: `t3.small` (2 vCPU, 2 GB RAM)
+  - `Attack Host`: `t3.small` (2 vCPU, 2 GB RAM)
 
 ### Pausing vs. Destroying
 | Action | Command / Control | Billing Impact |
@@ -253,7 +254,7 @@ SOCForge is engineered with cloud cost discipline:
 | **WinRM Connection Failure** | Ansible cannot communicate with Windows node. | Ensure Windows startup userdata script has completed and WinRM service is listening on port 5985. |
 | **Wazuh Dashboard Inaccessible** | `https://localhost:8443` does not load. | Run `make wazuh-tunnel` to verify the SSH port forwarding tunnel is active. |
 | **Wazuh Agent Offline** | Agent not appearing in Wazuh Dashboard. | Check agent service status: `sudo systemctl status wazuh-agent` (Linux) or Windows Service manager. |
-| **Docker / Juice Shop Error** | Juice Shop not reachable on port 3000. | Check Docker container state on `SOCForge-web`: `sudo docker ps -a`. |
+| **Docker / Juice Shop Error** | Juice Shop not reachable on port 3000. | Check Docker container state on `web` node: `sudo docker ps -a`. |
 | **OpenSearch Dynamic Index Error** | Telemetry logs not routing to custom index. | Verify ingest pipeline health: `make wazuh-index-check`. |
 | **Control Plane Locked** | Operation button disabled due to lock. | Verify if an operation is running; if orphaned, remove `control-plane/.operation.lock`. |
 
@@ -261,7 +262,7 @@ SOCForge is engineered with cloud cost discipline:
 
 ## 11. Learning Curriculum & Labs
 
-SOCForge provides an analyst training track:
+THEDAL provides an analyst training track:
 
 - 🚀 [**Getting Started Guide (`docs/START-HERE.md`)**](docs/START-HERE.md): Core concepts, architecture, and connection guide.
 - 🗺️ [**Learning Path (`docs/learning-path.md`)**](docs/learning-path.md): 3-level progression from beginner to incident responder.
@@ -298,7 +299,7 @@ When you have completed your training session, follow this procedure to eliminat
    - Use the Control Plane **`Stop Nodes`** action or run `aws ec2 stop-instances`.
    - *Note: Minimal EBS volume storage costs continue.*
 4. **Option B — Permanent Teardown (Zero Charges)**:
-   - In the Control Plane Operations Console, click **`Destroy Lab`**, type `DESTROY SOCFORGE`, and confirm.
+   - In the Control Plane Operations Console, click **`Destroy Lab`**, type `DESTROY THEDAL`, and confirm.
    - Or run from the terminal:
      ```bash
      cd terraform
@@ -310,4 +311,4 @@ When you have completed your training session, follow this procedure to eliminat
 
 ## 14. License
 
-SOCForge is open-source software licensed under the [MIT License](LICENSE).
+THEDAL is open-source software licensed under the [MIT License](LICENSE).

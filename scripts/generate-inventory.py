@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-SOCForge — Dynamic Ansible Inventory Generator (Phase 4)
+THEDAL — Dynamic Ansible Inventory Generator
+Threat Hunting, Exploration, Detection, Analysis and Learn
 ==============================================================================
 Reads structured Terraform JSON outputs (`terraform output -json`) and
 generates a deterministic Ansible `hosts.ini` inventory configured for
@@ -18,6 +19,13 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+
+def get_default_key_path() -> str:
+    primary = Path.home() / ".ssh" / "thedal_key"
+    if primary.exists():
+        return str(primary)
+    return str(Path.home() / ".ssh" / "socforge_key")
 
 
 def get_terraform_outputs(terraform_dir: str) -> dict:
@@ -97,8 +105,9 @@ def parse_inventory_data(tf_outputs: dict) -> dict:
     return hosts
 
 
-def generate_ini(hosts: dict, key_path: str = "~/.ssh/socforge_key") -> str:
+def generate_ini(hosts: dict, key_path: str = None) -> str:
     """Renders the INI-formatted Ansible inventory."""
+    resolved_key = key_path or get_default_key_path()
     bastion_host = hosts.get("bastion", {})
     bastion_public_ip = bastion_host.get("public_ip", "") or "<BASTION_PUBLIC_IP>"
     bastion_user = bastion_host.get("user", "ubuntu")
@@ -110,18 +119,18 @@ def generate_ini(hosts: dict, key_path: str = "~/.ssh/socforge_key") -> str:
 
     lines = [
         "# ==============================================================================",
-        "# SOCForge — Auto-Generated Ansible Inventory",
+        "# THEDAL — Auto-Generated Ansible Inventory",
         "# ==============================================================================",
         "# Generated automatically from Terraform outputs. Do NOT edit manually.",
         "# ==============================================================================",
         "",
         "[bastion]",
-        f"bastion ansible_host={bastion_public_ip} ansible_user={bastion_user} ansible_ssh_private_key_file={key_path}",
+        f"bastion ansible_host={bastion_public_ip} ansible_user={bastion_user} ansible_ssh_private_key_file={resolved_key}",
         "",
         "[internal_linux]",
-        f"wazuh ansible_host={wazuh_ip} ansible_user=ubuntu ansible_ssh_private_key_file={key_path}",
-        f"web ansible_host={web_ip} ansible_user=ubuntu ansible_ssh_private_key_file={key_path}",
-        f"attack ansible_host={attack_ip} ansible_user=ubuntu ansible_ssh_private_key_file={key_path}",
+        f"wazuh ansible_host={wazuh_ip} ansible_user=ubuntu ansible_ssh_private_key_file={resolved_key}",
+        f"web ansible_host={web_ip} ansible_user=ubuntu ansible_ssh_private_key_file={resolved_key}",
+        f"attack ansible_host={attack_ip} ansible_user=ubuntu ansible_ssh_private_key_file={resolved_key}",
         "",
         "[internal_linux:vars]",
         f"# Internal Linux nodes communicate via Bastion ProxyJump",
@@ -148,11 +157,12 @@ def generate_ini(hosts: dict, key_path: str = "~/.ssh/socforge_key") -> str:
 
 
 def main():
+    default_key = get_default_key_path()
     parser = argparse.ArgumentParser(description="Generate Ansible inventory from Terraform outputs.")
     parser.add_argument("--terraform-dir", default="terraform", help="Path to terraform project directory (default: terraform)")
     parser.add_argument("--input-json", help="Path to pre-extracted terraform output JSON file")
     parser.add_argument("--output", default="ansible/inventory/hosts.ini", help="Target hosts.ini path (default: ansible/inventory/hosts.ini)")
-    parser.add_argument("--key-path", default="~/.ssh/socforge_key", help="Path to operator SSH private key (default: ~/.ssh/socforge_key)")
+    parser.add_argument("--key-path", default=default_key, help=f"Path to operator SSH private key (default: {default_key})")
     parser.add_argument("--dry-run", action="store_true", help="Print generated inventory to stdout without writing to file")
 
     args = parser.parse_args()

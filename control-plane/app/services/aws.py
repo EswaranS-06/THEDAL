@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — AWS Read & Safe Lifecycle Service
+THEDAL Control Plane — AWS Read & Safe Lifecycle Service
 """
 
 import boto3
@@ -56,14 +56,14 @@ class AWSService:
 
     @classmethod
     def get_instances(cls) -> List[EC2InstanceInfo]:
-        """Retrieves live instance status for SOCForge instances."""
+        """Retrieves live instance status for THEDAL instances (with SOCForge legacy support)."""
         instances = []
         try:
             ec2 = cls.get_client("ec2")
-            # Query instances tagged with Project=SOCForge
+            # Query instances tagged with Project=THEDAL or SOCForge
             response = ec2.describe_instances(
                 Filters=[
-                    {"Name": "tag:Project", "Values": ["SOCForge", "socforge"]}
+                    {"Name": "tag:Project", "Values": ["THEDAL", "thedal", "SOCForge", "socforge"]}
                 ]
             )
 
@@ -87,8 +87,8 @@ class AWSService:
                             name = tag.get("Value", "Unknown")
                             break
 
-                    role_key = name.lower().replace("socforge-", "").replace("socforge_", "")
-                    role = role_mapping.get(role_key, "SOCForge Lab Node")
+                    role_key = name.lower().replace("thedal-", "").replace("thedal_", "").replace("socforge-", "").replace("socforge_", "")
+                    role = role_mapping.get(role_key, "THEDAL Lab Node")
                     state_name = inst.get("State", {}).get("Name", "unknown")
 
                     health = "PASS" if state_name == "running" else "WARNING" if state_name == "stopped" else "UNKNOWN"
@@ -116,7 +116,7 @@ class AWSService:
         try:
             ec2 = cls.get_client("ec2")
             vpcs = ec2.describe_vpcs(
-                Filters=[{"Name": "tag:Project", "Values": ["SOCForge", "socforge"]}]
+                Filters=[{"Name": "tag:Project", "Values": ["THEDAL", "thedal", "SOCForge", "socforge"]}]
             ).get("Vpcs", [])
 
             if not vpcs:
@@ -159,7 +159,7 @@ class AWSService:
         try:
             ec2 = cls.get_client("ec2")
             if not instance_ids:
-                # Find all stopped SOCForge instances
+                # Find all stopped THEDAL instances
                 instances = cls.get_instances()
                 instance_ids = [i.instance_id for i in instances if i.state == "stopped"]
 
@@ -180,7 +180,7 @@ class AWSService:
         try:
             ec2 = cls.get_client("ec2")
             if not instance_ids:
-                # Find all running SOCForge instances
+                # Find all running THEDAL instances
                 instances = cls.get_instances()
                 instance_ids = [i.instance_id for i in instances if i.state == "running"]
 

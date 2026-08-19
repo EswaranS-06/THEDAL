@@ -1,12 +1,12 @@
-# SOCForge — Architectural Blueprint
+# THEDAL — Architectural Blueprint
 
-> **Notice**: This document details the architectural blueprint for SOCForge across Phases 1–9.5.
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 ---
 
 ## 1. High-Level System Architecture
 
-SOCForge simulates an enterprise network inside an isolated Amazon Web Services (AWS) Virtual Private Cloud (VPC `10.10.0.0/16`). It encompasses a management control plane, a SOC telemetry and SIEM core, an enterprise Windows endpoint, a Linux web application server, and an adversary emulation harness.
+**THEDAL** (Threat Hunting, Exploration, Detection, Analysis and Learn) simulates an enterprise network inside an isolated Amazon Web Services (AWS) Virtual Private Cloud (VPC `10.10.0.0/16`). It encompasses a management control plane, a SOC telemetry and SIEM core, an enterprise Windows endpoint, a Linux web application server, and an adversary emulation harness.
 
 ```text
                     Internet

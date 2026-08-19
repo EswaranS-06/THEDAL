@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Detection Engineering & Rule Health Check (Phase 13)
+# THEDAL — Detection Engineering & Rule Health Check
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Verifies custom decoders, custom rules, XML syntax, rule ID uniqueness,
 # test sample fixtures, and positive/negative test verification.
@@ -12,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "================================================================="
-echo "        SOCForge Phase 13: Detection Engineering Check           "
+echo "        THEDAL Detection Engineering & Rule Health Check         "
 echo "================================================================="
 
 FAILURES=0
@@ -164,7 +165,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Detection Engineering Health Check Result: PASS"
-  echo "SOCForge Phase 13 decoders, rules, namespaces, and test suites verified."
+  echo "THEDAL decoders, rules, namespaces, and test suites verified."
   echo "================================================================="
   exit 0
 else

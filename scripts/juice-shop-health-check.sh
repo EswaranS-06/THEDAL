@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — OWASP Juice Shop & Docker Health Check (Phase 9)
+# THEDAL — OWASP Juice Shop & Docker Health Check
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Verifies the operational status of Docker Engine, Juice Shop container,
 # port 3000 mapping, and container telemetry either locally or via Bastion jumpbox.
 #
 # Usage:
-#   ./scripts/juice-shop-health-check.sh [--key-path ~/.ssh/socforge_key]
+#   ./scripts/juice-shop-health-check.sh [--key-path ~/.ssh/thedal_key]
 # ==============================================================================
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-KEY_PATH="${1:-${HOME}/.ssh/socforge_key}"
+
+DEFAULT_KEY="${HOME}/.ssh/socforge_key"
+if [[ -f "${HOME}/.ssh/thedal_key" ]]; then
+  DEFAULT_KEY="${HOME}/.ssh/thedal_key"
+fi
+KEY_PATH="${1:-${DEFAULT_KEY}}"
 
 echo "================================================================="
-echo "       SOCForge OWASP Juice Shop & Docker Health Check           "
+echo "        THEDAL OWASP Juice Shop & Docker Health Check            "
 echo "================================================================="
 
 # 1. Resolve host addresses

@@ -1,5 +1,5 @@
 /**
- * SOCForge Control Plane — Frontend Interactive Logic
+ * THEDAL Control Plane — Frontend Interactive Logic
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -102,8 +102,8 @@ async function executeDestroy() {
         return;
     }
 
-    if (phrase !== "DESTROY SOCFORGE") {
-        alert("You must type the exact phrase 'DESTROY SOCFORGE'.");
+    if (phrase !== "DESTROY THEDAL" && phrase !== "DESTROY SOCFORGE") {
+        alert("You must type the exact phrase 'DESTROY THEDAL'.");
         return;
     }
 

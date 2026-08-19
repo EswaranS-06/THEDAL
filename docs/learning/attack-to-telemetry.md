@@ -1,4 +1,4 @@
-# SOCForge — Attack-to-Telemetry Mapping Guide
+# THEDAL — Attack-to-Telemetry Mapping Guide
 
 > This guide illustrates how simulated adversary actions propagate across the network, generate operating system and application telemetry, trigger Wazuh SIEM detection rules, and land in dedicated OpenSearch index patterns.
 

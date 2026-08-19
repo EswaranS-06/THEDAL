@@ -1,1 +1,1 @@
-"""SOCForge Control Plane Services Package"""
+"""THEDAL Control Plane Services Package"""

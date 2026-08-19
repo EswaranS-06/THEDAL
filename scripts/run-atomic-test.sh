@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Operator Atomic Simulation Execution Helper (Phase 10)
+# THEDAL — Operator Atomic Simulation Execution Helper
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
-# Runs curated Atomic Red Team tests on SOCForge-attack via Bastion ProxyJump.
+# Runs curated Atomic Red Team tests on attack host via Bastion ProxyJump.
 #
 # Usage:
 #   ./scripts/run-atomic-test.sh --list
@@ -16,6 +17,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 KEY_PATH="${HOME}/.ssh/socforge_key"
+if [[ -f "${HOME}/.ssh/thedal_key" ]]; then
+  KEY_PATH="${HOME}/.ssh/thedal_key"
+fi
 INVENTORY_FILE="${REPO_ROOT}/ansible/inventory/hosts.ini"
 CATALOG_TEMPLATE="${REPO_ROOT}/ansible/roles/atomic-red-team/templates/socforge-tests.yml.j2"
 
@@ -27,7 +31,7 @@ ACTION="run"
 usage() {
   cat << 'EOF'
 =================================================================
-       SOCForge Operator Atomic Red Team Execution Helper
+        THEDAL Operator Atomic Red Team Execution Helper
 =================================================================
 Usage:
   ./scripts/run-atomic-test.sh --technique <TECH_ID> --confirm [options]
@@ -35,7 +39,7 @@ Usage:
 Options:
   -t, --technique <ID>     MITRE ATT&CK Technique ID (e.g. T1082, T1059.001)
   -c, --confirm            Explicit confirmation flag authorizing simulation
-  -l, --list               List available curated SOCForge Atomic tests
+  -l, --list               List available curated THEDAL Atomic tests
   -d, --dry-run            Display test plan without executing commands
       --help               Display this help message
 

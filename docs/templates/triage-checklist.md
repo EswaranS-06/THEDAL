@@ -1,6 +1,6 @@
 # SOC Alert Triage Checklist
 
-> A quick-reference 12-point procedure for Tier 1 and Tier 2 analysts triaging incoming alerts in the SOCForge SIEM.
+> A quick-reference 12-point procedure for Tier 1 and Tier 2 analysts triaging incoming alerts in the THEDAL SIEM.
 
 ---
 

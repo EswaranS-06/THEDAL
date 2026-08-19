@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — SSH Connection & Tunnel Helper Service
+THEDAL Control Plane — SSH Connection & Tunnel Helper Service
 """
 
 import subprocess

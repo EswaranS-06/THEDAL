@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Terraform Lifecycle Service
+THEDAL Control Plane — Terraform Lifecycle Service
 """
 
 import json
@@ -127,7 +127,9 @@ class TerraformService:
             raise SecurityValidationError("Explicit confirmation checkbox is required for destruction.")
 
         expected_phrase = settings.REQUIRE_DESTROY_CONFIRMATION_PHRASE
-        if not confirmation_phrase or confirmation_phrase.strip() != expected_phrase:
+        legacy_phrase = settings.LEGACY_DESTROY_CONFIRMATION_PHRASE
+        clean_phrase = (confirmation_phrase or "").strip()
+        if clean_phrase != expected_phrase and clean_phrase != legacy_phrase:
             raise SecurityValidationError(
                 f"Destruction rejected: You must type the exact phrase '{expected_phrase}'."
             )

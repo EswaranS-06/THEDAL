@@ -1,4 +1,6 @@
-# SOCForge — Phase 12: Telemetry Classification, Source Routing & Index Architecture Guide
+# THEDAL — Telemetry Classification, Source Routing & Index Architecture Guide
+
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 > **Status**: Telemetry classification, OpenSearch index templates, Index State Management (ISM) retention policies, Filebeat source-specific routing rules, OpenSearch Dashboards, and validation tooling are fully implemented and verified offline. Live ingestion into OpenSearch remains pending cloud deployment via `terraform apply`.
 

@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Operations Manager & Security Lock
+THEDAL Control Plane — Operations Manager & Security Lock
 """
 
 import os
@@ -85,6 +85,8 @@ class OperationsManager:
             "AWS_SECRET_ACCESS_KEY",
             "AWS_SESSION_TOKEN",
             "PRIVATE KEY",
+            "THEDAL@2026!Sec",
+            "THEDAL_Adm1n_Lab2026!",
             "SOCForge@2026!Sec",
             "SOCForge_Adm1n_Lab2026!"
         ]
@@ -140,7 +142,7 @@ class OperationsManager:
             with open(log_path, "w", encoding="utf-8") as f:
                 header = (
                     f"=================================================================\n"
-                    f" SOCForge Operation Log: {operation_name}\n"
+                    f" THEDAL Operation Log: {operation_name}\n"
                     f" Timestamp: {datetime.utcnow().isoformat()} UTC\n"
                     f" Directory: {cwd}\n"
                     f" Command:   {' '.join(cmd)}\n"

@@ -1,7 +1,7 @@
 [project]
-name = "socforge-control-plane"
+name = "thedal-control-plane"
 version = "0.1.0"
-description = "Local lightweight web control plane for SOCForge AWS laboratory"
+description = "Local lightweight web control plane for THEDAL AWS laboratory"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -23,3 +23,6 @@ dev = [
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]

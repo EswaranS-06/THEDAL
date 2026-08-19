@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Web Target & Security Testing Health Check Script (Phase 11)
+# THEDAL — Web Target & Security Testing Health Check Script
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Validates web testing suite files, scenario catalogs, execution wrappers,
 # safety boundaries, and offline configuration integrity.
@@ -12,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "================================================================="
-echo "       SOCForge Phase 11: Web Security Testing Health Check      "
+echo "        THEDAL Web Security Testing Health Check                 "
 echo "================================================================="
 
 FAILURES=0
@@ -127,7 +128,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Web Security Testing Health Check Result: PASS"
-  echo "SOCForge Phase 11 web testing suite automation is fully verified."
+  echo "THEDAL web testing suite automation is fully verified."
   echo "================================================================="
   exit 0
 else

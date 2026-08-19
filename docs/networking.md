@@ -1,12 +1,12 @@
-# SOCForge — Networking & Security Group Architecture
+# THEDAL — Networking & Security Group Architecture
 
-> **Phase 5 Status**: The AWS network foundation (VPC, subnets, routing), Security Access Layer (security groups, IAM, key pairs), EC2 Compute Infrastructure (5 instances), and **Bootstrap Provisioning Channel (Bastion Proxy :3128)** are fully configured.
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 ---
 
 ## 1. Network & Compute Placement
 
-The SOCForge compute topology enforces strict boundary isolation: only the Bastion host receives a public IPv4 address. All SOC workloads, targets, and attack simulation engines reside solely on private IPs.
+The THEDAL compute topology enforces strict boundary isolation: only the Bastion host receives a public IPv4 address. All SOC workloads, targets, and attack simulation engines reside solely on private IPs.
 
 ```text
                     Internet

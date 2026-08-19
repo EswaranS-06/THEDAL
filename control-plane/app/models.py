@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Pydantic Data Models & Schemas
+THEDAL Control Plane — Pydantic Data Models & Schemas
 """
 
 from typing import List, Dict, Any, Optional

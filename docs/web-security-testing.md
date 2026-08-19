@@ -1,4 +1,6 @@
-# SOCForge — Phase 11: Controlled Web Security Testing & Telemetry Guide
+# THEDAL — Controlled Web Security Testing & Telemetry Guide
+
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 > **Status**: Automation, scenario catalogs, safety controls, execution wrappers, and health checks are fully implemented and verified offline. Live cloud deployment and live simulation execution remain pending execution of `terraform apply`.
 

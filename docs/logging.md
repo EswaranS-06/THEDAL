@@ -1,4 +1,6 @@
-# SOCForge — Telemetry, Logging, Index & Detection Architecture
+# THEDAL — Telemetry, Logging, Index & Detection Architecture
+
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 > **Phase 13 Status**: The Wazuh SIEM core, Windows Employee Endpoint (Sysmon + Auditing), Linux Web Target (Nginx :8000 + DVWA), OWASP Juice Shop Container (Docker :3000), Atomic Red Team Attack Simulation Host, Web Security Testing Suite, OpenSearch Telemetry Index Architecture, and **SOC Detection Engineering & Custom Wazuh Rules** are operational, reconciled, and instrumented.
 

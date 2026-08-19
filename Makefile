@@ -1,5 +1,6 @@
 # ==============================================================================
-# SOCForge — Makefile (Phases 1–13)
+# THEDAL — Makefile
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 
 .DEFAULT_GOAL := help
@@ -9,7 +10,7 @@ SHELL := /usr/bin/env bash
 
 help: ## Show this help message
 	@echo "================================================================="
-	@echo "                      SOCForge Developer CLI                    "
+	@echo "                      THEDAL Developer CLI                      "
 	@echo "================================================================="
 	@echo "Usage: make [target]"
 	@echo ""
@@ -145,7 +146,7 @@ web-attack-check: ## Check health and scenario status of Web Security Testing Su
 web-test: ## Run controlled Web Security Testing scenario (Usage: make web-test ARGS="--list")
 	@./scripts/run-web-test.sh $(ARGS)
 
-control-plane: ## Start local SOCForge Control Plane web server on 127.0.0.1:8080
+control-plane: ## Start local THEDAL Control Plane web server on 127.0.0.1:8080
 	@cd control-plane && /home/rex/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8080
 
 test-control-plane: ## Run pytest test suite on control-plane

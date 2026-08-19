@@ -1,19 +1,19 @@
-# SOCForge Control Plane
+# THEDAL Control Plane
 
-> A lightweight, local web dashboard and operator control center for managing the SOCForge AWS laboratory.
+> A lightweight, local web dashboard and operator control center for managing the THEDAL AWS laboratory.
 
 ---
 
 ## 1. Overview & Purpose
 
-The **SOCForge Control Plane** provides a web interface on `127.0.0.1:8080` to monitor live AWS infrastructure status, trigger allowlisted Terraform operations, dispatch Ansible playbooks, view operation audit logs, and establish SSH access tunnels.
+The **THEDAL Control Plane** provides a web interface on `127.0.0.1:8080` to monitor live AWS infrastructure status, trigger allowlisted Terraform operations, dispatch Ansible playbooks, view operation audit logs, and establish SSH access tunnels.
 
 ### Core Design Principles
 - **Terraform & Ansible Remain Authoritative**: The control plane does not replace Infrastructure as Code. Terraform is the single source of truth for AWS resources; Ansible is the single source of truth for host configuration.
 - **Strict Localhost Binding**: Binds exclusively to `127.0.0.1` and is never exposed publicly.
 - **No Arbitrary Command Execution**: Exposes strictly allowlisted operations (e.g. `terraform plan`, `terraform apply`, specific playbooks). There are no generic shell execution endpoints.
 - **Zero Secret Exposure**: AWS secret keys, session tokens, passwords, and private SSH keys are never displayed in the UI or written to logs.
-- **Concurrency & Destroy Guardrails**: Employs an operation lock (`.operation.lock`) to prevent race conditions and requires a typed confirmation phrase (`DESTROY SOCFORGE`) for teardown.
+- **Concurrency & Destroy Guardrails**: Employs an operation lock (`.operation.lock`) to prevent race conditions and requires a typed confirmation phrase (`DESTROY THEDAL`) for teardown.
 
 ---
 
@@ -63,7 +63,7 @@ The control plane offers 5 primary views:
 | **Deploy** | Terraform Apply | Creates or updates AWS VPC, subnets, security groups, and EC2 instances. |
 | **Stop EC2** | AWS EC2 API | Safely pauses hourly compute charges while preserving EBS state. |
 | **Start EC2** | AWS EC2 API | Resumes stopped EC2 instances and initiates health checks. |
-| **Destroy** | Terraform Destroy | Requires typing `DESTROY SOCFORGE`. Terminates compute and deletes EBS volumes. |
+| **Destroy** | Terraform Destroy | Requires typing `DESTROY THEDAL`. Terminates compute and deletes EBS volumes. |
 
 ---
 

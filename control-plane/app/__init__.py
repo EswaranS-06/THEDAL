@@ -1,1 +1,1 @@
-"""SOCForge Control Plane App Package"""
+"""THEDAL Control Plane App Package"""

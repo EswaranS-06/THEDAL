@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Wazuh Dashboard SSH Tunnel Helper (Phase 6)
+# THEDAL — Wazuh Dashboard SSH Tunnel Helper
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Establishes an encrypted SSH local port forwarding tunnel through the Bastion
 # jumpbox to securely access the Wazuh Dashboard at https://localhost:8443
 #
 # Usage:
-#   ./scripts/wazuh-tunnel.sh [--local-port 8443] [--key-path ~/.ssh/socforge_key]
+#   ./scripts/wazuh-tunnel.sh [--local-port 8443] [--key-path ~/.ssh/thedal_key]
 # ==============================================================================
 
 set -euo pipefail
@@ -14,11 +15,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+DEFAULT_KEY="${HOME}/.ssh/socforge_key"
+if [[ -f "${HOME}/.ssh/thedal_key" ]]; then
+  DEFAULT_KEY="${HOME}/.ssh/thedal_key"
+fi
+
 LOCAL_PORT="${1:-8443}"
-KEY_PATH="${2:-${HOME}/.ssh/socforge_key}"
+KEY_PATH="${2:-${DEFAULT_KEY}}"
 
 echo "================================================================="
-echo "             SOCForge Wazuh Dashboard SSH Tunnel                "
+echo "              THEDAL Wazuh Dashboard SSH Tunnel                  "
 echo "================================================================="
 
 # 1. Resolve Bastion Public IP and Wazuh Private IP

@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SOCForge Control Center{% endblock %}</title>
+    <title>{% block title %}THEDAL Control Center{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/app.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
 </head>
 <body>
     <header class="navbar">
         <a href="/" class="brand">
-            <div class="brand-icon">SF</div>
-            <span>SOCForge <span style="color: var(--color-blue); font-weight: 400;">Control Plane</span></span>
+            <div class="brand-icon">TH</div>
+            <span>THEDAL <span style="color: var(--color-blue); font-weight: 400;">Control Plane</span></span>
         </a>
         <ul class="nav-links">
             <li><a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a></li>
@@ -44,9 +44,9 @@
             </p>
             <div style="margin-bottom: 1rem;">
                 <label style="font-size: 0.85rem; color: var(--text-secondary);">
-                    To proceed, type the exact phrase <strong>DESTROY SOCFORGE</strong> below:
+                    To proceed, type the exact phrase <strong>DESTROY THEDAL</strong> below:
                 </label>
-                <input type="text" id="destroy-phrase-input" class="form-input" placeholder="DESTROY SOCFORGE" autocomplete="off">
+                <input type="text" id="destroy-phrase-input" class="form-input" placeholder="DESTROY THEDAL" autocomplete="off">
             </div>
             <div style="margin-bottom: 1.25rem;">
                 <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
@@ -62,7 +62,7 @@
     </div>
 
     <footer>
-        <p>SOCForge Control Plane (Localhost Only: 127.0.0.1:8080) &bull; Production Infrastructure as Code</p>
+        <p>THEDAL Control Plane (Localhost Only: 127.0.0.1:8080) &bull; Production Infrastructure as Code</p>
     </footer>
 
     <script src="/static/js/app.js"></script>

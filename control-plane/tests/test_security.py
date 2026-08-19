@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Security & Guardrail Unit Tests
+THEDAL Control Plane — Security & Guardrail Unit Tests
 """
 
 import pytest
@@ -32,7 +32,7 @@ def test_destroy_requires_confirmation_and_phrase(client):
     """Verify that terraform destroy rejects requests without confirmation and phrase."""
     # 1. Missing confirmation boolean
     with pytest.raises(SecurityValidationError):
-        TerraformService.destroy(confirmation=False, confirmation_phrase="DESTROY SOCFORGE")
+        TerraformService.destroy(confirmation=False, confirmation_phrase="DESTROY THEDAL")
 
     # 2. Missing phrase
     with pytest.raises(SecurityValidationError):

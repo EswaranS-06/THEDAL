@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Operator Web Security Testing Execution Helper (Phase 11)
+# THEDAL — Operator Web Security Testing Execution Helper
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Runs curated web attacks against DVWA (:8000) and Juice Shop (:3000)
-# from SOCForge-attack via Bastion ProxyJump.
+# from attack host via Bastion ProxyJump.
 #
 # Usage:
 #   ./scripts/run-web-test.sh --list
@@ -19,6 +20,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 KEY_PATH="${HOME}/.ssh/socforge_key"
+if [[ -f "${HOME}/.ssh/thedal_key" ]]; then
+  KEY_PATH="${HOME}/.ssh/thedal_key"
+fi
 INVENTORY_FILE="${REPO_ROOT}/ansible/inventory/hosts.ini"
 CATALOG_TEMPLATE="${REPO_ROOT}/ansible/roles/web-attack/templates/web-scenarios.yml.j2"
 
@@ -31,7 +35,7 @@ ACTION="run"
 usage() {
   cat << 'EOF'
 =================================================================
-       SOCForge Operator Web Attack Execution Helper
+          THEDAL Operator Web Attack Execution Helper
 =================================================================
 Usage:
   ./scripts/run-web-test.sh --target <dvwa|juice-shop> --scenario <ID> --confirm [options]

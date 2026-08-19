@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — API & Page Route Unit Tests
+THEDAL Control Plane — API & Page Route Unit Tests
 """
 
 import pytest
@@ -29,7 +29,7 @@ def client():
 
         mock_inst.return_value = [
             EC2InstanceInfo(
-                name="SOCForge-wazuh",
+                name="THEDAL-wazuh",
                 instance_id="i-0123456789abcdef0",
                 instance_type="t3.xlarge",
                 state="running",
@@ -67,7 +67,7 @@ def client():
 def test_page_dashboard(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "SOCForge Control Center" in res.text
+    assert "THEDAL Control Center" in res.text
 
 
 def test_page_resources(client):

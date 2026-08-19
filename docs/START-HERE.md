@@ -1,14 +1,16 @@
-# SOCForge — Beginner's Guide & Project Entry Point
+# THEDAL — Beginner's Guide & Project Entry Point
 
-> Welcome to **SOCForge**! This guide is your starting point for deploying, operating, and learning real-world Security Operations Center (SOC) investigation workflows on live cloud infrastructure.
+### Threat Hunting, Exploration, Detection, Analysis and Learn
+
+> Welcome to **THEDAL**! This guide is your starting point for deploying, operating, and learning real-world Security Operations Center (SOC) investigation workflows on live cloud infrastructure.
 
 ---
 
-## 1. What is SOCForge?
+## 1. What is THEDAL?
 
-SOCForge is a cloud-native cybersecurity detection, simulation, and investigation platform. It provides a complete, production-grade SOC lab deployed into Amazon Web Services (AWS) using Infrastructure as Code (Terraform & Ansible).
+**THEDAL** (Threat Hunting, Exploration, Detection, Analysis and Learn) is a cloud-native cybersecurity detection, simulation, and investigation platform. It provides a complete, production-grade SOC lab deployed into Amazon Web Services (AWS) using Infrastructure as Code (Terraform & Ansible).
 
-Unlike static capture-the-flag (CTF) challenges or passive log dumps, SOCForge provides a **living, breathing enterprise environment** featuring:
+Unlike static capture-the-flag (CTF) challenges or passive log dumps, THEDAL provides a **living, breathing enterprise environment** featuring:
 - A dedicated **SIEM & Analytics Cluster** (Wazuh 4.14.7 Manager, Indexer, OpenSearch Dashboards, Filebeat).
 - An instrumented **Windows Server 2022 Endpoint** (Sysmon v15, PowerShell ScriptBlock Logging, Enhanced Auditing).
 - An instrumented **Linux Web Target** (Nginx Reverse Proxy, DVWA, Dockerized OWASP Juice Shop, Linux `auditd`, FIM).
@@ -19,7 +21,7 @@ Unlike static capture-the-flag (CTF) challenges or passive log dumps, SOCForge p
 
 ## 2. What Will You Learn?
 
-By working through the guided SOCForge labs, you will develop practical, job-ready SOC Tier 1 / Tier 2 skills:
+By working through the guided THEDAL labs, you will develop practical, job-ready SOC Tier 1 / Tier 2 skills:
 1. **Log & Telemetry Analysis**: Decipher Windows Event Logs, Sysmon telemetry, Linux systemd journals, `auditd` kernel syscalls, Nginx HTTP access logs, and container logs.
 2. **SIEM Investigation**: Search and filter OpenSearch indices, construct compound Boolean queries, and interpret alert metadata.
 3. **MITRE ATT&CK Mapping**: Correlate adversary behaviors (Initial Access, Execution, Persistence, Discovery) to standard MITRE techniques.
@@ -31,7 +33,7 @@ By working through the guided SOCForge labs, you will develop practical, job-rea
 
 ## 3. High-Level Architecture
 
-The SOCForge environment is partitioned into three security tiers inside a dedicated AWS VPC (`10.10.0.0/16`):
+The THEDAL environment is partitioned into three security tiers inside a dedicated AWS VPC (`10.10.0.0/16`):
 
 ```text
                                AWS CLOUD (VPC 10.10.0.0/16)
@@ -72,7 +74,7 @@ The SOCForge environment is partitioned into three security tiers inside a dedic
 > **Cloud Usage & Billing Notice**:
 > - Running EC2 instances in AWS can incur real monetary charges.
 > - While AWS offers a Free Tier for eligible accounts, running multiple instances (`t3.xlarge`, `t3.small`, `t3.micro`) and associated EBS storage may exceed monthly free tier allowances.
-> - **Zero NAT Gateway Cost**: SOCForge eliminates AWS NAT Gateway costs (~$32+/month) by routing outbound package updates through the Bastion forward proxy.
+> - **Zero NAT Gateway Cost**: THEDAL eliminates AWS NAT Gateway costs (~$32+/month) by routing outbound package updates through the Bastion forward proxy.
 > - **Always Destroy When Finished**: When you complete your learning sessions, execute `terraform destroy` to terminate all AWS resources and prevent ongoing billing.
 
 ---
@@ -81,9 +83,9 @@ The SOCForge environment is partitioned into three security tiers inside a dedic
 
 > [!CAUTION]
 > **Restricted Scope of Simulation Tools**:
-> - The attack scripts (`run-atomic-test`, `run-web-test`) included in SOCForge are designed **strictly** for testing the isolated SOCForge private subnets.
+> - The attack scripts (`run-atomic-test`, `run-web-test`) included in THEDAL are designed **strictly** for testing the isolated THEDAL private subnets.
 > - Never target external hosts, production systems, or unauthorized third-party infrastructure.
-> - Simulations on SOCForge execute with safety boundaries and automatic cleanup routines.
+> - Simulations on THEDAL execute with safety boundaries and automatic cleanup routines.
 
 ---
 
@@ -100,24 +102,24 @@ The SOCForge environment is partitioned into three security tiers inside a dedic
 ### A. SSH Access via Bastion Jumpbox
 All internal Linux nodes are accessible from your local machine using the Bastion ProxyJump configuration:
 ```bash
-# Connect to Bastion
-ssh -i ~/.ssh/socforge_key ubuntu@<BASTION_PUBLIC_IP>
+# Connect to Bastion (using thedal_key or socforge_key)
+ssh -i ~/.ssh/thedal_key ubuntu@<BASTION_PUBLIC_IP>
 
 # Connect directly to Wazuh SIEM Host
-ssh -i ~/.ssh/socforge_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.10.33
+ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.10.33
 
 # Connect directly to Web Target Host
-ssh -i ~/.ssh/socforge_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.30.148
+ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.30.148
 
 # Connect directly to Attack Host
-ssh -i ~/.ssh/socforge_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.20.114
+ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.20.114
 ```
 
 ### B. Accessing OpenSearch Dashboards (Web UI)
 To access the Wazuh / OpenSearch Dashboards UI in your local web browser:
 1. Establish an SSH tunnel through the Bastion:
    ```bash
-   ssh -i ~/.ssh/socforge_key -N -L 8443:10.10.10.33:443 ubuntu@<BASTION_PUBLIC_IP>
+   ssh -i ~/.ssh/thedal_key -N -L 8443:10.10.10.33:443 ubuntu@<BASTION_PUBLIC_IP>
    ```
 2. Open your browser and navigate to: `https://localhost:8443`
 3. Accept the self-signed TLS certificate.
@@ -128,10 +130,10 @@ To access the Wazuh / OpenSearch Dashboards UI in your local web browser:
 ## 7. Navigating Dashboards & Investigation Views
 
 Once logged into OpenSearch Dashboards, open **Dashboard** from the side menu to access 4 purpose-built investigation views:
-- **SOCForge — Security Operations Overview**: Executive overview of all monitored endpoints, severity distributions, top hosts, and emulation activities.
-- **SOCForge — Windows Endpoint Investigation**: Correlated view of Windows Security logs, Sysmon process creations, and PowerShell ScriptBlocks.
-- **SOCForge — Web Applications Investigation**: Analysis of Nginx HTTP response codes, DVWA exploitation queries, and containerized Juice Shop REST API events.
-- **SOCForge — Adversary Attack Activity & Ground Truth**: Correlation dashboard mapping emulation engine logs directly against triggered SIEM alerts.
+- **THEDAL — Security Operations Overview**: Executive overview of all monitored endpoints, severity distributions, top hosts, and emulation activities.
+- **THEDAL — Windows Endpoint Investigation**: Correlated view of Windows Security logs, Sysmon process creations, and PowerShell ScriptBlocks.
+- **THEDAL — Web Applications Investigation**: Analysis of Nginx HTTP response codes, DVWA exploitation queries, and containerized Juice Shop REST API events.
+- **THEDAL — Adversary Attack Activity & Ground Truth**: Correlation dashboard mapping emulation engine logs directly against triggered SIEM alerts.
 
 ---
 

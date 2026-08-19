@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Health Check & Diagnostics Service
+THEDAL Control Plane — Health Check & Diagnostics Service
 """
 
 from typing import List
@@ -25,7 +25,7 @@ class HealthService:
         checks.append(HealthCheckItem(
             component="Local SSH Key",
             status="PASS" if key_exists else "FAIL",
-            message="SOCForge SSH private key present" if key_exists else f"Key missing at {settings.SSH_KEY_PATH}"
+            message="THEDAL SSH private key present" if key_exists else f"Key missing at {settings.SSH_KEY_PATH}"
         ))
 
         # 2. Check AWS Connectivity
@@ -53,7 +53,7 @@ class HealthService:
             checks.append(HealthCheckItem(
                 component="EC2 Compute Fleet",
                 status=status,
-                message=f"{running_count}/{total_count} SOCForge lab nodes running"
+                message=f"{running_count}/{total_count} THEDAL lab nodes running"
             ))
 
             for inst in instances:
@@ -66,7 +66,7 @@ class HealthService:
             checks.append(HealthCheckItem(
                 component="EC2 Compute Fleet",
                 status="WARNING",
-                message="No active SOCForge EC2 instances detected."
+                message="No active THEDAL EC2 instances detected."
             ))
 
         # 5. Check Inventory File

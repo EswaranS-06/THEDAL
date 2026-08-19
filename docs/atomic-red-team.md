@@ -1,4 +1,6 @@
-# SOCForge — Phase 10: Atomic Red Team Simulation Host & Telemetry
+# THEDAL — Atomic Red Team Simulation Host & Telemetry
+
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 > **Status**: Configuration and automation complete. Live cloud deployment and live simulation execution pending execution of `terraform apply`.
 

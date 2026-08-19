@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Wazuh Telemetry & Index Architecture Health Check (Phase 12)
+# THEDAL — Wazuh Telemetry & Index Architecture Health Check
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Verifies OpenSearch index templates, ISM retention policies, Filebeat routing,
 # dashboard saved objects, and offline configuration integrity.
@@ -12,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "================================================================="
-echo "   SOCForge Phase 12: Telemetry & Index Architecture Check       "
+echo "    THEDAL Telemetry & Index Architecture Health Check           "
 echo "================================================================="
 
 FAILURES=0
@@ -142,7 +143,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Index Architecture Health Check Result: PASS"
-  echo "SOCForge Phase 12 telemetry routing, index templates, and dashboards verified."
+  echo "THEDAL telemetry routing, index templates, and dashboards verified."
   echo "================================================================="
   exit 0
 else

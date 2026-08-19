@@ -1,4 +1,6 @@
-# SOCForge — Detection Catalog (Phase 13)
+# THEDAL — Detection Catalog
+
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 > **Status**: Comprehensive catalog of 18 curated detection rules across Web (DVWA, Juice Shop), Nginx, Windows Endpoint (Sysmon, PowerShell), Linux Auditd, and Multi-Source Correlation.
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Control Machine Preflight Checker
+# THEDAL — Control Machine Preflight Checker
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Verifies prerequisites on the local control machine (e.g. Debian 13 VM)
 # without modifying system state or auto-installing packages.
@@ -10,7 +11,7 @@ set -euo pipefail
 
 # Header
 echo "================================================================="
-echo "                      SOCForge Preflight                         "
+echo "                       THEDAL Preflight                          "
 echo "================================================================="
 echo ""
 

@@ -1,4 +1,4 @@
-# SOCForge — Beginner's SOC & SIEM Terminology Glossary
+# THEDAL — Beginner's SOC & SIEM Terminology Glossary
 
 > A reference guide defining core terms and concepts used daily by Security Operations Center (SOC) analysts and Detection Engineers.
 

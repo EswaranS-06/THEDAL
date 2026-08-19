@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — FastAPI Application Entrypoint
+THEDAL Control Plane — FastAPI Application Entrypoint
 """
 
 from pathlib import Path

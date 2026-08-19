@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Ansible Configuration & Inventory Service
+THEDAL Control Plane — Ansible Configuration & Inventory Service
 """
 
 import sys

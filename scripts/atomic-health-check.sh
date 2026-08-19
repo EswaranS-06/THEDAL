@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Atomic Red Team Role Health Check & Verification Script (Phase 10)
+# THEDAL — Atomic Red Team Role Health Check & Verification Script
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Validates Atomic Red Team role structure, catalog definitions, wrapper scripts,
 # safety boundaries, and playbook configurations offline.
@@ -12,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "================================================================="
-echo "        SOCForge Phase 10: Atomic Red Team Health Check         "
+echo "        THEDAL Atomic Red Team Health Check                      "
 echo "================================================================="
 
 FAILURES=0
@@ -126,7 +127,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Atomic Red Team Health Check Result: PASS"
-  echo "SOCForge Phase 10 attack simulation host automation is fully verified."
+  echo "THEDAL attack simulation host automation is fully verified."
   echo "================================================================="
   exit 0
 else

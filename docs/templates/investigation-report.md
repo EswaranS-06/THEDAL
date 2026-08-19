@@ -21,7 +21,7 @@
 
 | Entity Type | Identified Artifact |
 | :--- | :--- |
-| **Affected Target Host** | `[e.g. SOCForge-web (10.10.30.148) / SOCForge-windows (10.10.10.254)]` |
+| **Affected Target Host** | `[e.g. THEDAL-web (10.10.30.148) / THEDAL-windows (10.10.10.254)]` |
 | **Source IP Address** | `[e.g. 10.10.20.114 (Attack Host) / External IP]` |
 | **Target Port / Protocol** | `[e.g. TCP 8000 (HTTP) / TCP 5985 (WinRM)]` |
 | **User Account(s)** | `[e.g. www-data / Administrator / SYSTEM]` |

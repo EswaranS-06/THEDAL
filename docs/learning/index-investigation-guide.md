@@ -1,4 +1,4 @@
-# SOCForge — OpenSearch Index-to-Investigation Guide
+# THEDAL — OpenSearch Index-to-Investigation Guide
 
 > A quick-reference guide detailing which OpenSearch index pattern to search during specific SOC investigation scenarios, along with key fields and query syntax.
 

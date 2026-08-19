@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Application Configuration
+THEDAL Control Plane — Application Configuration
 """
 
 import os
@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # App Settings
-    APP_NAME: str = "SOCForge Control Plane"
+    APP_NAME: str = "THEDAL Control Plane"
     APP_VERSION: str = "1.0.0"
     HOST: str = "127.0.0.1"
     PORT: int = 8080
@@ -28,11 +28,17 @@ class Settings(BaseSettings):
     # AWS Settings
     AWS_DEFAULT_REGION: str = os.getenv("AWS_DEFAULT_REGION", "ap-south-1")
 
-    # SSH Settings
-    SSH_KEY_PATH: Path = Path.home() / ".ssh" / "socforge_key"
+    # SSH Settings (supports thedal_key with socforge_key fallback)
+    @property
+    def SSH_KEY_PATH(self) -> Path:
+        primary = Path.home() / ".ssh" / "thedal_key"
+        if primary.exists():
+            return primary
+        return Path.home() / ".ssh" / "socforge_key"
 
     # Security Guardrails
-    REQUIRE_DESTROY_CONFIRMATION_PHRASE: str = "DESTROY SOCFORGE"
+    REQUIRE_DESTROY_CONFIRMATION_PHRASE: str = "DESTROY THEDAL"
+    LEGACY_DESTROY_CONFIRMATION_PHRASE: str = "DESTROY SOCFORGE"
     MAX_LOG_LINES_STREAM: int = 500
 
     def init_directories(self) -> None:

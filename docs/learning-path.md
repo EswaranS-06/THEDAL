@@ -1,4 +1,6 @@
-# SOCForge — Guided SOC Analyst Learning Path
+# THEDAL — Guided SOC Analyst Learning Path
+
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 > A structured, step-by-step curriculum designed to take you from foundational SIEM log analysis through complex multi-source adversary investigation.
 
@@ -6,7 +8,7 @@
 
 ## Curriculum Overview
 
-The SOCForge learning experience is organized into three progressive levels plus an optional challenge tier:
+The THEDAL learning experience is organized into three progressive levels plus an optional challenge tier:
 
 ```text
 +-----------------------------------------------------------------------------------------+

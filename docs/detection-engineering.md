@@ -1,12 +1,12 @@
-# SOCForge — Detection Engineering & Custom Wazuh Rule Architecture
+# THEDAL — Detection Engineering & Custom Wazuh Rule Architecture
 
-> **Status**: Complete detection engineering framework with dedicated rule ID namespaces (100100–100699), custom decoders, severity tiers, correlation logic, and offline positive/negative test verification.
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 ---
 
 ## 1. Detection Engineering Philosophy
 
-SOCForge detection engineering adheres to the following principles:
+THEDAL detection engineering adheres to the following principles:
 
 1. **Context-Driven Detections**: Every detection answers:
    * **WHAT** occurred (e.g. SQL syntax injection, LSASS memory handle access).

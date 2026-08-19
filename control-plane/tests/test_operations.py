@@ -1,5 +1,5 @@
 """
-SOCForge Control Plane — Operations & Concurrency Unit Tests
+THEDAL Control Plane — Operations & Concurrency Unit Tests
 """
 
 import pytest
@@ -29,9 +29,10 @@ def test_operation_lock_lifecycle():
 
 def test_log_sanitization():
     """Verify that secret patterns are scrubbed from log output."""
-    raw_log = "Error during auth: AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY and SOCForge@2026!Sec"
+    raw_log = "Error during auth: AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY and THEDAL@2026!Sec and SOCForge@2026!Sec"
     sanitized = OperationsManager.sanitize_log_content(raw_log)
 
     assert "AWS_SECRET_ACCESS_KEY" not in sanitized
+    assert "THEDAL@2026!Sec" not in sanitized
     assert "SOCForge@2026!Sec" not in sanitized
     assert "[REDACTED]" in sanitized

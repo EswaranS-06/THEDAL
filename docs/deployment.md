@@ -1,4 +1,6 @@
-# SOCForge — Deployment Architecture & Lifecycle Guide
+# THEDAL — Deployment Architecture & Lifecycle Guide
+
+### Threat Hunting, Exploration, Detection, Analysis and Learn
 
 > **Current Status**: Network, Subnets, Security Groups, IAM Roles, EC2 Compute Infrastructure, Dynamic Inventory Generation, Bootstrap Channels, Wazuh SIEM, Windows Endpoint Telemetry, Linux Web Target (DVWA), OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, Telemetry Index Architecture, and **Detection Engineering & Custom Wazuh Rules (Phases 1–13)** are implemented.
 

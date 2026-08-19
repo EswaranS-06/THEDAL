@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# SOCForge — Health Check Script (Phases 1–13: Local Integrity)
+# THEDAL — Health Check Script
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
 # Performs local control machine and repository structure verification.
 # ==============================================================================
@@ -11,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "================================================================="
-echo "                SOCForge Project Health Check                    "
+echo "                 THEDAL Project Health Check                     "
 echo "================================================================="
 echo "Repository Root: ${REPO_ROOT}"
 echo ""
@@ -284,7 +285,7 @@ echo ""
 echo "-----------------------------------------------------------------"
 if [ "${FAILURES}" -eq 0 ]; then
   echo "Health Check Result: PASS"
-  echo "SOCForge project foundation, compute declarations, Wazuh SIEM, Windows endpoint, Linux Web Target, OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, Telemetry Index Architecture, and Detection Engineering are intact."
+  echo "THEDAL project foundation, compute declarations, Wazuh SIEM, Windows endpoint, Linux Web Target, OWASP Juice Shop, Atomic Red Team, Web Security Testing Suite, Telemetry Index Architecture, and Detection Engineering are intact."
   echo "================================================================="
   exit 0
 else
