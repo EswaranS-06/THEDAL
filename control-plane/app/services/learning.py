@@ -322,18 +322,169 @@ class LearningService:
     def get_curriculum_stats(cls) -> Dict[str, Any]:
         """Get summary statistics for learner progress."""
         labs = cls.get_all_labs_with_progress()
-        total = len(labs)
-        completed = sum(1 for lab in labs if lab.get("status") == "Completed")
-        in_progress = sum(1 for lab in labs if lab.get("status") == "In Progress")
-        not_started = sum(1 for lab in labs if lab.get("status") == "Not Started" or not lab.get("status"))
+        regular_labs = [l for l in labs if not l["id"].startswith("challenge-")]
+        challenges = [l for l in labs if l["id"].startswith("challenge-")]
+
+        total_labs = len(regular_labs)
+        completed_labs = sum(1 for lab in regular_labs if lab.get("status") == "Completed")
+        in_progress_labs = sum(1 for lab in regular_labs if lab.get("status") == "In Progress")
+        not_started_labs = sum(1 for lab in regular_labs if lab.get("status") == "Not Started" or not lab.get("status"))
+
+        # Level breakdowns
+        l1 = [l for l in regular_labs if l.get("level_code") == "1"]
+        l2 = [l for l in regular_labs if l.get("level_code") == "2"]
+        l3 = [l for l in regular_labs if l.get("level_code") == "3"]
+
+        l1_completed = sum(1 for l in l1 if l.get("status") == "Completed")
+        l2_completed = sum(1 for l in l2 if l.get("status") == "Completed")
+        l3_completed = sum(1 for l in l3 if l.get("status") == "Completed")
+        challenges_completed = sum(1 for c in challenges if c.get("status") == "Completed")
+
+        # Next recommended lab
+        next_lab = next((l for l in regular_labs if l.get("status") != "Completed"), None)
 
         return {
-            "total_labs": total,
-            "completed": completed,
-            "in_progress": in_progress,
-            "not_started": not_started,
-            "percent_completed": int((completed / total) * 100) if total > 0 else 0
+            "total_labs": total_labs,
+            "completed": completed_labs,
+            "in_progress": in_progress_labs,
+            "not_started": not_started_labs,
+            "percent_completed": int((completed_labs / total_labs) * 100) if total_labs > 0 else 0,
+            "level1": {"total": len(l1), "completed": l1_completed},
+            "level2": {"total": len(l2), "completed": l2_completed},
+            "level3": {"total": len(l3), "completed": l3_completed},
+            "challenges": {"total": len(challenges), "completed": challenges_completed},
+            "next_lab": next_lab
         }
+
+    @classmethod
+    def get_challenges(cls) -> List[Dict[str, Any]]:
+        """Get all 3 mystery challenges with progress."""
+        all_items = cls.get_all_labs_with_progress()
+        challenges = [item for item in all_items if item["id"].startswith("challenge-")]
+        for c in challenges:
+            c["difficulty"] = "Advanced / Mystery"
+        return challenges
+
+    @classmethod
+    def get_challenge_detail(cls, challenge_id: str) -> Optional[Dict[str, Any]]:
+        """Get challenge details without exposing solutions."""
+        detail = cls.get_lab_detail(challenge_id)
+        if not detail:
+            return None
+        detail["difficulty"] = "Advanced / Mystery"
+        return detail
+
+    @classmethod
+    def get_challenge_solution(cls, challenge_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve solution key for a specific challenge."""
+        solutions_path = os.path.join(settings.PROJECT_ROOT, "docs", "labs", "challenges", "solutions.md")
+        if not os.path.exists(solutions_path):
+            return None
+
+        with open(solutions_path, "r", encoding="utf-8", errors="replace") as f:
+            raw_text = f.read()
+
+        num = challenge_id.replace("challenge-", "")
+        # Extract section for this challenge
+        pattern = rf'## Challenge {num}:[^\n]*\n([\s\S]*?)(?=\n## Challenge|\Z)'
+        match = re.search(pattern, raw_text, re.IGNORECASE)
+        if not match:
+            return {"solution_markdown": raw_text, "solution_html": cls.render_markdown_safely(raw_text)}
+
+        sol_md = f"## Solution: Challenge {num}\n\n" + match.group(1).strip()
+        return {
+            "challenge_id": challenge_id,
+            "solution_markdown": sol_md,
+            "solution_html": cls.render_markdown_safely(sol_md)
+        }
+
+    @classmethod
+    def search_content(cls, query: str) -> List[Dict[str, Any]]:
+        """Search across labs, challenges, runbooks, and learning path."""
+        if not query or len(query.strip()) < 2:
+            return []
+
+        q = query.strip().lower()
+        results = []
+
+        # 1. Search in LAB_CATALOG
+        for lab in LAB_CATALOG:
+            title = lab.get("title", "")
+            mitre = lab.get("mitre", "")
+            source = lab.get("source", "")
+            index = lab.get("target_index", "")
+
+            score = 0
+            if q in title.lower():
+                score += 10
+            if q in mitre.lower():
+                score += 8
+            if q in source.lower():
+                score += 5
+            if q in index.lower():
+                score += 5
+
+            # Search in file content if exists
+            file_path = os.path.join(settings.PROJECT_ROOT, lab.get("rel_path", ""))
+            snippet = ""
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                        content = f.read()
+                        if q in content.lower():
+                            score += 3
+                            idx = content.lower().find(q)
+                            start = max(0, idx - 40)
+                            end = min(len(content), idx + 80)
+                            snippet = content[start:end].replace("\n", " ").strip()
+                except Exception:
+                    pass
+
+            if score > 0:
+                results.append({
+                    "id": lab["id"],
+                    "title": title,
+                    "type": "Challenge" if lab["id"].startswith("challenge-") else "Lab",
+                    "level": lab.get("level", ""),
+                    "mitre": mitre,
+                    "score": score,
+                    "snippet": f"...{snippet}..." if snippet else f"{source} -> {index}",
+                    "url": f"/learning/challenges/{lab['id']}" if lab["id"].startswith("challenge-") else f"/learning/labs/{lab['id']}"
+                })
+
+        # 2. Search runbooks and learning-path
+        extra_docs = [
+            ("learning-path", "THEDAL Learning Path & SOC Curriculum", "docs/learning-path.md", "/learning"),
+            ("detection-catalog", "Detection Rule Catalog", "docs/detection-catalog.md", "/learning"),
+            ("telemetry-arch", "Telemetry Ingest Pipeline Architecture", "docs/telemetry-architecture.md", "/learning"),
+        ]
+
+        for doc_id, doc_title, doc_rel, doc_url in extra_docs:
+            doc_path = os.path.join(settings.PROJECT_ROOT, doc_rel)
+            if os.path.exists(doc_path):
+                try:
+                    with open(doc_path, "r", encoding="utf-8", errors="replace") as f:
+                        content = f.read()
+                        if q in doc_title.lower() or q in content.lower():
+                            idx = content.lower().find(q)
+                            start = max(0, idx - 40) if idx != -1 else 0
+                            end = min(len(content), idx + 80) if idx != -1 else 100
+                            snippet = content[start:end].replace("\n", " ").strip()
+                            results.append({
+                                "id": doc_id,
+                                "title": doc_title,
+                                "type": "Documentation",
+                                "level": "Guide",
+                                "mitre": "Reference",
+                                "score": 4,
+                                "snippet": f"...{snippet}..." if snippet else "Reference guide",
+                                "url": doc_url
+                            })
+                except Exception:
+                    pass
+
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results
 
     @classmethod
     def render_markdown_safely(cls, md_text: str) -> str:

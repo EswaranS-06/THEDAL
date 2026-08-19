@@ -194,3 +194,119 @@ class AWSService:
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    @classmethod
+    def get_host_detail(cls, host_key: str) -> Optional[Dict[str, Any]]:
+        """Retrieves rich host telemetry, running services, and direct commands."""
+        instances = cls.get_instances()
+        target_inst = None
+        hk_clean = host_key.lower().replace("thedal-", "").replace("thedal_", "").replace("socforge-", "").replace("socforge_", "")
+
+        for inst in instances:
+            curr_clean = inst.name.lower().replace("thedal-", "").replace("thedal_", "").replace("socforge-", "").replace("socforge_", "")
+            if curr_clean == hk_clean or inst.name.lower() == host_key.lower():
+                target_inst = inst
+                break
+
+        service_profiles = {
+            "bastion": {
+                "role_title": "Public Jumpbox & Forward Proxy",
+                "os": "Ubuntu 22.04 LTS (Jammy Jellyfish)",
+                "purpose": "Secure SSH ingress boundary and forward proxy for private subnet package downloads.",
+                "services": [
+                    {"name": "OpenSSH Server", "port": 22, "status": "Active / Listening", "type": "System Service"},
+                    {"name": "Squid HTTP Proxy", "port": 3128, "status": "Active / Forwarding", "type": "Proxy Service"},
+                    {"name": "UFW Firewall", "port": "N/A", "status": "Active / Enforced", "type": "Security Boundary"}
+                ]
+            },
+            "wazuh": {
+                "role_title": "SIEM Manager, Indexer & Dashboard",
+                "os": "Ubuntu 22.04 LTS (Jammy Jellyfish)",
+                "purpose": "Centralized log ingestion, real-time detection rule evaluation, and OpenSearch analytical indexer.",
+                "services": [
+                    {"name": "Wazuh Manager (wazuh-remoted)", "port": 1514, "status": "Active / Listening", "type": "Agent Ingestion"},
+                    {"name": "Wazuh REST API", "port": 55000, "status": "Active / Authenticated", "type": "Management API"},
+                    {"name": "Wazuh Indexer (OpenSearch)", "port": 9200, "status": "Active / Cluster Green", "type": "Search Backend"},
+                    {"name": "Wazuh Dashboard", "port": 443, "status": "Active / Web UI", "type": "Analytics Portal"},
+                    {"name": "Filebeat Forwarder", "port": "Local", "status": "Active / Streaming", "type": "Log Shipper"}
+                ]
+            },
+            "windows": {
+                "role_title": "Windows Server 2022 Endpoint (Sysmon)",
+                "os": "Microsoft Windows Server 2022 Datacenter",
+                "purpose": "Target Windows endpoint instrumented with Sysmon and PowerShell ScriptBlock logging for threat detection.",
+                "services": [
+                    {"name": "Sysmon (System Monitor)", "port": "EventLog", "status": "Active / Driver Loaded", "type": "Kernel Telemetry"},
+                    {"name": "Wazuh Windows Agent", "port": "Agent Channel", "status": "Active / Connected", "type": "Log Shipper"},
+                    {"name": "WinRM (Windows Remote Mgmt)", "port": 5986, "status": "Active / HTTPS", "type": "Remote Management"},
+                    {"name": "PowerShell 5.1 / 7.x", "port": "N/A", "status": "Active / Auditing", "type": "Runtime Environment"}
+                ]
+            },
+            "web": {
+                "role_title": "Linux Web Target (Nginx, DVWA, Juice Shop)",
+                "os": "Ubuntu 22.04 LTS (Jammy Jellyfish)",
+                "purpose": "Multi-tier vulnerable web application host for AppSec telemetry analysis and auditd correlation.",
+                "services": [
+                    {"name": "Nginx Web Server", "port": 80, "status": "Active / Reverse Proxy", "type": "Web Server"},
+                    {"name": "DVWA (Damn Vulnerable Web App)", "port": 80, "status": "Active / PHP-FPM", "type": "Vulnerable App"},
+                    {"name": "OWASP Juice Shop (Docker)", "port": 3000, "status": "Active / Container", "type": "Modern Web App"},
+                    {"name": "MariaDB SQL Database", "port": 3306, "status": "Active / Localhost", "type": "Database Backend"},
+                    {"name": "Linux Auditd", "port": "Kernel", "status": "Active / Rules Loaded", "type": "System Audit"},
+                    {"name": "Wazuh Linux Agent", "port": "Agent Channel", "status": "Active / Connected", "type": "Log Shipper"}
+                ]
+            },
+            "attack": {
+                "role_title": "Adversary Emulation Engine (Atomic Red Team)",
+                "os": "Ubuntu 22.04 LTS (Jammy Jellyfish)",
+                "purpose": "Attack platform loaded with Atomic Red Team test suites, PowerShell attack tools, and network probing utilities.",
+                "services": [
+                    {"name": "Atomic Red Team (Invoke-Atomic)", "port": "CLI", "status": "Installed / Ready", "type": "Attack Emulation"},
+                    {"name": "PowerShell for Linux", "port": "CLI", "status": "Active", "type": "Execution Engine"},
+                    {"name": "SQLMap / Curl / Nmap", "port": "CLI", "status": "Installed / Ready", "type": "Security Tooling"},
+                    {"name": "Wazuh Linux Agent", "port": "Agent Channel", "status": "Active / Connected", "type": "Log Shipper"}
+                ]
+            }
+        }
+
+        if hk_clean not in service_profiles and not target_inst:
+            return None
+
+        profile = service_profiles.get(hk_clean, {
+            "role_title": "THEDAL Managed Node",
+            "os": "Linux / Windows",
+            "purpose": "THEDAL Lab node for security exploration and telemetry analysis.",
+            "services": []
+        })
+
+        if not target_inst:
+            # Return template data if instance not in AWS yet
+            return {
+                "key": hk_clean,
+                "name": f"thedal-{hk_clean}",
+                "role": profile["role_title"],
+                "state": "stopped",
+                "instance_id": "i-unprovisioned",
+                "instance_type": "t3.medium" if hk_clean in ["wazuh", "windows"] else "t3.small" if hk_clean == "web" else "t3.micro",
+                "private_ip": "10.10.x.x",
+                "public_ip": None,
+                "health": "UNKNOWN",
+                "os": profile["os"],
+                "purpose": profile["purpose"],
+                "services": profile["services"]
+            }
+
+        return {
+            "key": hk_clean,
+            "name": target_inst.name,
+            "role": target_inst.role,
+            "state": target_inst.state,
+            "instance_id": target_inst.instance_id,
+            "instance_type": target_inst.instance_type,
+            "private_ip": target_inst.private_ip,
+            "public_ip": target_inst.public_ip,
+            "availability_zone": target_inst.availability_zone,
+            "health": target_inst.health,
+            "os": profile["os"],
+            "purpose": profile["purpose"],
+            "services": profile["services"]
+        }

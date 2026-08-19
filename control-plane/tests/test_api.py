@@ -173,3 +173,57 @@ def test_api_ssh_ensure_key(client):
     res = client.post("/api/ssh/ensure-key")
     assert res.status_code == 200
     assert "exists" in res.json()
+
+
+def test_api_infrastructure_host_detail(client):
+    res = client.get("/api/infrastructure/hosts/bastion")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["key"] == "bastion"
+    assert "services" in data
+    assert len(data["services"]) > 0
+
+    not_found = client.get("/api/infrastructure/hosts/nonexistent")
+    assert not_found.status_code == 404
+
+
+def test_api_learning_catalog_and_search(client):
+    labs_res = client.get("/api/learning/labs")
+    assert labs_res.status_code == 200
+    labs_data = labs_res.json()
+    assert "labs" in labs_data
+    assert len(labs_data["labs"]) >= 14
+
+    detail_res = client.get("/api/learning/labs/01-first-alert")
+    assert detail_res.status_code == 200
+    assert "rendered_html" in detail_res.json()
+
+    challenges_res = client.get("/api/learning/challenges")
+    assert challenges_res.status_code == 200
+    assert len(challenges_res.json()["challenges"]) >= 3
+
+    challenge_detail = client.get("/api/learning/challenges/challenge-01")
+    assert challenge_detail.status_code == 200
+    assert "rendered_html" in challenge_detail.json()
+
+    sol_res = client.get("/api/learning/challenges/challenge-01/solution")
+    assert sol_res.status_code == 200
+    assert "solution_html" in sol_res.json()
+
+    search_res = client.get("/api/learning/search?q=Sysmon")
+    assert search_res.status_code == 200
+    assert len(search_res.json()["results"]) > 0
+
+
+def test_api_operations_list_and_config(client):
+    ops_res = client.get("/api/operations/list")
+    assert ops_res.status_code == 200
+    assert "logs" in ops_res.json()
+
+    cfg_res = client.get("/api/settings/config")
+    assert cfg_res.status_code == 200
+    cfg = cfg_res.json()
+    assert "app_name" in cfg
+    assert "aws_region" in cfg
+    assert "autostop" in cfg
+

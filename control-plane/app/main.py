@@ -477,3 +477,97 @@ async def api_safety_autostop_post(config: AutoStopConfig):
 @app.post("/api/ssh/ensure-key")
 async def api_ssh_ensure_key():
     return SafetyService.ensure_ssh_key()
+
+
+@app.get("/api/infrastructure/hosts/{host_key}")
+async def api_infrastructure_host_detail(host_key: str):
+    detail = AWSService.get_host_detail(host_key)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"Host '{host_key}' not found.")
+    return detail
+
+
+@app.get("/api/learning/labs")
+async def api_learning_labs():
+    all_labs = LearningService.get_all_labs_with_progress()
+    regular_labs = [l for l in all_labs if not l["id"].startswith("challenge-")]
+    return {
+        "labs": regular_labs,
+        "stats": LearningService.get_curriculum_stats()
+    }
+
+
+@app.get("/api/learning/labs/{lab_id}")
+async def api_learning_lab_detail(lab_id: str):
+    detail = LearningService.get_lab_detail(lab_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found in curriculum.")
+    return detail
+
+
+@app.get("/api/learning/challenges")
+async def api_learning_challenges():
+    return {
+        "challenges": LearningService.get_challenges()
+    }
+
+
+@app.get("/api/learning/challenges/{challenge_id}")
+async def api_learning_challenge_detail(challenge_id: str):
+    detail = LearningService.get_challenge_detail(challenge_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"Challenge '{challenge_id}' not found.")
+    return detail
+
+
+@app.get("/api/learning/challenges/{challenge_id}/solution")
+async def api_learning_challenge_solution(challenge_id: str):
+    sol = LearningService.get_challenge_solution(challenge_id)
+    if not sol:
+        raise HTTPException(status_code=404, detail=f"Solution for '{challenge_id}' not found.")
+    return sol
+
+
+@app.get("/api/learning/search")
+async def api_learning_search(q: str = Query(..., min_length=1)):
+    return {
+        "query": q,
+        "results": LearningService.search_content(q)
+    }
+
+
+@app.get("/api/operations/list")
+async def api_operations_list():
+    return {
+        "active_operation": OperationsManager.get_active_operation(),
+        "logs": OperationsManager.list_logs()
+    }
+
+
+@app.get("/api/operations/detail/{file}")
+async def api_operations_detail(file: str):
+    logs = OperationsManager.list_logs()
+    meta = next((item for item in logs if item["filename"] == file), None)
+    content = OperationsManager.read_log_file(file)
+    return {
+        "filename": file,
+        "metadata": meta,
+        "content": content
+    }
+
+
+@app.get("/api/settings/config")
+async def api_settings_config():
+    return {
+        "app_name": settings.APP_NAME,
+        "app_version": settings.APP_VERSION,
+        "aws_region": settings.AWS_DEFAULT_REGION,
+        "terraform_dir": str(settings.TERRAFORM_DIR),
+        "ansible_dir": str(settings.ANSIBLE_DIR),
+        "ssh_key_path": str(settings.SSH_KEY_PATH),
+        "logs_dir": str(settings.LOGS_DIR),
+        "autostop": SafetyService.get_autostop_status(),
+        "profiles": AWSProfileService.list_profiles(),
+        "ssh_info": SSHService.get_connection_info()
+    }
+
