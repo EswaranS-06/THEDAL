@@ -1,5 +1,6 @@
 /**
  * THEDAL Control Plane — Frontend Interactive Logic
+ * Minimalism & Swiss Style UI / Data-Dense Operations
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,6 +11,30 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchSystemStatus();
         }, 12000);
     }
+
+    // Modal keyboard and input listeners
+    const phraseInput = document.getElementById('destroy-phrase-input');
+    const checkInput = document.getElementById('destroy-check-input');
+
+    if (phraseInput && checkInput) {
+        const validateDestroyInputs = () => {
+            const btn = document.getElementById('confirm-destroy-btn');
+            if (!btn) return;
+            const phrase = phraseInput.value.trim();
+            const checked = checkInput.checked;
+            const valid = (phrase === "DESTROY THEDAL" || phrase === "DESTROY SOCFORGE") && checked;
+            btn.disabled = !valid;
+        };
+
+        phraseInput.addEventListener('input', validateDestroyInputs);
+        checkInput.addEventListener('change', validateDestroyInputs);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeDestroyModal();
+        }
+    });
 });
 
 /**
@@ -24,13 +49,12 @@ async function fetchSystemStatus() {
         const envBadge = document.getElementById('nav-env-status');
         if (envBadge) {
             envBadge.textContent = data.environment_health;
-            envBadge.className = `badge badge-${data.environment_health.toLowerCase()}`;
-        }
-        
-        const tfBadge = document.getElementById('nav-tf-status');
-        if (tfBadge) {
-            tfBadge.textContent = data.terraform_status;
-            tfBadge.className = `badge badge-${data.terraform_status.toLowerCase()}`;
+            const dot = envBadge.previousElementSibling;
+            if (dot && dot.classList.contains('status-dot')) {
+                dot.className = 'status-dot';
+                if (data.environment_health === 'DEGRADED') dot.classList.add('amber');
+                if (data.environment_health === 'OFFLINE') dot.classList.add('red');
+            }
         }
     } catch (e) {
         console.error("Failed to fetch system status:", e);
@@ -69,8 +93,8 @@ async function triggerOperation(endpoint, payload, requiresDoubleConfirm = false
         if (outputElem && data.log_file) {
             outputElem.textContent = `Operation launched.\nLog file: ${data.log_file}\nMessage: ${data.message}\nRedirecting to logs...`;
             setTimeout(() => {
-                window.location.href = '/logs';
-            }, 1500);
+                window.location.href = `/logs?file=${encodeURIComponent(data.log_file.split('/').pop())}`;
+            }, 1200);
         } else {
             alert(data.message || "Operation completed successfully.");
             window.location.reload();
@@ -85,7 +109,16 @@ async function triggerOperation(endpoint, payload, requiresDoubleConfirm = false
  */
 function openDestroyModal() {
     const modal = document.getElementById('destroy-modal');
-    if (modal) modal.classList.add('active');
+    if (modal) {
+        modal.classList.add('active');
+        const phraseInput = document.getElementById('destroy-phrase-input');
+        const checkInput = document.getElementById('destroy-check-input');
+        const btn = document.getElementById('confirm-destroy-btn');
+        if (phraseInput) phraseInput.value = '';
+        if (checkInput) checkInput.checked = false;
+        if (btn) btn.disabled = true;
+        if (phraseInput) phraseInput.focus();
+    }
 }
 
 function closeDestroyModal() {
@@ -94,8 +127,12 @@ function closeDestroyModal() {
 }
 
 async function executeDestroy() {
-    const phrase = document.getElementById('destroy-phrase-input').value;
-    const confirmCheck = document.getElementById('destroy-check-input').checked;
+    const phraseInput = document.getElementById('destroy-phrase-input');
+    const checkInput = document.getElementById('destroy-check-input');
+    if (!phraseInput || !checkInput) return;
+
+    const phrase = phraseInput.value.trim();
+    const confirmCheck = checkInput.checked;
 
     if (!confirmCheck) {
         alert("You must check the confirmation box.");

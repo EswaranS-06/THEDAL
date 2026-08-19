@@ -67,7 +67,7 @@ def client():
 def test_page_dashboard(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "THEDAL Control Center" in res.text
+    assert "Operations Overview" in res.text or "THEDAL Control Plane" in res.text
 
 
 def test_page_resources(client):
@@ -80,6 +80,12 @@ def test_page_operations(client):
     res = client.get("/operations")
     assert res.status_code == 200
     assert "Operations & Automation Console" in res.text
+
+
+def test_page_learning(client):
+    res = client.get("/learning")
+    assert res.status_code == 200
+    assert "SOC Analyst Learning Path" in res.text
 
 
 def test_page_logs(client):

@@ -1,30 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}AWS Resources & Topology &bull; THEDAL{% endblock %}
+{% block title %}Infrastructure &bull; THEDAL Control Plane{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <div>
-        <h1 class="page-title">AWS Infrastructure & Resources</h1>
-        <p class="page-subtitle">Detailed breakdown of provisioned EC2 virtual machines, VPC subnets, and cost estimations</p>
+    <div class="page-title-group">
+        <h1 class="page-title">Infrastructure & Compute Assets</h1>
+        <p class="page-subtitle">EC2 virtual machines, network subnets, and cloud cost optimization</p>
     </div>
-    <div style="display: flex; gap: 0.75rem;">
-        <button class="btn btn-secondary" onclick="triggerOperation('/api/ec2/start', {})">▶ Start Stopped Nodes</button>
-        <button class="btn btn-secondary" onclick="triggerOperation('/api/ec2/stop', {})">⏸ Stop Running Nodes</button>
+    <div class="page-header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ec2/start', {})">
+            <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Start Nodes</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ec2/stop', {})">
+            <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            <span>Stop Nodes</span>
+        </button>
     </div>
 </div>
 
 <!-- Detailed Compute Instances -->
-<div style="margin-bottom: 2.5rem;">
-    <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">EC2 Virtual Machine Fleet</h2>
+<div style="margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h2 style="font-size: 1rem; font-weight: 600; color: var(--text-primary);">EC2 Virtual Machine Fleet</h2>
+        <span class="badge badge-info">{{ instances|length }} Hosts Discovered</span>
+    </div>
     <div class="table-container">
         <table>
             <thead>
                 <tr>
-                    <th>Host / Node Name</th>
+                    <th>Host Name</th>
                     <th>State</th>
                     <th>Instance ID</th>
-                    <th>Instance Type</th>
+                    <th>Type</th>
                     <th>Private IP</th>
                     <th>Public IP</th>
                     <th>Availability Zone</th>
@@ -36,17 +45,17 @@
                 <tr>
                     <td style="font-weight: 600;">{{ node.name }}</td>
                     <td><span class="badge badge-{{ node.state }}">{{ node.state }}</span></td>
-                    <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ node.instance_id }}</td>
-                    <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ node.instance_type }}</td>
-                    <td style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-blue);">{{ node.private_ip }}</td>
-                    <td style="font-family: var(--font-mono); font-size: 0.85rem;">{{ node.public_ip or '—' }}</td>
-                    <td style="color: var(--text-secondary); font-size: 0.8rem;">{{ node.availability_zone }}</td>
-                    <td style="color: var(--text-secondary); font-size: 0.85rem;">{{ node.role }}</td>
+                    <td class="table-cell-mono">{{ node.instance_id }}</td>
+                    <td class="table-cell-mono">{{ node.instance_type }}</td>
+                    <td class="table-cell-mono" style="color: var(--color-primary); font-weight: 500;">{{ node.private_ip or '—' }}</td>
+                    <td class="table-cell-mono">{{ node.public_ip or '—' }}</td>
+                    <td style="color: var(--text-secondary); font-size: 0.75rem;">{{ node.availability_zone }}</td>
+                    <td style="color: var(--text-secondary);">{{ node.role }}</td>
                 </tr>
                 {% else %}
                 <tr>
                     <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                        No active instances found in the current AWS region.
+                        No active instances found in the current AWS region. Deploy via Operations Console.
                     </td>
                 </tr>
                 {% endfor %}
@@ -55,18 +64,22 @@
     </div>
 </div>
 
-<!-- Network & VPC Topology -->
+<!-- Network & VPC Topology + Cost Advisory Grid -->
 <div class="grid-2">
+    <!-- VPC & Subnet Topology -->
     <div class="card">
         <div class="card-header">
-            <span class="card-title">VPC & Subnet Topology</span>
-            <span class="badge badge-deployed">CIDR: {{ network.vpc_cidr }}</span>
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                <span>VPC & Subnet Topology</span>
+            </span>
+            <span class="badge badge-pass">CIDR: {{ network.vpc_cidr }}</span>
         </div>
-        <div style="margin-bottom: 1rem;">
-            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">VPC Resource ID:</div>
-            <div style="font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600;">{{ network.vpc_id or 'Not Deployed' }}</div>
+        <div style="margin-bottom: 0.75rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted);">VPC Resource ID:</div>
+            <div class="table-cell-mono" style="font-size: 0.8125rem; font-weight: 600; color: var(--text-primary);">{{ network.vpc_id or 'Not Deployed' }}</div>
         </div>
-        <div class="table-container">
+        <div class="table-container" style="border: none;">
             <table>
                 <thead>
                     <tr>
@@ -79,16 +92,16 @@
                     {% for sub in network.subnets %}
                     <tr>
                         <td style="font-weight: 500;">{{ sub.name }}</td>
-                        <td style="font-family: var(--font-mono); font-size: 0.8rem;">{{ sub.cidr }}</td>
+                        <td class="table-cell-mono">{{ sub.cidr }}</td>
                         <td>
-                            <span class="badge {% if sub.is_public %}badge-warning{% else %}badge-deployed{% endif %}">
+                            <span class="badge {% if sub.is_public %}badge-warn{% else %}badge-pass{% endif %}">
                                 {% if sub.is_public %}PUBLIC{% else %}PRIVATE{% endif %}
                             </span>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="3" style="text-align: center; color: var(--text-muted);">No subnets found.</td>
+                        <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1rem;">No subnets discovered.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -99,26 +112,29 @@
     <!-- Resource & Cost Advisory -->
     <div class="card">
         <div class="card-header">
-            <span class="card-title">AWS Resource & Cost Advisory</span>
-            <span class="badge badge-pass">Architecture Cost Optimized</span>
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Cloud Cost Advisory</span>
+            </span>
+            <span class="badge badge-pass">Optimized</span>
         </div>
-        <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
-            THEDAL is engineered to minimize cloud expenses while providing a complete multi-host enterprise testing ground.
+        <div style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            THEDAL is architected to minimize AWS expenses while providing full multi-host enterprise emulation.
         </div>
-        <ul style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 1.25rem; line-height: 1.7; margin-bottom: 1.25rem;">
-            <li><strong>Zero NAT Gateway Policy</strong>: Saves ~$32+/month by utilizing the forward Squid proxy on the Bastion jumpbox.</li>
-            <li><strong>Single Public IPv4</strong>: Only the Bastion jumpbox allocates a public IP, avoiding excess IPv4 reservation fees.</li>
+        <ul style="font-size: 0.8125rem; color: var(--text-secondary); margin-left: 1.25rem; line-height: 1.6; margin-bottom: 1rem;">
+            <li><strong>Zero NAT Gateway Policy</strong>: Saves ~$32+/month by utilizing Squid proxy on Bastion.</li>
+            <li><strong>Single Public IPv4</strong>: Only Bastion allocates a public IPv4 address.</li>
             <li><strong>Stopping vs. Destroying</strong>:
-                <ul style="margin-top: 0.25rem; margin-left: 1rem;">
-                    <li><strong>Stopping EC2</strong>: Stops hourly compute charges; attached EBS disk storage charges (~$0.10/GB/month) continue.</li>
-                    <li><strong>Terraform Destroy</strong>: Terminates compute and deletes attached EBS volumes completely, eliminating all recurring charges.</li>
+                <ul style="margin-top: 0.2rem; margin-left: 1rem;">
+                    <li><strong>Stopping EC2</strong>: Halts hourly compute charges; attached EBS disk storage charges continue.</li>
+                    <li><strong>Terraform Destroy</strong>: Terminates compute and deletes EBS volumes, eliminating all charges.</li>
                 </ul>
             </li>
         </ul>
-        <div class="node-card" style="border-left: 4px solid var(--color-amber);">
-            <div style="font-size: 0.8rem; color: var(--text-primary);">
-                <strong>Operator Tip</strong>: When you are finished with a training lab for the day, use <code>Destroy Environment</code> in the Operations Console to prevent unexpected cloud billing.
-            </div>
+        <div style="background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-left: 3px solid var(--status-warn); border-radius: var(--radius-sm); padding: 0.625rem 0.875rem;">
+            <span style="font-size: 0.75rem; color: var(--text-primary);">
+                <strong>Operator Guidance</strong>: When completing testing sessions, execute <code>Destroy Lab</code> in Operations to avoid ongoing storage charges.
+            </span>
         </div>
     </div>
 </div>

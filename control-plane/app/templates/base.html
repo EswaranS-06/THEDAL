@@ -3,30 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}THEDAL Control Center{% endblock %}</title>
+    <title>{% block title %}THEDAL Control Plane{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/app.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232563eb%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z%22/></svg>">
 </head>
 <body>
     <header class="navbar">
-        <a href="/" class="brand">
-            <div class="brand-icon">TH</div>
-            <span>THEDAL <span style="color: var(--color-blue); font-weight: 400;">Control Plane</span></span>
+        <a href="/" class="brand" aria-label="THEDAL Control Plane">
+            <div class="brand-icon" aria-hidden="true">TH</div>
+            <span>THEDAL <span class="brand-sub">Control Plane</span></span>
         </a>
-        <ul class="nav-links">
-            <li><a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a></li>
-            <li><a href="/resources" class="{% if active_page == 'resources' %}active{% endif %}">AWS Resources</a></li>
-            <li><a href="/operations" class="{% if active_page == 'operations' %}active{% endif %}">Operations</a></li>
-            <li><a href="/logs" class="{% if active_page == 'logs' %}active{% endif %}">Audit Logs</a></li>
-            <li><a href="/settings" class="{% if active_page == 'settings' %}active{% endif %}">Settings</a></li>
-        </ul>
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <div class="nav-status-badge">
-                <span class="status-dot {% if status.environment_health == 'DEGRADED' %}amber{% elif status.environment_health == 'OFFLINE' %}red{% endif %}"></span>
-                <span>SOC: <span id="nav-env-status">{{ status.environment_health }}</span></span>
+        <nav aria-label="Primary Navigation">
+            <ul class="nav-links">
+                <li>
+                    <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">
+                        <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        <span>Overview</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/resources" class="{% if active_page == 'resources' %}active{% endif %}">
+                        <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                        <span>Infrastructure</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/operations" class="{% if active_page == 'operations' %}active{% endif %}">
+                        <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        <span>Operations</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/learning" class="{% if active_page == 'learning' %}active{% endif %}">
+                        <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        <span>Learning</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/logs" class="{% if active_page == 'logs' %}active{% endif %}">
+                        <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                        <span>Audit Logs</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/settings" class="{% if active_page == 'settings' %}active{% endif %}">
+                        <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="nav-actions">
+            <div class="nav-status-badge" role="status" aria-live="polite">
+                <span class="status-dot {% if status.environment_health == 'DEGRADED' %}amber{% elif status.environment_health == 'OFFLINE' %}red{% endif %}" aria-hidden="true"></span>
+                <span>SOC: <strong id="nav-env-status">{{ status.environment_health }}</strong></span>
             </div>
-            <button class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" onclick="fetchSystemStatus(); window.location.reload();">
-                ↻ Refresh
+            <button class="btn btn-secondary btn-sm" onclick="fetchSystemStatus(); window.location.reload();" aria-label="Refresh Status">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span>Refresh</span>
             </button>
         </div>
     </header>
@@ -36,33 +70,36 @@
     </main>
 
     <!-- Global Destroy Confirmation Modal -->
-    <div id="destroy-modal" class="modal-overlay">
+    <div id="destroy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="destroy-modal-title">
         <div class="modal-card">
-            <h3 class="modal-title" style="color: var(--color-red);">⚠️ Confirm Infrastructure Destruction</h3>
+            <h3 id="destroy-modal-title" class="modal-title" style="color: var(--status-fail);">
+                <svg class="icon icon-md" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Confirm Infrastructure Destruction</span>
+            </h3>
             <p class="modal-body">
                 This operation executes <code>terraform destroy</code> across all AWS VPC, EC2, and security assets. All temporary lab instances will be permanently terminated.
             </p>
-            <div style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; color: var(--text-secondary);">
-                    To proceed, type the exact phrase <strong>DESTROY THEDAL</strong> below:
+            <div style="margin-bottom: 0.875rem;">
+                <label for="destroy-phrase-input" style="font-size: 0.75rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
+                    To proceed, type the exact confirmation phrase: <strong style="color: var(--text-primary);">DESTROY THEDAL</strong>
                 </label>
-                <input type="text" id="destroy-phrase-input" class="form-input" placeholder="DESTROY THEDAL" autocomplete="off">
+                <input type="text" id="destroy-phrase-input" class="form-input" placeholder="DESTROY THEDAL" autocomplete="off" spellcheck="false">
             </div>
-            <div style="margin-bottom: 1.25rem;">
-                <label style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+            <div style="margin-bottom: 1.125rem;">
+                <label style="font-size: 0.75rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                     <input type="checkbox" id="destroy-check-input">
-                    I understand this will destroy all AWS resources.
+                    <span>I understand this will permanently terminate all AWS resources.</span>
                 </label>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeDestroyModal()">Cancel</button>
-                <button class="btn btn-danger" onclick="executeDestroy()">Permanently Destroy</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeDestroyModal()">Cancel</button>
+                <button type="button" id="confirm-destroy-btn" class="btn btn-danger btn-sm" onclick="executeDestroy()" disabled>Permanently Destroy</button>
             </div>
         </div>
     </div>
 
     <footer>
-        <p>THEDAL Control Plane (Localhost Only: 127.0.0.1:8080) &bull; Production Infrastructure as Code</p>
+        <p>THEDAL Control Plane &bull; Threat Hunting, Exploration, Detection, Analysis and Learn &bull; Local Interface (127.0.0.1:8080)</p>
     </footer>
 
     <script src="/static/js/app.js"></script>

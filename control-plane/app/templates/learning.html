@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Learning &bull; THEDAL Control Plane{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title-group">
+        <h1 class="page-title">SOC Analyst Learning Path & Guided Labs</h1>
+        <p class="page-subtitle">Curriculum, telemetry analysis guides, detection engineering, and mystery challenge incidents</p>
+    </div>
+    <div class="page-header-actions">
+        <button class="btn btn-primary btn-sm" onclick="startWazuhTunnel()">
+            <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>Open Wazuh UI</span>
+        </button>
+    </div>
+</div>
+
+<!-- 3-Level Guided Lab Curriculum Grid -->
+<div class="grid-3">
+    <!-- Level 1 -->
+    <div class="learning-level-card">
+        <div class="learning-level-header">
+            <div>
+                <span class="badge badge-info" style="margin-bottom: 0.25rem;">LEVEL 1</span>
+                <h2 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">SOC Foundations</h2>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Beginner</span>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-secondary);">
+            Log anatomy, SIEM queries, Sysmon process trees, PowerShell ScriptBlocks, and failed authentication.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+            <div class="lab-item">
+                <span class="lab-title">Lab 01: First Wazuh Alert & Log Anatomy</span>
+                <span class="badge badge-pass">EVENTLOG</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 02: Windows Process Trees & Sysmon</span>
+                <span class="badge badge-pass">SYSMON ID 1</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 03: PowerShell ScriptBlock Telemetry</span>
+                <span class="badge badge-pass">EID 4104</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 04: Failed Authentication Bursts</span>
+                <span class="badge badge-pass">AUTH.LOG / 4625</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level 2 -->
+    <div class="learning-level-card">
+        <div class="learning-level-header">
+            <div>
+                <span class="badge badge-warn" style="margin-bottom: 0.25rem;">LEVEL 2</span>
+                <h2 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">Web & Kernel Investigations</h2>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Intermediate</span>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-secondary);">
+            Web application attacks, container log streams, Linux kernel syscall auditing, and command injection.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+            <div class="lab-item">
+                <span class="lab-title">Lab 05: DVWA SQL Injection (T1190)</span>
+                <span class="badge badge-warn">NGINX</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 06: Command Injection & Auditd</span>
+                <span class="badge badge-warn">AUDITD / T1059</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 07: Local File Inclusion (LFI)</span>
+                <span class="badge badge-warn">T1083</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 08: Juice Shop REST API Probing</span>
+                <span class="badge badge-warn">DOCKER JSON</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level 3 -->
+    <div class="learning-level-card">
+        <div class="learning-level-header">
+            <div>
+                <span class="badge badge-fail" style="margin-bottom: 0.25rem;">LEVEL 3</span>
+                <h2 style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">Adversary Attacks & Timelines</h2>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Advanced</span>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-secondary);">
+            Multi-source correlation, Atomic Red Team execution, scheduled tasks, and full incident timelines.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+            <div class="lab-item">
+                <span class="lab-title">Lab 09: Atomic Red Team Reconnaissance</span>
+                <span class="badge badge-fail">T1082</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 10: PowerShell Obfuscation & Payloads</span>
+                <span class="badge badge-fail">T1027</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 11: Scheduled Task Persistence</span>
+                <span class="badge badge-fail">T1053.005</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 12: Multi-Source Incident Correlation</span>
+                <span class="badge badge-fail">DET-COR-001</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 13: True Positive vs False Positive</span>
+                <span class="badge badge-fail">TRIAGE</span>
+            </div>
+            <div class="lab-item">
+                <span class="lab-title">Lab 14: End-to-End Incident Timeline</span>
+                <span class="badge badge-fail">FULL CHAIN</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2-Column Split: Mystery Challenges & Analyst Resources -->
+<div class="grid-2">
+    <!-- Mystery Challenges -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Mystery Investigation Challenges</span>
+            </span>
+            <span class="badge badge-info">CHALLENGE MODE</span>
+        </div>
+        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.875rem;">
+            Investigate blind incidents without advance clues. Formulate hypotheses, extract SIEM evidence, and complete incident reports.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div class="lab-item">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.8125rem;">Challenge 01: Unauthorized Web Tampering</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Identify unauthenticated admin compromise and payload injection</div>
+                </div>
+                <span class="badge badge-warn">MEDIUM</span>
+            </div>
+
+            <div class="lab-item">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.8125rem;">Challenge 02: Suspicious Administrative Activity</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Correlate anomalous parent processes and privilege execution</div>
+                </div>
+                <span class="badge badge-warn">MEDIUM</span>
+            </div>
+
+            <div class="lab-item">
+                <div>
+                    <div style="font-weight: 600; font-size: 0.8125rem;">Challenge 03: Stealth Host & Network Reconnaissance</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Detect quiet enumeration commands and unauthorized discovery</div>
+                </div>
+                <span class="badge badge-fail">HARD</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analyst Reference & Runbooks -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                <span>Analyst Reference & Runbooks</span>
+            </span>
+            <span class="badge badge-pass">REFERENCE</span>
+        </div>
+        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.875rem;">
+            Quick-reference playbooks, triage procedures, index guides, and report templates.
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <div class="lab-item" style="flex-direction: column; align-items: flex-start; gap: 0.2rem;">
+                <span style="font-weight: 600; font-size: 0.8125rem;">Windows Alert Runbook</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">EventLog & Sysmon Triage</span>
+            </div>
+            <div class="lab-item" style="flex-direction: column; align-items: flex-start; gap: 0.2rem;">
+                <span style="font-weight: 600; font-size: 0.8125rem;">Web Attack Runbook</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Nginx & DVWA Analysis</span>
+            </div>
+            <div class="lab-item" style="flex-direction: column; align-items: flex-start; gap: 0.2rem;">
+                <span style="font-weight: 600; font-size: 0.8125rem;">PowerShell Runbook</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">ScriptBlock Deobfuscation</span>
+            </div>
+            <div class="lab-item" style="flex-direction: column; align-items: flex-start; gap: 0.2rem;">
+                <span style="font-weight: 600; font-size: 0.8125rem;">Investigation Template</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Incident Report Markdown</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

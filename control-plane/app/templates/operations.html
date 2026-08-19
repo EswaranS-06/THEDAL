@@ -1,20 +1,29 @@
 {% extends "base.html" %}
 
-{% block title %}Operations Console &bull; THEDAL{% endblock %}
+{% block title %}Operations &bull; THEDAL Control Plane{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <div>
+    <div class="page-title-group">
         <h1 class="page-title">Operations & Automation Console</h1>
-        <p class="page-subtitle">Safely trigger allowlisted Terraform infrastructure lifecycles and Ansible provisioning workflows</p>
+        <p class="page-subtitle">Infrastructure lifecycle automation, Ansible provisioning, and diagnostic testing</p>
+    </div>
+    <div class="page-header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/health/check', {})">
+            <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span>Run Health Check</span>
+        </button>
     </div>
 </div>
 
-<!-- Operation Output Stream Panel -->
-<div id="operation-output-container" class="card" style="display: none; margin-bottom: 2rem; border-color: var(--color-blue);">
+<!-- Operation Output Stream Panel (Displayed when active) -->
+<div id="operation-output-container" class="card" style="display: none; margin-bottom: 1.5rem; border-color: var(--border-focus);">
     <div class="card-header">
-        <span class="card-title">Live Operation Output</span>
-        <span class="badge badge-warning">RUNNING</span>
+        <span class="card-title">
+            <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            <span>Live Operation Stream</span>
+        </span>
+        <span class="badge badge-warn">RUNNING</span>
     </div>
     <div id="operation-output" class="terminal-window">Waiting for execution...</div>
 </div>
@@ -23,53 +32,51 @@
     <!-- Terraform Lifecycle Operations -->
     <div class="card">
         <div class="card-header">
-            <span class="card-title">Terraform Lifecycle Actions</span>
-            <span class="badge badge-deployed">Infrastructure as Code</span>
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                <span>Infrastructure as Code (Terraform)</span>
+            </span>
+            <span class="badge badge-pass">IaC</span>
         </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-            Terraform is the single source of truth for AWS assets. Destructive operations require explicit confirmation.
+        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Terraform manages VPC networking, security groups, and 5 EC2 instances.
         </p>
 
-        <div style="display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.9rem;">Generate Terraform Plan</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">Preview changes without applying</div>
-                </div>
-                <button class="btn btn-secondary" onclick="triggerOperation('/api/terraform/plan', {})">
-                    Plan
-                </button>
+        <div class="op-row">
+            <div class="op-info">
+                <span class="op-title">Generate Terraform Plan</span>
+                <span class="op-desc">Dry-run preview of pending infrastructure changes</span>
             </div>
+            <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/terraform/plan', {})">Plan</button>
+        </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.9rem;">Deploy Infrastructure (Apply)</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">Provisions all VPC, Subnets & EC2 nodes</div>
-                </div>
-                <button class="btn btn-primary" onclick="triggerOperation('/api/terraform/apply', { action: 'apply', confirmation: true })">
-                    Deploy
-                </button>
+        <div class="op-row">
+            <div class="op-info">
+                <span class="op-title">Deploy Infrastructure (Apply)</span>
+                <span class="op-desc">Provision all AWS VPC, Subnet, and EC2 resources</span>
             </div>
+            <button class="btn btn-primary btn-sm" onclick="triggerOperation('/api/terraform/apply', { action: 'apply', confirmation: true })">Deploy</button>
+        </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.9rem;">Start / Stop EC2 Compute</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">Pauses compute hourly charges safely</div>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-secondary" style="padding: 0.4rem 0.7rem; font-size: 0.8rem;" onclick="triggerOperation('/api/ec2/start', {})">▶ Start</button>
-                    <button class="btn btn-secondary" style="padding: 0.4rem 0.7rem; font-size: 0.8rem;" onclick="triggerOperation('/api/ec2/stop', {})">⏸ Stop</button>
-                </div>
+        <div class="op-row">
+            <div class="op-info">
+                <span class="op-title">Start / Stop EC2 Compute</span>
+                <span class="op-desc">Pause or resume compute fleet to control hourly spend</span>
             </div>
+            <div style="display: flex; gap: 0.4rem;">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ec2/start', {})">Start</button>
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ec2/stop', {})">Stop</button>
+            </div>
+        </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.25rem;">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--color-red);">Destroy Lab Infrastructure</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">Requires double-confirmation & typed phrase</div>
+        <!-- Visually Separated Destructive Action -->
+        <div class="danger-zone">
+            <div class="op-row" style="border: none; padding: 0;">
+                <div class="op-info">
+                    <span class="op-title" style="color: var(--status-fail);">Destroy Lab Infrastructure</span>
+                    <span class="op-desc">Permanently terminates EC2 instances and deletes EBS volumes</span>
                 </div>
-                <button class="btn btn-danger" onclick="openDestroyModal()">
-                    Destroy Lab
-                </button>
+                <button class="btn btn-danger btn-sm" onclick="openDestroyModal()">Destroy Lab</button>
             </div>
         </div>
     </div>
@@ -77,58 +84,60 @@
     <!-- Ansible Provisioning Operations -->
     <div class="card">
         <div class="card-header">
-            <span class="card-title">Ansible Configuration & Playbooks</span>
-            <span class="badge badge-pass">Host Automation</span>
+            <span class="card-title">
+                <svg class="icon icon-sm" aria-hidden="true" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                <span>Host Automation (Ansible)</span>
+            </span>
+            <span class="badge badge-pass">Automation</span>
         </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-            Ansible automates host configuration, software packages, Wazuh agent enrollment, and attack harness deployment.
+        <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            Ansible configures operating systems, Wazuh agents, targets, and attack harnesses.
         </p>
 
-        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-color);">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.88rem;">Generate Ansible Inventory</div>
-                    <div style="font-size: 0.78rem; color: var(--text-muted);">Updates hosts.ini from Terraform outputs</div>
-                </div>
-                <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="triggerOperation('/api/inventory/generate', {})">
-                    Generate
-                </button>
+        <div class="op-row">
+            <div class="op-info">
+                <span class="op-title">Generate Inventory</span>
+                <span class="op-desc">Extracts live EC2 IP addresses into <code>hosts.ini</code></span>
             </div>
+            <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/inventory/generate', {})">Generate</button>
+        </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-color);">
-                <div>
-                    <div style="font-weight: 600; font-size: 0.88rem;">Full System Provisioning</div>
-                    <div style="font-size: 0.78rem; color: var(--text-muted);">Runs all 8 playbooks in sequence</div>
-                </div>
-                <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="triggerOperation('/api/ansible/provision', { action: 'provision', confirmation: true })">
-                    Provision All
-                </button>
+        <div class="op-row">
+            <div class="op-info">
+                <span class="op-title">Full System Provisioning</span>
+                <span class="op-desc">Executes all 8 playbooks sequentially in order</span>
             </div>
+            <button class="btn btn-primary btn-sm" onclick="triggerOperation('/api/ansible/provision', { action: 'provision', confirmation: true })">Provision All</button>
+        </div>
 
-            <!-- Specific Modular Playbooks -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.25rem;">
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'bootstrap', confirmation: true })">
+        <!-- Modular Playbooks Grid -->
+        <div style="margin-top: 0.75rem;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem;">
+                Modular Playbooks
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'bootstrap', confirmation: true })">
                     1. Bootstrap Jumpbox
                 </button>
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'linux-base', confirmation: true })">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'linux-base', confirmation: true })">
                     2. Linux Base Nodes
                 </button>
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'windows-base', confirmation: true })">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'windows-base', confirmation: true })">
                     3. Windows & Sysmon
                 </button>
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'wazuh', confirmation: true })">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'wazuh', confirmation: true })">
                     4. Wazuh SIEM Stack
                 </button>
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'web-target', confirmation: true })">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'web-target', confirmation: true })">
                     5. Web & DVWA
                 </button>
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'juice-shop', confirmation: true })">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'juice-shop', confirmation: true })">
                     6. Juice Shop Docker
                 </button>
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'atomic-red-team', confirmation: true })">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'atomic-red-team', confirmation: true })">
                     7. Atomic Red Team
                 </button>
-                <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.5rem;" onclick="triggerOperation('/api/ansible/playbook', { target: 'web-attack', confirmation: true })">
+                <button class="btn btn-secondary btn-sm" onclick="triggerOperation('/api/ansible/playbook', { target: 'web-attack', confirmation: true })">
                     8. Web Attack Engine
                 </button>
             </div>

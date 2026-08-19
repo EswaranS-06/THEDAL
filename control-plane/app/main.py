@@ -66,7 +66,8 @@ async def page_dashboard(request: Request):
         "instances": instances,
         "running_instances": running,
         "total_instances": total,
-        "health_summary": health_summary
+        "health_summary": health_summary,
+        "recent_logs": OperationsManager.list_logs()[:5]
     })
 
 
@@ -108,6 +109,25 @@ async def page_operations(request: Request):
 
     return templates.TemplateResponse(request=request, name="operations.html", context={
         "active_page": "operations",
+        "status": sys_status
+    })
+
+
+@app.get("/learning", response_class=HTMLResponse)
+async def page_learning(request: Request):
+    tf_status = TerraformService.get_status()
+    health_summary = HealthService.run_all_checks()
+
+    sys_status = SystemStatus(
+        aws_connected=True,
+        aws_region=settings.AWS_DEFAULT_REGION,
+        terraform_status=tf_status["status"],
+        ansible_status="READY",
+        environment_health=health_summary.overall_status
+    )
+
+    return templates.TemplateResponse(request=request, name="learning.html", context={
+        "active_page": "learning",
         "status": sys_status
     })
 
