@@ -70,7 +70,7 @@ The SOCForge learning experience is organized into three progressive levels plus
 | **[Lab 09](file:///home/rex/Documents/Projects/docs/labs/09-atomic-red-team/README.md)** | **Atomic Red Team Reconnaissance** | Windows Security + Sysmon | T1082 (System Info Discovery) | `socforge-sysmon-*` |
 | **[Lab 10](file:///home/rex/Documents/Projects/docs/labs/10-powershell-attack/README.md)** | **PowerShell Attack & Obfuscation** | Sysmon + ScriptBlock | T1059.001 / T1027.013 | `socforge-powershell-*` |
 | **[Lab 11](file:///home/rex/Documents/Projects/docs/labs/11-scheduled-task/README.md)** | **Scheduled Task Persistence** | Sysmon Event ID 1 / CLI | T1053.005 (Scheduled Task) | `socforge-sysmon-*` |
-| **[Lab 12](file:///home/rex/Documents/Projects/docs/labs/12-multi-source-correlation/README.md)** | **Multi-Source Incident Correlation** | Web Access + Kernel Syscalls | T1190 + T1059.004 (DET-COR-001) | `socforge-correlation-*` |
+| **[Lab 12](file:///home/rex/Documents/Projects/docs/labs/12-multi-source-correlation/README.md)** | **Multi-Source Incident Correlation** | Web Access + Kernel Syscalls | T1190 + T1059.004 (DET-COR-001) | `wazuh-alerts-*` |
 | **[Lab 13](file:///home/rex/Documents/Projects/docs/labs/13-tp-vs-fp/README.md)** | **True Positive vs. False Positive** | Multi-Source Comparative | Triage Methodology | All Indices |
 | **[Lab 14](file:///home/rex/Documents/Projects/docs/labs/14-incident-timeline/README.md)** | **End-to-End Incident Timeline** | Complete Multi-Host Stream | Full Attack Lifecycle | All Indices |
 

@@ -118,4 +118,4 @@
 | **PowerShell Encoded CLI** | `powershell -enc ...` | Sysmon Event 1 | `100402` | `socforge-sysmon-*` |
 | **Host Reconnaissance** | `run-atomic-test --technique T1082` | Sysmon / Security | `100404` | `socforge-sysmon-*` |
 | **Scheduled Task Creation**| `run-atomic-test --technique T1053.005`| Sysmon Event 1 | `100406` | `socforge-sysmon-*` |
-| **Multi-Source Correlation**| Web Cmd Injection + Auditd Exec | Nginx + Auditd | `100601` (Level 11) | `socforge-correlation-*` |
+| **Multi-Source Correlation**| Web Cmd Injection + Auditd Exec | Nginx + Auditd | `100601` (Level 11) | `wazuh-alerts-*` |
