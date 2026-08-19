@@ -89,6 +89,14 @@ The SOCForge environment is partitioned into three security tiers inside a dedic
 
 ## 6. Accessing the Environment
 
+> [!TIP]
+> **Obtaining the Bastion Public IP**:
+> You can retrieve the current public IP of the Bastion jumpbox by running:
+> ```bash
+> terraform -chdir=terraform output bastion_public_ip
+> ```
+> or by viewing the **Dashboard** in the local Control Plane (`make control-plane` -> `http://127.0.0.1:8080`).
+
 ### A. SSH Access via Bastion Jumpbox
 All internal Linux nodes are accessible from your local machine using the Bastion ProxyJump configuration:
 ```bash
