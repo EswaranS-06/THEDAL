@@ -77,6 +77,7 @@ ssh -i ~/.ssh/socforge_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.
 - **CLI Flags**: `-ExecutionPolicy Bypass -Command ...` (or `-NoProfile -NonInteractive`).
 - **Execution Policy Reason**: By default, Windows restricts running unsigned scripts. Attackers use `-ExecutionPolicy Bypass` to circumvent local client execution restrictions without requiring administrative privileges.
 - **ScriptBlock Content**: Captured test commands and environment variable queries.
+- **In-Memory ScriptBlock Concept**: When a PowerShell script executes (even if dynamically downloaded or obfuscated), the PowerShell runtime engine (`System.Management.Automation`) compiles the code into an Abstract Syntax Tree (AST) in memory. Windows Event ID 4104 captures the full de-obfuscated script block text directly from engine memory at runtime, bypassing perimeter command-line obfuscation.
 - **Assessment**: PowerShell is a dual-use administration tool. The presence of download cradles (`Net.WebClient`, `IEX`, `DownloadString`) or network connections to external unverified IPs distinguishes malicious execution from normal sysadmin tasks.
 
 ---

@@ -19,13 +19,18 @@ An alert flags a PowerShell process running with an encoded command parameter (`
 ---
 
 ## 4. Attack / Event Generation
-Generate an encoded command execution on the Windows endpoint:
+From the Linux Attack Host, execute the encoded PowerShell test using either the automated harness or direct WinRM execution:
 
 ```bash
-# Execute encoded PowerShell command on Windows endpoint via WinRM tunnel
+# Option A: Execute via Atomic Red Team harness on Attack Host
+ssh -i ~/.ssh/socforge_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.20.114 '
+/usr/local/bin/run-atomic-test --technique T1059.001 --confirm
+'
+
+# Option B: Execute encoded payload directly against Windows endpoint via Python WinRM
 python3 -c '
 import winrm
-s = winrm.Session("127.0.0.1:5985", auth=("Administrator", "SOCForge@2026!Sec"), transport="basic", server_cert_validation="ignore")
+s = winrm.Session("10.10.10.254:5985", auth=("Administrator", "SOCForge@2026!Sec"), transport="basic", server_cert_validation="ignore")
 s.run_cmd("powershell.exe", ["-NoProfile", "-enc", "ZwBlAHQALQBwAHIAbwBjAGUAcwBzACAALQBOAGEAbQBlACAAbABzAGEAcwBzAA=="])
 '
 ```
