@@ -400,7 +400,7 @@ async def api_ansible_provision(req: OperationRequest):
 async def api_wazuh_tunnel_start():
     result = SSHService.start_wazuh_tunnel()
     if not result.get("success"):
-        raise HTTPException(status_code=500, detail=result.get("error", "Failed to start SSH tunnel"))
+        raise HTTPException(status_code=400, detail=result.get("error", "Failed to start SSH tunnel"))
     return result
 
 

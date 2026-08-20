@@ -70,18 +70,49 @@ class SSHService:
     @classmethod
     def start_wazuh_tunnel(cls) -> Dict[str, Any]:
         """Starts the local SSH port forwarding tunnel in the background."""
+        import socket
+        from app.services.aws import AWSService
+
+        # Check if local port 8443 is already listening
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1.0)
+            if s.connect_ex(("127.0.0.1", 8443)) == 0:
+                return {
+                    "success": True,
+                    "message": "Wazuh tunnel is already active on https://localhost:8443",
+                    "url": "https://localhost:8443"
+                }
+
         outputs = TerraformService.get_outputs()
         bastion_ip = outputs.get("bastion_public_ip")
         if not bastion_ip:
-            return {"success": False, "error": "Bastion IP not found in Terraform outputs."}
+            # Fall back to AWS EC2 instance lookup
+            instances = AWSService.get_instances()
+            bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip), None)
+            if bastion_node and bastion_node.public_ip:
+                bastion_ip = bastion_node.public_ip
 
-        key_path = str(settings.SSH_KEY_PATH)
+        if not bastion_ip:
+            return {
+                "success": False,
+                "error": "Bastion host is not running or public IP is not available. Please ensure infrastructure is deployed and running."
+            }
+
+        wazuh_ip = outputs.get("wazuh_private_ip", "10.10.10.33")
+        key_path = settings.SSH_KEY_PATH
+        if not key_path.exists():
+            return {
+                "success": False,
+                "error": f"SSH private key not found at {key_path}. Ensure your key is configured in Settings."
+            }
+
         cmd = [
             "ssh",
-            "-i", key_path,
+            "-i", str(key_path),
             "-o", "StrictHostKeyChecking=no",
+            "-o", "ConnectTimeout=5",
             "-f", "-N",
-            "-L", "8443:10.10.10.33:443",
+            "-L", f"8443:{wazuh_ip}:443",
             f"ubuntu@{bastion_ip}"
         ]
 
@@ -90,9 +121,19 @@ class SSHService:
             if res.returncode == 0:
                 return {
                     "success": True,
-                    "message": "Wazuh tunnel established at https://localhost:8443",
+                    "message": f"Wazuh tunnel established at https://localhost:8443",
                     "url": "https://localhost:8443"
                 }
-            return {"success": False, "error": res.stderr}
+            stderr = res.stderr.strip()
+            if "Address already in use" in stderr:
+                return {
+                    "success": True,
+                    "message": "Wazuh tunnel is already active on https://localhost:8443",
+                    "url": "https://localhost:8443"
+                }
+            return {
+                "success": False,
+                "error": stderr or f"SSH tunnel exited with return code {res.returncode}"
+            }
         except Exception as e:
             return {"success": False, "error": str(e)}

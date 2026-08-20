@@ -73,11 +73,14 @@ export interface HealthCheckSummary {
 }
 
 export interface DynamicCommand {
+  id?: string;
   category: string;
   title: string;
+  target?: string;
   command: string;
   description: string;
-  target_host: string;
+  ip?: string;
+  target_host?: string;
 }
 
 export interface DynamicCommandGroup {

@@ -70,6 +70,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!control-plane/frontend/lib/
 lib64/
 parts/
 sdist/

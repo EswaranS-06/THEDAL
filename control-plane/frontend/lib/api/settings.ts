@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import {
   SettingsConfig,
+  DynamicCommand,
   DynamicCommandGroup,
   AWSProfile,
   AutoStopStatus,
@@ -12,7 +13,7 @@ export const settingsApi = {
     apiClient<SettingsConfig>("/api/settings/config"),
 
   getDynamicCommands: () =>
-    apiClient<DynamicCommandGroup[]>("/api/commands/dynamic"),
+    apiClient<DynamicCommand[]>("/api/commands/dynamic"),
 
   getProfiles: () =>
     apiClient<AWSProfile[]>("/api/aws/profiles"),

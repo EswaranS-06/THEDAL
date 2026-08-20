@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Terminal, ArrowLeft, Shield, Info, RefreshCw } from "lucide-react";
+import { Terminal, ArrowLeft, Info, RefreshCw } from "lucide-react";
 import { settingsApi } from "../../../lib/api/settings";
-import { DynamicCommandGroup } from "../../../lib/types/api";
+import { DynamicCommand, DynamicCommandGroup } from "../../../lib/types/api";
 import { CommandBlock } from "../../../components/ui/CommandBlock";
 import { CardSkeleton } from "../../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../../components/ui/ErrorState";
@@ -19,7 +19,32 @@ export default function CommandsPage() {
       setLoading(true);
       setErrorMsg(null);
       const res = await settingsApi.getDynamicCommands();
-      setCommandGroups(res || []);
+      
+      // Handle both grouped format and flat array format
+      if (Array.isArray(res)) {
+        if (res.length > 0 && "commands" in res[0] && Array.isArray((res[0] as any).commands)) {
+          setCommandGroups(res as unknown as DynamicCommandGroup[]);
+        } else {
+          // Group flat list of commands by category
+          const groupedMap: Record<string, DynamicCommand[]> = {};
+          (res as DynamicCommand[]).forEach((cmd) => {
+            const cat = cmd.category || "General";
+            if (!groupedMap[cat]) groupedMap[cat] = [];
+            groupedMap[cat].push({
+              ...cmd,
+              title: cmd.title || cmd.target || cmd.id || "Command",
+            });
+          });
+
+          const groups: DynamicCommandGroup[] = Object.keys(groupedMap).map((cat) => ({
+            category: cat,
+            commands: groupedMap[cat],
+          }));
+          setCommandGroups(groups);
+        }
+      } else {
+        setCommandGroups([]);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to load dynamic operator commands.");
     } finally {
@@ -112,8 +137,8 @@ export default function CommandsPage() {
             <div className="space-y-3">
               {group.commands.map((cmd) => (
                 <CommandBlock
-                  key={cmd.title}
-                  title={cmd.title}
+                  key={cmd.title || cmd.command}
+                  title={cmd.title || cmd.target || "Command"}
                   description={cmd.description}
                   command={cmd.command}
                 />

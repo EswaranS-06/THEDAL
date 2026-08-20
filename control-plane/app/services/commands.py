@@ -42,6 +42,8 @@ class CommandService:
                 "id": "bastion-ssh",
                 "category": "SSH Access",
                 "target": "Bastion Jumpbox",
+                "title": "Bastion Jumpbox SSH",
+                "target_host": "bastion",
                 "ip": bastion_pub,
                 "description": "Direct SSH connection to the public Bastion jumpbox",
                 "command": f"ssh -i {ssh_key} ubuntu@{bastion_pub}"
@@ -50,6 +52,8 @@ class CommandService:
                 "id": "wazuh-ssh",
                 "category": "SSH Access",
                 "target": "Wazuh SIEM Host",
+                "title": "Wazuh SIEM ProxyJump SSH",
+                "target_host": "wazuh",
                 "ip": wazuh_ip,
                 "description": "ProxyJump SSH into the private Wazuh SIEM Manager node",
                 "command": f"ssh -i {ssh_key} -o ProxyJump=ubuntu@{bastion_pub} ubuntu@{wazuh_ip}"
@@ -58,6 +62,8 @@ class CommandService:
                 "id": "wazuh-tunnel",
                 "category": "SIEM UI Tunnel",
                 "target": "Wazuh Dashboards",
+                "title": "Wazuh Dashboard Port Forward (8443)",
+                "target_host": "wazuh",
                 "ip": f"{wazuh_ip}:443 -> localhost:8443",
                 "description": "Local port forwarding tunnel to access OpenSearch Dashboards at https://localhost:8443",
                 "command": f"ssh -i {ssh_key} -N -L 8443:{wazuh_ip}:443 ubuntu@{bastion_pub}"
@@ -66,6 +72,8 @@ class CommandService:
                 "id": "web-ssh",
                 "category": "SSH Access",
                 "target": "Linux Web Target",
+                "title": "Linux Web Target ProxyJump SSH",
+                "target_host": "web",
                 "ip": web_ip,
                 "description": "ProxyJump SSH into DVWA & OWASP Juice Shop host",
                 "command": f"ssh -i {ssh_key} -o ProxyJump=ubuntu@{bastion_pub} ubuntu@{web_ip}"
@@ -74,6 +82,8 @@ class CommandService:
                 "id": "attack-ssh",
                 "category": "SSH Access",
                 "target": "Adversary Attack Host",
+                "title": "Adversary Attack Host ProxyJump SSH",
+                "target_host": "attack",
                 "ip": attack_ip,
                 "description": "ProxyJump SSH into the Atomic Red Team attack simulation host",
                 "command": f"ssh -i {ssh_key} -o ProxyJump=ubuntu@{bastion_pub} ubuntu@{attack_ip}"
@@ -82,6 +92,8 @@ class CommandService:
                 "id": "windows-winrm",
                 "category": "Windows Management",
                 "target": "Windows Endpoint",
+                "title": "Windows WinRM Port Forward (5985)",
+                "target_host": "windows",
                 "ip": f"{windows_ip}:5985",
                 "description": "PowerShell remote session to Windows Server endpoint via Bastion",
                 "command": f"ssh -i {ssh_key} -N -L 5985:{windows_ip}:5985 ubuntu@{bastion_pub}"
@@ -90,6 +102,8 @@ class CommandService:
                 "id": "ansible-test",
                 "category": "Automation",
                 "target": "All Managed Hosts",
+                "title": "Ansible Ping Check",
+                "target_host": "all",
                 "ip": "Private Subnets",
                 "description": "Ping all managed inventory nodes via Ansible",
                 "command": f"ansible all -i ansible/inventory/hosts.ini -m ping"

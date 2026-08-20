@@ -2,37 +2,30 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   Server,
   ArrowLeft,
   Activity,
   Layers,
   Terminal,
-  Shield,
-  Clock,
-  Play,
-  Square,
 } from "lucide-react";
 import { awsApi } from "../../../lib/api/aws";
 import { settingsApi } from "../../../lib/api/settings";
-import { HostDetailInfo, DynamicCommandGroup } from "../../../lib/types/api";
+import { HostDetailInfo, DynamicCommand } from "../../../lib/types/api";
 import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { CommandBlock } from "../../../components/ui/CommandBlock";
 import { CardSkeleton } from "../../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../../components/ui/ErrorState";
-import { useToast } from "../../../components/ui/Toast";
 
 export default function HostDetailPage() {
   const params = useParams();
-  const router = useRouter();
-  const hostKey = params?.host as string;
-  const { success, error } = useToast();
+  const hostKey = (params?.host as string) || "";
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [host, setHost] = useState<HostDetailInfo | null>(null);
-  const [commands, setCommands] = useState<DynamicCommandGroup[]>([]);
+  const [commands, setCommands] = useState<DynamicCommand[]>([]);
 
   const loadHostData = useCallback(async () => {
     if (!hostKey) return;
@@ -44,7 +37,20 @@ export default function HostDetailPage() {
         settingsApi.getDynamicCommands().catch(() => []),
       ]);
       setHost(hostRes);
-      setCommands(cmdRes || []);
+
+      // Normalize commands list (handle flat array or grouped format)
+      let flatCmds: DynamicCommand[] = [];
+      if (Array.isArray(cmdRes)) {
+        if (cmdRes.length > 0 && "commands" in cmdRes[0] && Array.isArray((cmdRes[0] as any).commands)) {
+          flatCmds = (cmdRes as any).flatMap((g: any) => g.commands || []);
+        } else {
+          flatCmds = (cmdRes as DynamicCommand[]).map((c) => ({
+            ...c,
+            title: c.title || c.target || c.id || "Command",
+          }));
+        }
+      }
+      setCommands(flatCmds);
     } catch (err: any) {
       setErrorMsg(err.message || `Failed to load details for host '${hostKey}'.`);
     } finally {
@@ -88,18 +94,28 @@ export default function HostDetailPage() {
   }
 
   // Filter commands relevant to this host
-  const relevantCommands = commands
-    .flatMap((g) => g.commands)
-    .filter(
-      (c) =>
-        c.target_host.toLowerCase().includes(host.key.toLowerCase()) ||
-        c.title.toLowerCase().includes(host.key.toLowerCase()) ||
-        (host.key === "bastion" && c.title.toLowerCase().includes("bastion")) ||
-        (host.key === "wazuh" && c.title.toLowerCase().includes("wazuh")) ||
-        (host.key === "windows" && c.title.toLowerCase().includes("windows")) ||
-        (host.key === "web" && c.title.toLowerCase().includes("web")) ||
-        (host.key === "attack" && c.title.toLowerCase().includes("attack"))
+  const relevantCommands = commands.filter((c) => {
+    const hostLower = host.key.toLowerCase();
+    const targetHostLower = (c.target_host || "").toLowerCase();
+    const titleLower = (c.title || "").toLowerCase();
+    const targetLower = (c.target || "").toLowerCase();
+    const descLower = (c.description || "").toLowerCase();
+    const idLower = (c.id || "").toLowerCase();
+
+    return (
+      targetHostLower === hostLower ||
+      targetHostLower.includes(hostLower) ||
+      titleLower.includes(hostLower) ||
+      targetLower.includes(hostLower) ||
+      descLower.includes(hostLower) ||
+      idLower.includes(hostLower) ||
+      (hostLower === "bastion" && (idLower.includes("bastion") || titleLower.includes("bastion"))) ||
+      (hostLower === "wazuh" && (idLower.includes("wazuh") || titleLower.includes("wazuh") || titleLower.includes("siem"))) ||
+      (hostLower === "windows" && (idLower.includes("windows") || idLower.includes("winrm") || titleLower.includes("winrm"))) ||
+      (hostLower === "web" && (idLower.includes("web") || titleLower.includes("web") || descLower.includes("dvwa") || descLower.includes("juice"))) ||
+      (hostLower === "attack" && (idLower.includes("attack") || titleLower.includes("attack") || descLower.includes("atomic")))
     );
+  });
 
   return (
     <div className="space-y-6">
@@ -235,8 +251,8 @@ export default function HostDetailPage() {
           ) : (
             relevantCommands.map((cmd) => (
               <CommandBlock
-                key={cmd.title}
-                title={cmd.title}
+                key={cmd.title || cmd.command}
+                title={cmd.title || cmd.target || "Command"}
                 description={cmd.description}
                 command={cmd.command}
               />
