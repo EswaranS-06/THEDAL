@@ -17,9 +17,16 @@ class SSHService:
 
     @classmethod
     def get_connection_info(cls) -> Dict[str, Any]:
-        """Generates connection strings from Terraform outputs."""
+        """Generates connection strings from live AWS instances and Terraform outputs."""
+        from app.services.aws import AWSService
+        instances = AWSService.get_instances()
         outputs = TerraformService.get_outputs()
-        bastion_ip = outputs.get("bastion_public_ip", "<BASTION_PUBLIC_IP>")
+
+        bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip and i.public_ip != "None"), None)
+        if bastion_node and bastion_node.public_ip:
+            bastion_ip = bastion_node.public_ip
+        else:
+            bastion_ip = outputs.get("bastion_public_ip", "<BASTION_PUBLIC_IP>")
         key_path = str(settings.SSH_KEY_PATH)
 
         nodes = [

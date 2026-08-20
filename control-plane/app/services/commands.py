@@ -17,25 +17,26 @@ class CommandService:
         """Extract live IPs from Terraform and AWS EC2 to generate exact commands."""
         instances = AWSService.get_instances()
         tf_outputs = TerraformService.get_outputs()
-        ssh_key = settings.SSH_KEY_PATH
+        ssh_key = str(settings.SSH_KEY_PATH)
 
-        bastion_pub = tf_outputs.get("bastion_public_ip", "<BASTION_PUBLIC_IP>")
-        if bastion_pub == "<BASTION_PUBLIC_IP>":
-            bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip), None)
-            if bastion_node and bastion_node.public_ip:
-                bastion_pub = bastion_node.public_ip
+        # Prioritize live EC2 public IP over potentially stale Terraform outputs
+        bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip and i.public_ip != "None"), None)
+        if bastion_node and bastion_node.public_ip:
+            bastion_pub = bastion_node.public_ip
+        else:
+            bastion_pub = tf_outputs.get("bastion_public_ip", "<BASTION_PUBLIC_IP>")
 
-        # Lookup private IPs
+        # Lookup live private IPs from AWS EC2 first
         node_ips = {}
         for inst in instances:
-            key_name = inst.name.lower().replace("socforge-", "").replace("thedal-", "")
-            if inst.private_ip:
+            key_name = inst.name.lower().replace("socforge-", "").replace("thedal-", "").replace("socforge_", "").replace("thedal_", "")
+            if inst.private_ip and inst.private_ip != "None":
                 node_ips[key_name] = inst.private_ip
 
         wazuh_ip = node_ips.get("wazuh", tf_outputs.get("wazuh_private_ip", "10.10.10.33"))
-        web_ip = node_ips.get("web", "10.10.30.148")
-        attack_ip = node_ips.get("attack", "10.10.20.114")
-        windows_ip = node_ips.get("windows", "10.10.10.254")
+        web_ip = node_ips.get("web", tf_outputs.get("web_private_ip", "10.10.30.148"))
+        attack_ip = node_ips.get("attack", tf_outputs.get("attack_private_ip", "10.10.20.114"))
+        windows_ip = node_ips.get("windows", tf_outputs.get("windows_private_ip", "10.10.10.254"))
 
         commands = [
             {

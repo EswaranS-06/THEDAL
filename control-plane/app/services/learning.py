@@ -238,6 +238,49 @@ class LearningService:
         return result
 
     @classmethod
+    def interpolate_live_telemetry(cls, text: str) -> str:
+        """Dynamically substitutes placeholder IPs and key paths with live AWS/Terraform values."""
+        if not text:
+            return text
+        try:
+            from app.services.aws import AWSService
+            from app.services.terraform import TerraformService
+            instances = AWSService.get_instances()
+            tf_outputs = TerraformService.get_outputs()
+
+            bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip and i.public_ip != "None"), None)
+            if bastion_node and bastion_node.public_ip:
+                bastion_ip = bastion_node.public_ip
+            else:
+                bastion_ip = tf_outputs.get("bastion_public_ip", "")
+
+            key_path = str(settings.SSH_KEY_PATH)
+
+            if bastion_ip and bastion_ip != "<BASTION_PUBLIC_IP>":
+                for placeholder in [
+                    "<BASTION_PUBLIC_IP>",
+                    "<bastion_public_ip>",
+                    "<BASTION_IP>",
+                    "<bastion_ip>",
+                    "<bastion-ip>",
+                    "<ubuntu-ip>",
+                    "<ubuntu_ip>",
+                    "<UBUNTU-IP>",
+                    "<UBUNTU_IP>",
+                    "<BASTION-IP>",
+                    "<PUBLIC_IP>",
+                    "<public_ip>"
+                ]:
+                    text = text.replace(placeholder, bastion_ip)
+
+            if key_path:
+                text = text.replace("~/.ssh/socforge_key", key_path)
+                text = text.replace("~/.ssh/thedal_key", key_path)
+        except Exception:
+            pass
+        return text
+
+    @classmethod
     def get_lab_detail(cls, lab_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve single lab details, rendered markdown, and learner state."""
         cls.init_db()
@@ -267,6 +310,8 @@ class LearningService:
         else:
             raw_markdown = f"# Lab content not found\n\nFile `{lab_meta['rel_path']}` does not exist."
 
+        # Dynamically inject live cloud IPs and SSH key paths into lab markdown
+        raw_markdown = cls.interpolate_live_telemetry(raw_markdown)
         rendered_html = cls.render_markdown_safely(raw_markdown)
 
         result = dict(lab_meta)
@@ -392,6 +437,7 @@ class LearningService:
             return {"solution_markdown": raw_text, "solution_html": cls.render_markdown_safely(raw_text)}
 
         sol_md = f"## Solution: Challenge {num}\n\n" + match.group(1).strip()
+        sol_md = cls.interpolate_live_telemetry(sol_md)
         return {
             "challenge_id": challenge_id,
             "solution_markdown": sol_md,
