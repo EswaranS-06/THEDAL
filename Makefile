@@ -146,9 +146,22 @@ web-attack-check: ## Check health and scenario status of Web Security Testing Su
 web-test: ## Run controlled Web Security Testing scenario (Usage: make web-test ARGS="--list")
 	@./scripts/run-web-test.sh $(ARGS)
 
-control-plane: ## Start local THEDAL Control Plane web server on 127.0.0.1:8080
+control-plane: ## Start local THEDAL Control Plane (Backend + Frontend)
+	@./scripts/start-control-plane.sh
+
+control-plane-backend: ## Start local FastAPI backend server on 127.0.0.1:8080
 	@cd control-plane && /home/rex/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8080
+
+control-plane-frontend: ## Start Next.js frontend dev server on 127.0.0.1:3000
+	@cd control-plane/frontend && npm run dev
+
+control-plane-frontend-build: ## Build Next.js frontend production bundle
+	@cd control-plane/frontend && npm run build
+
+control-plane-frontend-start: ## Start Next.js frontend production server on 127.0.0.1:3000
+	@cd control-plane/frontend && npm run start
 
 test-control-plane: ## Run pytest test suite on control-plane
 	@cd control-plane && /home/rex/.local/bin/uv run pytest tests/
+
 
