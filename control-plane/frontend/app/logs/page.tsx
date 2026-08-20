@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   ScrollText,
@@ -32,7 +32,7 @@ export default function LogsPage() {
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     try {
       setLoading(true);
       setErrorMsg(null);
@@ -47,9 +47,9 @@ export default function LogsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedFile]);
 
-  const loadLogContent = async (filename: string) => {
+  const loadLogContent = useCallback(async (filename: string) => {
     setSelectedFile(filename);
     setLoadingContent(true);
     try {
@@ -60,17 +60,17 @@ export default function LogsPage() {
     } finally {
       setLoadingContent(false);
     }
-  };
+  }, [error]);
 
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [loadLogs]);
 
   useEffect(() => {
     if (selectedFile) {
       loadLogContent(selectedFile);
     }
-  }, [selectedFile]);
+  }, [selectedFile, loadLogContent]);
 
   const handleCopy = async () => {
     if (!logDetail?.content) return;

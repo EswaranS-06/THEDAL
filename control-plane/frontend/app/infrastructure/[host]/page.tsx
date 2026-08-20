@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -34,7 +34,7 @@ export default function HostDetailPage() {
   const [host, setHost] = useState<HostDetailInfo | null>(null);
   const [commands, setCommands] = useState<DynamicCommandGroup[]>([]);
 
-  const loadHostData = async () => {
+  const loadHostData = useCallback(async () => {
     if (!hostKey) return;
     try {
       setLoading(true);
@@ -50,11 +50,11 @@ export default function HostDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [hostKey]);
 
   useEffect(() => {
     loadHostData();
-  }, [hostKey]);
+  }, [loadHostData]);
 
   if (loading && !host) {
     return (

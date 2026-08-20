@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -32,7 +32,7 @@ export default function OperationDetailPage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const terminalRef = useRef<HTMLPreElement>(null);
 
-  const loadLogDetail = async () => {
+  const loadLogDetail = useCallback(async () => {
     if (!logFile) return;
     try {
       setErrorMsg(null);
@@ -43,7 +43,7 @@ export default function OperationDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logFile]);
 
   useEffect(() => {
     loadLogDetail();
@@ -54,7 +54,7 @@ export default function OperationDetailPage() {
       }
     }, 2500);
     return () => clearInterval(interval);
-  }, [logFile, detail?.metadata?.status]);
+  }, [loadLogDetail, detail?.metadata?.status]);
 
   useEffect(() => {
     if (autoScroll && terminalRef.current) {

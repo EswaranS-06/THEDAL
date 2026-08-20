@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -37,7 +37,7 @@ export default function ChallengeDetailPage() {
   const [isFetchingSolution, setIsFetchingSolution] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  const loadChallenge = async () => {
+  const loadChallenge = useCallback(async () => {
     if (!challengeId) return;
     try {
       setLoading(true);
@@ -49,11 +49,11 @@ export default function ChallengeDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [challengeId]);
 
   useEffect(() => {
     loadChallenge();
-  }, [challengeId]);
+  }, [loadChallenge]);
 
   const handleStatusChange = async (newStatus: "Not Started" | "In Progress" | "Completed") => {
     if (!challenge) return;

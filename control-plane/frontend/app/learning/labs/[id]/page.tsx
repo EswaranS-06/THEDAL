@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -37,7 +37,7 @@ export default function LabDetailPage() {
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  const loadLab = async () => {
+  const loadLab = useCallback(async () => {
     if (!labId) return;
     try {
       setLoading(true);
@@ -53,11 +53,11 @@ export default function LabDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [labId]);
 
   useEffect(() => {
     loadLab();
-  }, [labId]);
+  }, [loadLab]);
 
   const handleStatusChange = async (newStatus: "Not Started" | "In Progress" | "Completed") => {
     if (!lab) return;
