@@ -61,7 +61,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Shield className="w-3.5 h-3.5" />
           </div>
           <span className="font-mono text-xs font-bold tracking-wider text-text-primary group-hover:text-primary transition-colors">
-            SOCFORGE
+            THEDAL
           </span>
         </div>
 

@@ -65,9 +65,9 @@ class CommandService:
                 "target": "Wazuh Dashboards",
                 "title": "Wazuh Dashboard Port Forward (8443)",
                 "target_host": "wazuh",
-                "ip": f"{wazuh_ip}:443 -> localhost:8443",
-                "description": "Local port forwarding tunnel to access OpenSearch Dashboards at https://localhost:8443",
-                "command": f"ssh -i {ssh_key} -N -L 8443:{wazuh_ip}:443 ubuntu@{bastion_pub}"
+                "ip": f"{wazuh_ip}:443 -> 0.0.0.0:8443",
+                "description": "Network-accessible port forwarding tunnel to access OpenSearch Dashboards at https://<HOST-IP>:8443",
+                "command": f"ssh -i {ssh_key} -N -L 0.0.0.0:8443:{wazuh_ip}:443 ubuntu@{bastion_pub}"
             },
             {
                 "id": "web-ssh",
@@ -95,9 +95,9 @@ class CommandService:
                 "target": "Windows Endpoint",
                 "title": "Windows WinRM Port Forward (5985)",
                 "target_host": "windows",
-                "ip": f"{windows_ip}:5985",
-                "description": "PowerShell remote session to Windows Server endpoint via Bastion",
-                "command": f"ssh -i {ssh_key} -N -L 5985:{windows_ip}:5985 ubuntu@{bastion_pub}"
+                "ip": f"{windows_ip}:5985 -> 0.0.0.0:5985",
+                "description": "PowerShell remote session to Windows Server endpoint via Bastion bound to 0.0.0.0",
+                "command": f"ssh -i {ssh_key} -N -L 0.0.0.0:5985:{windows_ip}:5985 ubuntu@{bastion_pub}"
             },
             {
                 "id": "ansible-test",

@@ -114,7 +114,7 @@ def check_port_22(host: str, timeout: float = 3.0) -> bool:
 
 def run_check():
     """Performs read-only check of current public IP vs configured CIDR."""
-    print(f"\n{BOLD}{CYAN}SOCForge Management IP Check{RESET}")
+    print(f"\n{BOLD}{CYAN}THEDAL Management IP Check{RESET}")
     print(f"{'─' * 45}")
 
     print("Detecting current public IP...")
@@ -142,7 +142,7 @@ def run_check():
 
 def run_ssh_status():
     """Performs comprehensive SSH readiness status check."""
-    print(f"\n{BOLD}{CYAN}SOCForge Dynamic SSH Readiness Status{RESET}")
+    print(f"\n{BOLD}{CYAN}THEDAL Dynamic SSH Readiness Status{RESET}")
     print(f"{'─' * 45}")
 
     try:
@@ -181,7 +181,7 @@ def run_ssh_status():
 
 def run_sync(cidr_override: str = None, suffix: str = "32", auto_approve: bool = False):
     """Interactively or automatically synchronizes the current public IP with Terraform."""
-    print(f"\n{BOLD}{CYAN}SOCForge Management IP Synchronization{RESET}")
+    print(f"\n{BOLD}{CYAN}THEDAL Management IP Synchronization{RESET}")
     print(f"{'─' * 45}")
 
     print("Detecting current public IP...")

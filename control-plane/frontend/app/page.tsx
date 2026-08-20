@@ -185,7 +185,7 @@ export default function OverviewPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold font-mono text-text-primary tracking-wide">
-                SOCFORGE ENVIRONMENT
+                THEDAL ENVIRONMENT
               </h2>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface text-primary border border-border-subtle">
                 ● Operational

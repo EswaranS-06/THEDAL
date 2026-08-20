@@ -1,12 +1,12 @@
-# SOCForge — Dynamic SSH Access & Management IP Automation
+# THEDAL — Dynamic SSH Access & Management IP Automation
 
-This guide explains how **SOCForge** automates dynamic public IP detection and synchronizes AWS Security Group rules via **Terraform** so that student and operator SSH access to the management bastion never breaks when their network changes.
+This guide explains how **THEDAL** automates dynamic public IP detection and synchronizes AWS Security Group rules via **Terraform** so that student and operator SSH access to the management bastion never breaks when their network changes.
 
 ---
 
 ## The Dynamic Public IP Challenge
 
-SOCForge restricts inbound SSH traffic on port 22 of the AWS Management Bastion using a strict IPv4 CIDR rule in the bastion security group (`aws_security_group_rule.mgmt_ingress_ssh`).
+THEDAL restricts inbound SSH traffic on port 22 of the AWS Management Bastion using a strict IPv4 CIDR rule in the bastion security group (`aws_security_group_rule.mgmt_ingress_ssh`).
 
 By default, this is restricted to an exact host (`/32` CIDR):
 ```text
@@ -33,7 +33,7 @@ When this happens:
 
 ## Design Principle: Terraform as Single Source of Truth
 
-SOCForge does **not** inject temporary, unmanaged AWS CLI rules (`aws ec2 authorize-security-group-ingress`) that create infrastructure drift.
+THEDAL does **not** inject temporary, unmanaged AWS CLI rules (`aws ec2 authorize-security-group-ingress`) that create infrastructure drift.
 
 Instead, all management access changes update the Terraform configuration (`terraform/admin_ip.auto.tfvars` and `terraform/terraform.tfvars`) and are applied directly through Terraform.
 

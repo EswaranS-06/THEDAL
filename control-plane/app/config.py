@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # App Settings
     APP_NAME: str = "THEDAL Control Plane"
     APP_VERSION: str = "1.0.0"
-    HOST: str = "127.0.0.1"
+    HOST: str = "0.0.0.0"
     PORT: int = 8080
     DEBUG: bool = False
 

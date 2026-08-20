@@ -63,30 +63,30 @@ class SSHService:
                 "ip": "10.10.10.254",
                 "user": "Administrator",
                 "type": "WinRM Tunnel via Bastion",
-                "command": f"ssh -i {key_path} -N -L 5985:10.10.10.254:5985 ubuntu@{bastion_ip}"
+                "command": f"ssh -i {key_path} -N -L 0.0.0.0:5985:10.10.10.254:5985 ubuntu@{bastion_ip}"
             }
         ]
 
         return {
             "key_path": key_path,
             "bastion_public_ip": bastion_ip,
-            "wazuh_tunnel_command": f"ssh -i {key_path} -N -L 8443:10.10.10.33:443 ubuntu@{bastion_ip}",
+            "wazuh_tunnel_command": f"ssh -i {key_path} -N -L 0.0.0.0:8443:10.10.10.33:443 ubuntu@{bastion_ip}",
             "nodes": nodes
         }
 
     @classmethod
     def start_wazuh_tunnel(cls) -> Dict[str, Any]:
-        """Starts the local SSH port forwarding tunnel in the background."""
+        """Starts the local SSH port forwarding tunnel bound to 0.0.0.0:8443 in the background."""
         import socket
         from app.services.aws import AWSService
 
         # Check if local port 8443 is already listening
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(1.0)
-            if s.connect_ex(("127.0.0.1", 8443)) == 0:
+            if s.connect_ex(("127.0.0.1", 8443)) == 0 or s.connect_ex(("0.0.0.0", 8443)) == 0:
                 return {
                     "success": True,
-                    "message": "Wazuh tunnel is already active on https://localhost:8443",
+                    "message": "Wazuh tunnel is already active on port 8443 (bound to 0.0.0.0:8443)",
                     "url": "https://localhost:8443"
                 }
 
@@ -119,7 +119,7 @@ class SSHService:
             "-o", "StrictHostKeyChecking=no",
             "-o", "ConnectTimeout=5",
             "-f", "-N",
-            "-L", f"8443:{wazuh_ip}:443",
+            "-L", f"0.0.0.0:8443:{wazuh_ip}:443",
             f"ubuntu@{bastion_ip}"
         ]
 
@@ -128,14 +128,14 @@ class SSHService:
             if res.returncode == 0:
                 return {
                     "success": True,
-                    "message": f"Wazuh tunnel established at https://localhost:8443",
+                    "message": f"Wazuh tunnel established on 0.0.0.0:8443 (accessible across network)",
                     "url": "https://localhost:8443"
                 }
             stderr = res.stderr.strip()
             if "Address already in use" in stderr:
                 return {
                     "success": True,
-                    "message": "Wazuh tunnel is already active on https://localhost:8443",
+                    "message": "Wazuh tunnel is already active on port 8443",
                     "url": "https://localhost:8443"
                 }
             return {

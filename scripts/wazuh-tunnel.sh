@@ -56,22 +56,22 @@ fi
 
 echo "Bastion Public IP  : ${BASTION_IP}"
 echo "Wazuh Private IP   : ${WAZUH_IP}"
-echo "Local Forward Port : ${LOCAL_PORT} -> ${WAZUH_IP}:443"
+echo "Local Forward Port : 0.0.0.0:${LOCAL_PORT} -> ${WAZUH_IP}:443"
 echo "SSH Private Key    : ${KEY_PATH}"
 echo "-----------------------------------------------------------------"
 echo "Tunnel starting... Press Ctrl+C to close the tunnel."
 echo "Open your browser and navigate to:"
 echo ""
-echo "  👉  https://localhost:${LOCAL_PORT}"
+echo "  👉  https://localhost:${LOCAL_PORT}  or  https://<HOST-IP>:${LOCAL_PORT}"
 echo ""
 echo "================================================================="
 
-# Establish the persistent SSH tunnel
+# Establish the persistent SSH tunnel bound to 0.0.0.0
 exec ssh -N \
   -o StrictHostKeyChecking=no \
   -o UserKnownHostsFile=/dev/null \
   -o ServerAliveInterval=30 \
   -o ServerAliveCountMax=3 \
   -i "${KEY_PATH}" \
-  -L "${LOCAL_PORT}:${WAZUH_IP}:443" \
+  -L "0.0.0.0:${LOCAL_PORT}:${WAZUH_IP}:443" \
   "ubuntu@${BASTION_IP}"
