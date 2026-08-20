@@ -4,22 +4,20 @@ import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  GraduationCap,
   ArrowLeft,
-  ArrowRight,
-  FileText,
-  CheckCircle,
-  Clock,
-  Layers,
   ChevronLeft,
   ChevronRight,
-  BookOpen,
+  Menu,
+  ShieldAlert,
+  GraduationCap,
+  Layers,
+  Sparkles,
 } from "lucide-react";
 import { learningApi } from "../../../../lib/api/learning";
-import { LabDetail, LabItem } from "../../../../lib/types/api";
-import { StatusBadge } from "../../../../components/ui/StatusBadge";
-import { MarkdownRenderer } from "../../../../components/learning/MarkdownRenderer";
-import { NotesDrawer } from "../../../../components/learning/NotesDrawer";
+import { LabWorkspaceData, LabItem, CurriculumStats } from "../../../../lib/types/api";
+import { LabNavigator } from "../../../../components/learning/LabNavigator";
+import { InvestigationWorkspace } from "../../../../components/learning/InvestigationWorkspace";
+import { EvidenceBoard } from "../../../../components/learning/EvidenceBoard";
 import { CardSkeleton } from "../../../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../../../components/ui/ErrorState";
 import { useToast } from "../../../../components/ui/Toast";
@@ -27,74 +25,205 @@ import { useToast } from "../../../../components/ui/Toast";
 export default function LabDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const labId = params?.id as string;
+  const labId = (params?.id as string) || "";
   const { success, error } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [lab, setLab] = useState<LabDetail | null>(null);
+  const [workspace, setWorkspace] = useState<LabWorkspaceData | null>(null);
   const [allLabs, setAllLabs] = useState<LabItem[]>([]);
-  const [isNotesOpen, setIsNotesOpen] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [stats, setStats] = useState<CurriculumStats | null>(null);
 
-  const loadLab = useCallback(async () => {
+  const [showLeftNav, setShowLeftNav] = useState(true);
+  const [showRightBoard, setShowRightBoard] = useState(true);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isStartingHosts, setIsStartingHosts] = useState(false);
+
+  const loadWorkspaceData = useCallback(async () => {
     if (!labId) return;
     try {
       setLoading(true);
       setErrorMsg(null);
-      const [labRes, allRes] = await Promise.all([
-        learningApi.getLabDetail(labId),
+      const [wsRes, labsRes] = await Promise.all([
+        learningApi.getWorkspace(labId),
         learningApi.getLabs().catch(() => ({ labs: [], stats: null })),
       ]);
-      setLab(labRes);
-      setAllLabs(allRes.labs || []);
+      setWorkspace(wsRes);
+      setAllLabs(labsRes.labs || []);
+      setStats(labsRes.stats || null);
     } catch (err: any) {
-      setErrorMsg(err.message || `Failed to load lab '${labId}'.`);
+      setErrorMsg(err.message || `Failed to load investigation workspace for '${labId}'.`);
     } finally {
       setLoading(false);
     }
   }, [labId]);
 
   useEffect(() => {
-    loadLab();
-  }, [loadLab]);
+    loadWorkspaceData();
+  }, [loadWorkspaceData]);
 
-  const handleStatusChange = async (newStatus: "Not Started" | "In Progress" | "Completed") => {
-    if (!lab) return;
-    setIsUpdatingStatus(true);
+  // Actions
+  const handleUpdateStep = async (stepIndex: number) => {
+    if (!workspace) return;
     try {
       await learningApi.updateProgress({
-        lab_id: lab.id,
-        status: newStatus,
+        lab_id: labId,
+        current_step: stepIndex,
+        status: workspace.lab.status === "Not Started" ? "In Progress" : undefined,
       });
-      setLab((prev) => (prev ? { ...prev, status: newStatus } : null));
-      success("Status Updated", `Lab marked as ${newStatus}`);
+      setWorkspace((prev) =>
+        prev
+          ? {
+              ...prev,
+              lab: {
+                ...prev.lab,
+                current_step: stepIndex,
+                status: prev.lab.status === "Not Started" ? "In Progress" : prev.lab.status,
+              },
+            }
+          : null
+      );
     } catch (err: any) {
-      error("Update Failed", err.message);
-    } finally {
-      setIsUpdatingStatus(false);
+      error("Progress Update Failed", err.message);
     }
   };
 
-  const handleSaveNotes = async (notes: string) => {
-    if (!lab) return;
-    await learningApi.updateProgress({
-      lab_id: lab.id,
-      notes,
+  const handleAddEvidence = async (item: { source: string; event_id?: string; timestamp?: string; finding: string }) => {
+    const newEv = await learningApi.addEvidence({
+      lab_id: labId,
+      ...item,
     });
-    setLab((prev) => (prev ? { ...prev, notes } : null));
+    setWorkspace((prev) =>
+      prev ? { ...prev, evidence: [...prev.evidence, newEv] } : null
+    );
   };
 
-  if (loading && !lab) {
+  const handleDeleteEvidence = async (id: number) => {
+    await learningApi.deleteEvidence(id);
+    setWorkspace((prev) =>
+      prev ? { ...prev, evidence: prev.evidence.filter((e) => e.id !== id) } : null
+    );
+    success("Evidence Removed", "Finding deleted from case board.");
+  };
+
+  const handleUpdateChecklist = async (newChecklist: string[]) => {
+    await learningApi.saveChecklist({
+      lab_id: labId,
+      checklist: newChecklist,
+    });
+    setWorkspace((prev) =>
+      prev ? { ...prev, checklist: newChecklist } : null
+    );
+  };
+
+  const handleSaveNotes = async (notes: string) => {
+    await learningApi.updateProgress({
+      lab_id: labId,
+      notes,
+    });
+    setWorkspace((prev) =>
+      prev ? { ...prev, notes } : null
+    );
+  };
+
+  const handleSaveVerdict = async (verdict: string) => {
+    await learningApi.saveVerdict({
+      lab_id: labId,
+      verdict,
+    });
+    setWorkspace((prev) =>
+      prev ? { ...prev, verdict, lab: { ...prev.lab, verdict } } : null
+    );
+  };
+
+  const handleSubmitAnswer = async (questionId: string, option: string, isCorrect: boolean) => {
+    await learningApi.submitAnswer({
+      lab_id: labId,
+      question_id: questionId,
+      selected_option: option,
+      is_correct: isCorrect,
+    });
+    setWorkspace((prev) =>
+      prev
+        ? {
+            ...prev,
+            answers: {
+              ...prev.answers,
+              [questionId]: { selected_option: option, is_correct: isCorrect },
+            },
+          }
+        : null
+    );
+  };
+
+  const handleStartRequiredHosts = async () => {
+    if (!workspace) return;
+    try {
+      setIsStartingHosts(true);
+      const reqKeys = workspace.environment_status.required_hosts.map((h) => h.key);
+      await learningApi.startRequiredHosts(reqKeys);
+      success("Instances Starting", "EC2 start requested for lab nodes.");
+      // Reload workspace after delay
+      setTimeout(() => {
+        loadWorkspaceData();
+      }, 5000);
+    } catch (err: any) {
+      error("Start Request Failed", err.message);
+    } finally {
+      setIsStartingHosts(false);
+    }
+  };
+
+  const handleCompleteLab = async () => {
+    try {
+      await learningApi.updateProgress({
+        lab_id: labId,
+        status: "Completed",
+      });
+      setWorkspace((prev) =>
+        prev
+          ? {
+              ...prev,
+              lab: { ...prev.lab, status: "Completed" },
+            }
+          : null
+      );
+      success("Lab Completed! 🎉", `Investigation ${labId.toUpperCase()} logged as completed.`);
+    } catch (err: any) {
+      error("Completion Error", err.message);
+    }
+  };
+
+  const handleResetLab = async () => {
+    if (!window.confirm("Are you sure you want to reset this lab? This will clear all notes, evidence, answers, and progress.")) {
+      return;
+    }
+    try {
+      setIsResetting(true);
+      await learningApi.resetLab(labId);
+      await loadWorkspaceData();
+      success("Lab Reset", "Workspace restored to initial state.");
+    } catch (err: any) {
+      error("Reset Failed", err.message);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  if (loading && !workspace) {
     return (
-      <div className="space-y-6">
-        <CardSkeleton className="h-28" />
-        <CardSkeleton className="h-96" />
+      <div className="space-y-4">
+        <CardSkeleton className="h-16" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <CardSkeleton className="h-96" />
+          <CardSkeleton className="h-96 md:col-span-2" />
+          <CardSkeleton className="h-96" />
+        </div>
       </div>
     );
   }
 
-  if (errorMsg || !lab) {
+  if (errorMsg || !workspace) {
     return (
       <div className="space-y-4">
         <Link
@@ -102,149 +231,94 @@ export default function LabDetailPage() {
           className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Learning Portal</span>
+          <span>Back to Curriculum</span>
         </Link>
         <ErrorState
           title={`Lab '${labId}' Not Found`}
-          message={errorMsg || "Unable to load lab content."}
-          onRetry={loadLab}
+          message={errorMsg || "Unable to initialize investigation workspace."}
+          onRetry={loadWorkspaceData}
         />
       </div>
     );
   }
 
-  // Find previous and next labs
-  const currentIndex = allLabs.findIndex((l) => l.id === lab.id);
-  const prevLab = currentIndex > 0 ? allLabs[currentIndex - 1] : null;
-  const nextLab = currentIndex !== -1 && currentIndex < allLabs.length - 1 ? allLabs[currentIndex + 1] : null;
-
   return (
-    <div className="space-y-6">
-      {/* Navigation & Header */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Link
-            href="/learning"
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+    <div className="flex flex-col h-[calc(100vh-5rem)] -m-4 sm:-m-6 bg-background overflow-hidden border border-border-subtle rounded-lg">
+      {/* Mini Workspace Utility Header */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-surface border-b border-border-subtle shrink-0 text-xs">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowLeftNav(!showLeftNav)}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-card hover:bg-surface text-slate-300 hover:text-white border border-border-subtle font-mono text-[11px] transition-colors"
+            title="Toggle Lab Navigator"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Curriculum Overview</span>
-          </Link>
+            <Menu className="w-3 h-3 text-primary" />
+            <span>Navigator</span>
+          </button>
 
-          <div className="flex items-center gap-2">
-            {prevLab && (
-              <Link
-                href={`/learning/labs/${prevLab.id}`}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-surface hover:bg-card border border-border-subtle text-xs text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Prev Lab</span>
-              </Link>
-            )}
-            {nextLab && (
-              <Link
-                href={`/learning/labs/${nextLab.id}`}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-surface hover:bg-card border border-border-subtle text-xs text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                <span>Next Lab</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            )}
-          </div>
+          <span className="text-slate-500 font-mono">|</span>
+
+          <span className="text-[11px] font-mono text-slate-300 font-bold truncate max-w-[200px] sm:max-w-md">
+            {workspace.lab.title}
+          </span>
         </div>
 
-        {/* Lab Metadata Card */}
-        <div className="p-5 rounded border border-border-subtle bg-card/60 space-y-4 shadow-sm">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30 font-semibold uppercase">
-                  {lab.level}
-                </span>
-                <span className="text-[11px] font-mono text-slate-500">
-                  MITRE: {lab.mitre}
-                </span>
-              </div>
-              <h2 className="text-base font-bold text-slate-100">{lab.title}</h2>
-              <div className="text-xs text-slate-400">
-                Source: <span className="font-mono text-slate-300">{lab.source}</span> • Target Index: <span className="font-mono text-slate-300">{lab.target_index}</span>
-              </div>
-            </div>
-
-            {/* Status Selector & Notes Button */}
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => setIsNotesOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface hover:bg-card border border-border-default text-xs font-medium text-slate-200 transition-colors"
-              >
-                <FileText className="w-3.5 h-3.5 text-primary" />
-                <span>Notes {lab.notes ? "•" : ""}</span>
-              </button>
-
-              <select
-                value={lab.status || "Not Started"}
-                onChange={(e) => handleStatusChange(e.target.value as any)}
-                disabled={isUpdatingStatus}
-                className="px-3 py-1.5 rounded bg-surface border border-border-default text-xs font-semibold text-slate-200 focus:outline-none focus:border-primary cursor-pointer"
-              >
-                <option value="Not Started">Not Started</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowRightBoard(!showRightBoard)}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-card hover:bg-surface text-slate-300 hover:text-white border border-border-subtle font-mono text-[11px] transition-colors"
+            title="Toggle Evidence Board"
+          >
+            <ShieldAlert className="w-3 h-3 text-primary" />
+            <span>Case Evidence ({workspace.evidence.length})</span>
+          </button>
         </div>
       </div>
 
-      {/* Lab Markdown Body */}
-      <div className="p-6 rounded border border-border-subtle bg-surface/80 shadow-sm overflow-hidden">
-        <MarkdownRenderer
-          contentHtml={lab.rendered_html}
-          rawMarkdown={lab.raw_markdown}
-        />
-      </div>
-
-      {/* Bottom Lab Navigation */}
-      <div className="flex items-center justify-between pt-4 border-t border-border-subtle text-xs">
-        {prevLab ? (
-          <Link
-            href={`/learning/labs/${prevLab.id}`}
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase">Previous</div>
-              <div className="font-semibold text-slate-300">{prevLab.title}</div>
-            </div>
-          </Link>
-        ) : (
-          <div />
+      {/* 3-Panel Main Layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* PANEL 1: LEFT LAB NAVIGATOR (Width: 260px) */}
+        {showLeftNav && (
+          <aside className="w-64 md:w-72 shrink-0 h-full overflow-hidden transition-all duration-200">
+            <LabNavigator
+              currentLabId={labId}
+              allLabs={allLabs}
+              stats={stats}
+              onResetLab={handleResetLab}
+              isResetting={isResetting}
+            />
+          </aside>
         )}
 
-        {nextLab ? (
-          <Link
-            href={`/learning/labs/${nextLab.id}`}
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors text-right"
-          >
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase">Next</div>
-              <div className="font-semibold text-slate-300">{nextLab.title}</div>
-            </div>
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        ) : (
-          <div />
+        {/* PANEL 2: CENTER INVESTIGATION WORKSPACE (Flex: 1) */}
+        <main className="flex-1 h-full overflow-hidden flex flex-col min-w-0">
+          <InvestigationWorkspace
+            workspace={workspace}
+            onUpdateStep={handleUpdateStep}
+            onSaveVerdict={handleSaveVerdict}
+            onSubmitAnswer={handleSubmitAnswer}
+            onStartRequiredHosts={handleStartRequiredHosts}
+            onCompleteLab={handleCompleteLab}
+            isStartingHosts={isStartingHosts}
+          />
+        </main>
+
+        {/* PANEL 3: RIGHT CASE EVIDENCE & NOTES BOARD (Width: 320px) */}
+        {showRightBoard && (
+          <aside className="w-72 lg:w-80 shrink-0 h-full overflow-hidden transition-all duration-200">
+            <EvidenceBoard
+              labId={labId}
+              evidence={workspace.evidence}
+              checklist={workspace.checklist}
+              notes={workspace.notes}
+              onAddEvidence={handleAddEvidence}
+              onDeleteEvidence={handleDeleteEvidence}
+              onUpdateChecklist={handleUpdateChecklist}
+              onSaveNotes={handleSaveNotes}
+            />
+          </aside>
         )}
       </div>
-
-      {/* Notes Drawer */}
-      <NotesDrawer
-        labId={lab.id}
-        initialNotes={lab.notes}
-        isOpen={isNotesOpen}
-        onClose={() => setIsNotesOpen(false)}
-        onSave={handleSaveNotes}
-      />
     </div>
   );
 }

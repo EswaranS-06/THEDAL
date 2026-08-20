@@ -499,10 +499,106 @@ async def api_learning_labs():
 
 @app.get("/api/learning/labs/{lab_id}")
 async def api_learning_lab_detail(lab_id: str):
-    detail = LearningService.get_lab_detail(lab_id)
+    detail = LearningService.get_workspace(lab_id)
     if not detail:
         raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found in curriculum.")
     return detail
+
+
+@app.get("/api/learning/labs/{lab_id}/workspace")
+async def api_learning_lab_workspace(lab_id: str):
+    workspace = LearningService.get_workspace(lab_id)
+    if not workspace:
+        raise HTTPException(status_code=404, detail=f"Workspace for '{lab_id}' not found.")
+    return workspace
+
+
+@app.post("/api/learning/evidence")
+async def api_learning_evidence_add(evidence: Dict[str, Any] = Body(...)):
+    try:
+        lab_id = evidence.get("lab_id")
+        source = evidence.get("source", "Analyst Finding")
+        event_id = evidence.get("event_id", "")
+        timestamp = evidence.get("timestamp", "")
+        finding = evidence.get("finding", "")
+        if not lab_id or not finding:
+            raise HTTPException(status_code=400, detail="lab_id and finding are required.")
+        return LearningService.add_evidence(lab_id, source, event_id, timestamp, finding)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/learning/evidence/{evidence_id}")
+async def api_learning_evidence_delete(evidence_id: int):
+    try:
+        return LearningService.delete_evidence(evidence_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/learning/checklist")
+async def api_learning_checklist_save(payload: Dict[str, Any] = Body(...)):
+    try:
+        lab_id = payload.get("lab_id")
+        checklist = payload.get("checklist", [])
+        if not lab_id:
+            raise HTTPException(status_code=400, detail="lab_id is required.")
+        return LearningService.save_checklist(lab_id, checklist)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/learning/verdict")
+async def api_learning_verdict_save(payload: Dict[str, Any] = Body(...)):
+    try:
+        lab_id = payload.get("lab_id")
+        verdict = payload.get("verdict", "")
+        if not lab_id:
+            raise HTTPException(status_code=400, detail="lab_id is required.")
+        return LearningService.save_verdict(lab_id, verdict)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/learning/answers")
+async def api_learning_answer_submit(payload: Dict[str, Any] = Body(...)):
+    try:
+        lab_id = payload.get("lab_id")
+        question_id = payload.get("question_id")
+        selected_option = payload.get("selected_option", "")
+        is_correct = payload.get("is_correct", False)
+        if not lab_id or not question_id:
+            raise HTTPException(status_code=400, detail="lab_id and question_id are required.")
+        return LearningService.save_answer(lab_id, question_id, selected_option, is_correct)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/learning/reset/{lab_id}")
+async def api_learning_reset(lab_id: str):
+    try:
+        return LearningService.reset_lab(lab_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/learning/start-required-hosts")
+async def api_learning_start_required_hosts(payload: Dict[str, Any] = Body(...)):
+    try:
+        host_keys = payload.get("host_keys", [])
+        instances = AWSService.get_instances()
+        instance_ids = []
+        for key in host_keys:
+            node = next((i for i in instances if key in i.name.lower()), None)
+            if node and node.state != "running":
+                instance_ids.append(node.instance_id)
+
+        if not instance_ids:
+            return {"success": True, "message": "All required hosts are already running."}
+
+        return AWSService.start_instances(instance_ids=instance_ids)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/learning/challenges")

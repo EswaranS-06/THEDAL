@@ -72,3 +72,40 @@ class HealthCheckSummary(BaseModel):
     overall_status: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     checks: List[HealthCheckItem]
+
+
+class LabProgressUpdate(BaseModel):
+    lab_id: str
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    bookmarked: Optional[bool] = None
+    current_step: Optional[int] = None
+
+
+class EvidenceCreate(BaseModel):
+    lab_id: str
+    source: str
+    event_id: Optional[str] = ""
+    timestamp: Optional[str] = ""
+    finding: str
+
+
+class ChecklistUpdate(BaseModel):
+    lab_id: str
+    checklist: List[str]
+
+
+class VerdictUpdate(BaseModel):
+    lab_id: str
+    verdict: str
+
+
+class AnswerSubmit(BaseModel):
+    lab_id: str
+    question_id: str
+    selected_option: str
+    is_correct: bool
+
+
+class StartRequiredHostsRequest(BaseModel):
+    host_keys: List[str]

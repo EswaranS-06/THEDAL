@@ -118,11 +118,98 @@ export interface LabItem {
   attempts?: number;
   bookmarked?: number | boolean;
   difficulty?: string;
+  current_step?: number;
+  verdict?: string;
+}
+
+export interface EvidenceItem {
+  id: number;
+  lab_id: string;
+  source: string;
+  event_id?: string;
+  timestamp: string;
+  finding: string;
+  created_at: string;
+}
+
+export interface LabQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correct_index: number;
+  explanation: string;
+}
+
+export interface LabPhase {
+  id: string;
+  phase_num: number;
+  title: string;
+  tag: string;
+  objective?: string;
+  mission?: string;
+  difficulty?: string;
+  mitre?: string;
+  time?: string;
+  source?: string;
+  target_index?: string;
+  checklist_items?: string[];
+  attack_host?: string;
+  target_host?: string;
+  technique?: string;
+  command?: string;
+  instructions?: string;
+  data_source?: string;
+  query?: string;
+  query_field?: string;
+  hints?: Array<{ title: string; content: string }>;
+  cross_query?: string;
+  cross_index?: string;
+  thinking_title?: string;
+  thinking_prompts?: string[];
+  questions?: LabQuestion[];
+  verdict_options?: Array<{ value: string; label: string }>;
+  expected_verdict?: string;
+  expected_findings?: string;
+  mitre_tactic?: string;
+  mitre_technique?: string;
+  solution_markdown?: string;
+}
+
+export interface RequiredHostLiveStatus {
+  key: string;
+  name: string;
+  status: "running" | "stopped" | "unknown";
+  ip: string;
+}
+
+export interface LabEnvironmentStatus {
+  ready: boolean;
+  required_hosts: RequiredHostLiveStatus[];
+  required_index: string;
+  bastion_ip: string;
+}
+
+export interface LabWorkspaceData {
+  lab: LabItem;
+  environment_status: LabEnvironmentStatus;
+  phases: LabPhase[];
+  evidence: EvidenceItem[];
+  checklist: string[];
+  notes: string;
+  verdict: string;
+  answers: Record<string, { selected_option: string; is_correct: boolean }>;
+  raw_markdown: string;
 }
 
 export interface LabDetail extends LabItem {
   raw_markdown: string;
-  rendered_html: string;
+  rendered_html?: string;
+  environment_status?: LabEnvironmentStatus;
+  phases?: LabPhase[];
+  evidence?: EvidenceItem[];
+  checklist?: string[];
+  verdict?: string;
+  answers?: Record<string, { selected_option: string; is_correct: boolean }>;
 }
 
 export interface CurriculumStats {

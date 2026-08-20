@@ -1,11 +1,12 @@
 """
-THEDAL Control Plane — Learning Portal Service
-Manages curriculum catalog, Markdown rendering, and SQLite learner state.
+THEDAL Control Plane — Learning Portal & SOC Investigation Workspace Service
+Manages curriculum catalog, structured 3-panel workspace data, Markdown rendering, and SQLite learner state.
 """
 
 import os
 import re
 import html
+import json
 import sqlite3
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -22,7 +23,11 @@ LAB_CATALOG = [
         "source": "Windows EventLog",
         "target_index": "wazuh-alerts-*",
         "rel_path": "docs/labs/01-first-alert/README.md",
-        "mitre": "General"
+        "mitre": "General",
+        "difficulty": "Beginner",
+        "estimated_time": "15–20 min",
+        "required_hosts": ["wazuh", "bastion"],
+        "required_index": "wazuh-alerts-*"
     },
     {
         "id": "02-windows-process",
@@ -32,7 +37,11 @@ LAB_CATALOG = [
         "source": "Sysmon EID 1",
         "target_index": "socforge-sysmon-*",
         "rel_path": "docs/labs/02-windows-process/README.md",
-        "mitre": "T1059"
+        "mitre": "T1059",
+        "difficulty": "Beginner",
+        "estimated_time": "20–25 min",
+        "required_hosts": ["windows", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-sysmon-*"
     },
     {
         "id": "03-powershell-investigation",
@@ -42,7 +51,11 @@ LAB_CATALOG = [
         "source": "PowerShell 4104",
         "target_index": "socforge-powershell-*",
         "rel_path": "docs/labs/03-powershell-investigation/README.md",
-        "mitre": "T1059.001"
+        "mitre": "T1059.001",
+        "difficulty": "Beginner",
+        "estimated_time": "20–30 min",
+        "required_hosts": ["windows", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-powershell-*"
     },
     {
         "id": "04-failed-authentication",
@@ -52,7 +65,11 @@ LAB_CATALOG = [
         "source": "Auth.log & 4625",
         "target_index": "socforge-linux-auth-*",
         "rel_path": "docs/labs/04-failed-authentication/README.md",
-        "mitre": "T1110"
+        "mitre": "T1110",
+        "difficulty": "Beginner",
+        "estimated_time": "20–25 min",
+        "required_hosts": ["web", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-linux-auth-*"
     },
     {
         "id": "05-dvwa-sqli",
@@ -62,7 +79,11 @@ LAB_CATALOG = [
         "source": "Nginx Access",
         "target_index": "socforge-nginx-access-*",
         "rel_path": "docs/labs/05-dvwa-sqli/README.md",
-        "mitre": "T1190"
+        "mitre": "T1190",
+        "difficulty": "Intermediate",
+        "estimated_time": "25–35 min",
+        "required_hosts": ["web", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-nginx-access-*"
     },
     {
         "id": "06-dvwa-command-injection",
@@ -72,7 +93,11 @@ LAB_CATALOG = [
         "source": "Nginx + Auditd",
         "target_index": "socforge-auditd-*",
         "rel_path": "docs/labs/06-dvwa-command-injection/README.md",
-        "mitre": "T1059.004"
+        "mitre": "T1059.004",
+        "difficulty": "Intermediate",
+        "estimated_time": "25–35 min",
+        "required_hosts": ["web", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-auditd-*"
     },
     {
         "id": "07-dvwa-lfi",
@@ -82,7 +107,11 @@ LAB_CATALOG = [
         "source": "Nginx Access",
         "target_index": "socforge-nginx-access-*",
         "rel_path": "docs/labs/07-dvwa-lfi/README.md",
-        "mitre": "T1083"
+        "mitre": "T1083",
+        "difficulty": "Intermediate",
+        "estimated_time": "25–30 min",
+        "required_hosts": ["web", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-nginx-access-*"
     },
     {
         "id": "08-juice-shop-api",
@@ -92,7 +121,11 @@ LAB_CATALOG = [
         "source": "Docker JSON Logs",
         "target_index": "socforge-juice-shop-*",
         "rel_path": "docs/labs/08-juice-shop-api/README.md",
-        "mitre": "T1087 / T1595"
+        "mitre": "T1087 / T1595",
+        "difficulty": "Intermediate",
+        "estimated_time": "25–30 min",
+        "required_hosts": ["web", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-juice-shop-*"
     },
     {
         "id": "09-atomic-red-team",
@@ -102,7 +135,11 @@ LAB_CATALOG = [
         "source": "Windows Security + Sysmon",
         "target_index": "socforge-sysmon-*",
         "rel_path": "docs/labs/09-atomic-red-team/README.md",
-        "mitre": "T1082"
+        "mitre": "T1082",
+        "difficulty": "Advanced",
+        "estimated_time": "30–40 min",
+        "required_hosts": ["windows", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-sysmon-*"
     },
     {
         "id": "10-powershell-attack",
@@ -112,7 +149,11 @@ LAB_CATALOG = [
         "source": "Sysmon + ScriptBlock",
         "target_index": "socforge-powershell-*",
         "rel_path": "docs/labs/10-powershell-attack/README.md",
-        "mitre": "T1027.013"
+        "mitre": "T1027.013",
+        "difficulty": "Advanced",
+        "estimated_time": "30–40 min",
+        "required_hosts": ["windows", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-powershell-*"
     },
     {
         "id": "11-scheduled-task",
@@ -122,7 +163,11 @@ LAB_CATALOG = [
         "source": "Sysmon Event ID 1",
         "target_index": "socforge-sysmon-*",
         "rel_path": "docs/labs/11-scheduled-task/README.md",
-        "mitre": "T1053.005"
+        "mitre": "T1053.005",
+        "difficulty": "Advanced",
+        "estimated_time": "30–40 min",
+        "required_hosts": ["windows", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-sysmon-*"
     },
     {
         "id": "12-multi-source-correlation",
@@ -132,63 +177,87 @@ LAB_CATALOG = [
         "source": "Web + Kernel Syscalls",
         "target_index": "wazuh-alerts-*",
         "rel_path": "docs/labs/12-multi-source-correlation/README.md",
-        "mitre": "DET-COR-001"
+        "mitre": "DET-COR-001",
+        "difficulty": "Advanced",
+        "estimated_time": "35–45 min",
+        "required_hosts": ["web", "windows", "attack", "wazuh", "bastion"],
+        "required_index": "wazuh-alerts-*"
     },
     {
         "id": "13-tp-vs-fp",
         "title": "True Positive vs. False Positive Triage",
         "level": "Level 3: Attack Correlation",
         "level_code": "3",
-        "source": "Multi-Source Comparative",
-        "target_index": "All Indices",
+        "source": "All Telemetry",
+        "target_index": "wazuh-alerts-*",
         "rel_path": "docs/labs/13-tp-vs-fp/README.md",
-        "mitre": "Triage"
+        "mitre": "Methodology",
+        "difficulty": "Advanced",
+        "estimated_time": "30–45 min",
+        "required_hosts": ["web", "windows", "attack", "wazuh", "bastion"],
+        "required_index": "wazuh-alerts-*"
     },
     {
         "id": "14-incident-timeline",
-        "title": "End-to-End Incident Timeline Reconstruction",
+        "title": "Full Incident Timeline Construction",
         "level": "Level 3: Attack Correlation",
         "level_code": "3",
-        "source": "Full Multi-Host Stream",
-        "target_index": "All Indices",
+        "source": "Full Fleet Correlation",
+        "target_index": "wazuh-alerts-*",
         "rel_path": "docs/labs/14-incident-timeline/README.md",
-        "mitre": "Full Chain"
+        "mitre": "Timeline",
+        "difficulty": "Advanced",
+        "estimated_time": "45–60 min",
+        "required_hosts": ["web", "windows", "attack", "wazuh", "bastion"],
+        "required_index": "wazuh-alerts-*"
     },
     {
         "id": "challenge-01",
-        "title": "Challenge 01: Unauthorized Web Tampering",
-        "level": "Challenge Mode",
-        "level_code": "C",
-        "source": "Blind Telemetry",
-        "target_index": "socforge-nginx-access-*",
-        "rel_path": "docs/labs/challenges/challenge-01-web-tampering.md",
-        "mitre": "Mystery"
+        "title": "Mystery Challenge 1: Lateral Movement & EID 3",
+        "level": "Mystery Challenges",
+        "level_code": "challenge",
+        "source": "Sysmon + WinSec",
+        "target_index": "socforge-sysmon-*",
+        "rel_path": "docs/labs/challenges/challenge-01.md",
+        "mitre": "T1021 / T1059",
+        "difficulty": "Advanced / Mystery",
+        "estimated_time": "30–45 min",
+        "required_hosts": ["windows", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-sysmon-*"
     },
     {
         "id": "challenge-02",
-        "title": "Challenge 02: Suspicious Administrative Activity",
-        "level": "Challenge Mode",
-        "level_code": "C",
-        "source": "Blind Telemetry",
-        "target_index": "socforge-sysmon-*",
-        "rel_path": "docs/labs/challenges/challenge-02-suspicious-admin.md",
-        "mitre": "Mystery"
+        "title": "Mystery Challenge 2: Container Web Shell & Auditd",
+        "level": "Mystery Challenges",
+        "level_code": "challenge",
+        "source": "Docker + Auditd",
+        "target_index": "socforge-auditd-*",
+        "rel_path": "docs/labs/challenges/challenge-02.md",
+        "mitre": "T1505.003",
+        "difficulty": "Advanced / Mystery",
+        "estimated_time": "30–45 min",
+        "required_hosts": ["web", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-auditd-*"
     },
     {
         "id": "challenge-03",
-        "title": "Challenge 03: Stealth Host Reconnaissance",
-        "level": "Challenge Mode",
-        "level_code": "C",
-        "source": "Blind Telemetry",
-        "target_index": "socforge-powershell-*",
-        "rel_path": "docs/labs/challenges/challenge-03-stealth-enumeration.md",
-        "mitre": "Mystery"
+        "title": "Mystery Challenge 3: Scheduled Task C2 Beacon",
+        "level": "Mystery Challenges",
+        "level_code": "challenge",
+        "source": "Sysmon + EventLog",
+        "target_index": "socforge-sysmon-*",
+        "rel_path": "docs/labs/challenges/challenge-03.md",
+        "mitre": "T1053.005 / T1071",
+        "difficulty": "Advanced / Mystery",
+        "estimated_time": "35–50 min",
+        "required_hosts": ["windows", "attack", "wazuh", "bastion"],
+        "required_index": "socforge-sysmon-*"
     }
 ]
 
 
 class LearningService:
-    """Service for handling learning curriculum and learner progress."""
+    """Service for handling learning curriculum, progressive workspace, and SQLite learner state."""
 
     @classmethod
     def _get_db(cls) -> sqlite3.Connection:
@@ -198,44 +267,61 @@ class LearningService:
 
     @classmethod
     def init_db(cls):
-        """Initialize SQLite database for learner progress."""
+        """Initialize SQLite database for learner progress, evidence board, and assessment answers."""
         with cls._get_db() as conn:
+            # 1. Main Progress Table
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS lab_progress (
                     lab_id TEXT PRIMARY KEY,
                     status TEXT DEFAULT 'Not Started',
+                    current_step INTEGER DEFAULT 0,
                     started_at TEXT,
                     completed_at TEXT,
                     notes TEXT DEFAULT '',
                     attempts INTEGER DEFAULT 0,
-                    bookmarked INTEGER DEFAULT 0
+                    bookmarked INTEGER DEFAULT 0,
+                    verdict TEXT DEFAULT '',
+                    checklist TEXT DEFAULT '[]'
                 )
             """)
-            conn.commit()
 
-    @classmethod
-    def get_all_labs_with_progress(cls) -> List[Dict[str, Any]]:
-        """Get all labs annotated with learner progress."""
-        cls.init_db()
-        with cls._get_db() as conn:
+            # 2. Case Evidence Board
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS lab_evidence (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    lab_id TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    event_id TEXT,
+                    timestamp TEXT,
+                    finding TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
+            # 3. Interactive Question Answers
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS lab_answers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    lab_id TEXT NOT NULL,
+                    question_id TEXT NOT NULL,
+                    selected_option TEXT NOT NULL,
+                    is_correct INTEGER DEFAULT 0,
+                    answered_at TEXT NOT NULL
+                )
+            """)
+
+            # Migrate schema if columns missing
             cur = conn.cursor()
-            cur.execute("SELECT * FROM lab_progress")
-            progress_map = {row["lab_id"]: dict(row) for row in cur.fetchall()}
+            cur.execute("PRAGMA table_info(lab_progress)")
+            cols = [r["name"] for r in cur.fetchall()]
+            if "current_step" not in cols:
+                conn.execute("ALTER TABLE lab_progress ADD COLUMN current_step INTEGER DEFAULT 0")
+            if "verdict" not in cols:
+                conn.execute("ALTER TABLE lab_progress ADD COLUMN verdict TEXT DEFAULT ''")
+            if "checklist" not in cols:
+                conn.execute("ALTER TABLE lab_progress ADD COLUMN checklist TEXT DEFAULT '[]'")
 
-        result = []
-        for lab in LAB_CATALOG:
-            item = dict(lab)
-            prog = progress_map.get(lab["id"], {
-                "status": "Not Started",
-                "started_at": None,
-                "completed_at": None,
-                "notes": "",
-                "attempts": 0,
-                "bookmarked": 0
-            })
-            item.update(prog)
-            result.append(item)
-        return result
+            conn.commit()
 
     @classmethod
     def interpolate_live_telemetry(cls, text: str) -> str:
@@ -281,27 +367,95 @@ class LearningService:
         return text
 
     @classmethod
-    def get_lab_detail(cls, lab_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve single lab details, rendered markdown, and learner state."""
+    def get_all_labs_with_progress(cls) -> List[Dict[str, Any]]:
+        """Get all labs annotated with learner progress."""
+        cls.init_db()
+        with cls._get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM lab_progress")
+            progress_map = {row["lab_id"]: dict(row) for row in cur.fetchall()}
+
+        result = []
+        for lab in LAB_CATALOG:
+            item = dict(lab)
+            prog = progress_map.get(lab["id"], {
+                "status": "Not Started",
+                "current_step": 0,
+                "started_at": None,
+                "completed_at": None,
+                "notes": "",
+                "attempts": 0,
+                "bookmarked": 0,
+                "verdict": "",
+                "checklist": "[]"
+            })
+            item.update(prog)
+            result.append(item)
+        return result
+
+    @classmethod
+    def get_workspace(cls, lab_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Builds a rich, interactive 3-panel SOC investigation workspace payload.
+        Combines parsed markdown sections, progressive phase steps, live host readiness,
+        dynamic copyable commands, analyst thinking prompts, interactive decision assessment,
+        and persisted evidence board findings.
+        """
         cls.init_db()
         lab_meta = next((item for item in LAB_CATALOG if item["id"] == lab_id), None)
         if not lab_meta:
             return None
 
+        # 1. Fetch user progress & evidence from SQLite
         with cls._get_db() as conn:
             cur = conn.cursor()
             cur.execute("SELECT * FROM lab_progress WHERE lab_id = ?", (lab_id,))
-            row = cur.fetchone()
-            prog = dict(row) if row else {
+            prog_row = cur.fetchone()
+            prog = dict(prog_row) if prog_row else {
                 "status": "Not Started",
+                "current_step": 0,
                 "started_at": None,
                 "completed_at": None,
                 "notes": "",
                 "attempts": 0,
-                "bookmarked": 0
+                "bookmarked": 0,
+                "verdict": "",
+                "checklist": "[]"
             }
 
-        # Read canonical Markdown file
+            # Evidence findings
+            cur.execute("SELECT * FROM lab_evidence WHERE lab_id = ? ORDER BY id ASC", (lab_id,))
+            evidence_rows = [dict(r) for r in cur.fetchall()]
+
+            # Saved question answers
+            cur.execute("SELECT * FROM lab_answers WHERE lab_id = ?", (lab_id,))
+            answers_rows = {r["question_id"]: {"selected_option": r["selected_option"], "is_correct": bool(r["is_correct"])} for r in cur.fetchall()}
+
+        # 2. Check Live Cloud Environment Readiness for Required Hosts
+        from app.services.aws import AWSService
+        from app.services.terraform import TerraformService
+        instances = AWSService.get_instances()
+        tf_outputs = TerraformService.get_outputs()
+
+        bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip and i.public_ip != "None"), None)
+        live_bastion_ip = bastion_node.public_ip if bastion_node else tf_outputs.get("bastion_public_ip", "13.232.202.163")
+        key_path = str(settings.SSH_KEY_PATH)
+
+        required_hosts_list = lab_meta.get("required_hosts", ["wazuh", "bastion"])
+        live_hosts_status = []
+        for req_host in required_hosts_list:
+            node = next((i for i in instances if req_host in i.name.lower()), None)
+            is_running = node.state == "running" if node else False
+            live_hosts_status.append({
+                "key": req_host,
+                "name": f"THEDAL-{req_host.capitalize()}",
+                "status": "running" if is_running else "stopped",
+                "ip": (node.public_ip if req_host == "bastion" else node.private_ip) if node else "10.10.x.x"
+            })
+
+        environment_ready = all(h["status"] == "running" for h in live_hosts_status)
+
+        # 3. Read and parse markdown content into progressive phases
         file_path = os.path.join(settings.PROJECT_ROOT, lab_meta["rel_path"])
         raw_markdown = ""
         if os.path.exists(file_path):
@@ -310,18 +464,340 @@ class LearningService:
         else:
             raw_markdown = f"# Lab content not found\n\nFile `{lab_meta['rel_path']}` does not exist."
 
-        # Dynamically inject live cloud IPs and SSH key paths into lab markdown
         raw_markdown = cls.interpolate_live_telemetry(raw_markdown)
+
+        # Build progressive phases tailored for this specific lab
+        phases = cls._build_lab_phases(lab_id, lab_meta, raw_markdown, live_bastion_ip, key_path)
+
+        try:
+            saved_checklist = json.loads(prog.get("checklist", "[]"))
+        except Exception:
+            saved_checklist = []
+
         rendered_html = cls.render_markdown_safely(raw_markdown)
 
-        result = dict(lab_meta)
-        result.update(prog)
-        result["raw_markdown"] = raw_markdown
-        result["rendered_html"] = rendered_html
-        return result
+        return {
+            **lab_meta,
+            "status": prog.get("status", "Not Started"),
+            "current_step": prog.get("current_step", 0),
+            "started_at": prog.get("started_at"),
+            "completed_at": prog.get("completed_at"),
+            "verdict": prog.get("verdict", ""),
+            "rendered_html": rendered_html,
+            "raw_markdown": raw_markdown,
+            "lab": {
+                **lab_meta,
+                "status": prog.get("status", "Not Started"),
+                "current_step": prog.get("current_step", 0),
+                "started_at": prog.get("started_at"),
+                "completed_at": prog.get("completed_at"),
+                "verdict": prog.get("verdict", ""),
+            },
+            "environment_status": {
+                "ready": environment_ready,
+                "required_hosts": live_hosts_status,
+                "required_index": lab_meta.get("required_index", "wazuh-alerts-*"),
+                "bastion_ip": live_bastion_ip
+            },
+            "phases": phases,
+            "evidence": evidence_rows,
+            "checklist": saved_checklist,
+            "notes": prog.get("notes", ""),
+            "answers": answers_rows,
+        }
 
     @classmethod
-    def update_progress(cls, lab_id: str, status: Optional[str] = None, notes: Optional[str] = None, bookmarked: Optional[bool] = None) -> Dict[str, Any]:
+    def get_lab_detail(cls, lab_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve single lab details, rendered markdown, and workspace state."""
+        return cls.get_workspace(lab_id)
+
+    @classmethod
+    def _build_lab_phases(cls, lab_id: str, meta: Dict[str, Any], raw_md: str, bastion_ip: str, key_path: str) -> List[Dict[str, Any]]:
+        """Builds standardized, structured 6-phase progressive investigation steps."""
+        title = meta.get("title", "SOC Investigation")
+        mitre = meta.get("mitre", "T1059")
+        difficulty = meta.get("difficulty", "Beginner")
+        source = meta.get("source", "Telemetry")
+        target_index = meta.get("target_index", "socforge-*")
+
+        # Custom tailored data per lab ID
+        lab_specs = {
+            "03-powershell-investigation": {
+                "mission": "Investigate a suspicious PowerShell process execution flagged on the Windows endpoint. Extract the in-memory ScriptBlock telemetry, assess execution policy bypass flags, and determine whether the execution represents benign administration or adversary simulation.",
+                "attack_host": "THEDAL-Attack (10.10.20.114)",
+                "target_host": "THEDAL-Windows (10.10.10.254)",
+                "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.114 '/usr/local/bin/run-atomic-test --technique T1059.001 --confirm'",
+                "query": 'data.win.system.eventID: "4104"',
+                "query_field": "data.win.eventdata.scriptBlockText",
+                "cross_query": 'data.win.eventdata.image: *powershell.exe',
+                "cross_index": "socforge-sysmon-*",
+                "hint_1": "Windows Event ID 4104 (ScriptBlock Logging) captures the complete code block executed by the PowerShell engine, even when encoded or dynamically evaluated via Invoke-Expression (IEX).",
+                "hint_2": "In OpenSearch Dashboards, switch index to 'socforge-powershell-*', apply time filter to 'Last 15 minutes', and inspect 'data.win.eventdata.scriptBlockText'.",
+                "thinking_prompts": [
+                    "What parent process spawned PowerShell (e.g. cmd.exe, explorer.exe, or wazuh-agent.exe)?",
+                    "What exact CLI arguments were passed in the command line? Does it include -ExecutionPolicy Bypass or -NoProfile?",
+                    "What actual PowerShell code is contained in the ScriptBlockText field?",
+                    "Is PowerShell inherently malicious, or does the code context determine the verdict?"
+                ],
+                "questions": [
+                    {
+                        "id": "q1",
+                        "question": "How was PowerShell executed according to the Sysmon Event ID 1 process telemetry?",
+                        "options": [
+                            "Interactive GUI console by a logged-in user",
+                            "Command-line execution with explicit argument flags (-ExecutionPolicy Bypass)",
+                            "Scheduled Windows service task running as SYSTEM",
+                            "Cannot be determined from telemetry"
+                        ],
+                        "correct_index": 1,
+                        "explanation": "Sysmon Event ID 1 captures the full commandLine field showing explicit non-interactive execution with arguments."
+                    },
+                    {
+                        "id": "q2",
+                        "question": "Why do threat actors frequently append '-ExecutionPolicy Bypass' to PowerShell invocations?",
+                        "options": [
+                            "To elevate process privileges from Standard User to NT AUTHORITY\\SYSTEM",
+                            "To disable Windows Defender real-time antivirus engine",
+                            "To circumvent local script execution restrictions without requiring admin rights",
+                            "To encrypt the outgoing network traffic"
+                        ],
+                        "correct_index": 2,
+                        "explanation": "ExecutionPolicy is a safety control, not a security boundary. -ExecutionPolicy Bypass allows executing unsigned script files without administrative privileges."
+                    },
+                    {
+                        "id": "q3",
+                        "question": "What is the primary advantage of Event ID 4104 (ScriptBlock) over Sysmon Event ID 1 (Process Creation)?",
+                        "options": [
+                            "Event ID 4104 records network connection port numbers",
+                            "Event ID 4104 captures the full de-obfuscated script content from engine memory regardless of CLI obfuscation",
+                            "Event ID 4104 prevents the script from executing",
+                            "Event ID 4104 is only generated by administrative users"
+                        ],
+                        "correct_index": 1,
+                        "explanation": "When PowerShell parses code into an Abstract Syntax Tree (AST), Event ID 4104 logs the underlying script in memory, defeating perimeter obfuscation."
+                    }
+                ],
+                "expected_verdict": "Suspicious / Test Simulation",
+                "expected_findings": "The telemetry demonstrates an automated PowerShell execution carrying '-ExecutionPolicy Bypass' that executes discovery logic. Event ID 4104 captures the raw ScriptBlock text in memory, confirming adversary technique T1059.001."
+            }
+        }
+
+        spec = lab_specs.get(lab_id, {
+            "mission": f"Investigate {title} using dedicated telemetry sources ({source}). Cross-reference security events in OpenSearch index '{target_index}', analyze artifacts, and deliver an evidence-backed analyst verdict.",
+            "attack_host": "THEDAL-Attack (10.10.20.114)",
+            "target_host": "THEDAL-Target Node",
+            "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.114",
+            "query": f'rule.mitre.id: "{mitre}" OR data.win.system.eventID: "*"',
+            "query_field": "full_log / data.win.eventdata",
+            "cross_query": f'data.win.eventdata.image: * OR rule.id: *',
+            "cross_index": target_index,
+            "hint_1": f"Filter OpenSearch Discover view by index pattern '{target_index}' and adjust the time filter to 'Last 15 minutes'.",
+            "hint_2": "Look for spikes in level 7+ Wazuh alert rules or unique process lineage records.",
+            "thinking_prompts": [
+                "What user account and IP address initiated this event?",
+                "Is this behavior normal for this environment or a deviation from baseline?",
+                "What corroborating logs exist in secondary telemetry streams?",
+                "What is the ultimate impact on confidentiality, integrity, or availability?"
+            ],
+            "questions": [
+                {
+                    "id": "q1",
+                    "question": f"Which primary telemetry source captured the activity associated with {mitre}?",
+                    "options": [
+                        source,
+                        "Unmonitored Network Tap",
+                        "Third-Party Firewall",
+                        "Unknown Host"
+                    ],
+                    "correct_index": 0,
+                    "explanation": f"The primary telemetry stream is {source} routed directly into {target_index}."
+                },
+                {
+                    "id": "q2",
+                    "question": "What is the key indicator distinguishing true threat activity from benign administration?",
+                    "options": [
+                        "The time of day the event occurred",
+                        "The presence of suspicious flags, unauthorized parent processes, or known exploit payloads",
+                        "Whether the server is running Linux or Windows",
+                        "The size of the hard drive"
+                    ],
+                    "correct_index": 1,
+                    "explanation": "Contextual evidence such as anomalous parent-child lineages, download cradles, and injection tokens indicate malicious intent."
+                }
+            ],
+            "expected_verdict": "True Positive / Simulation",
+            "expected_findings": f"Verified {title} telemetry ingested in OpenSearch. Identified MITRE ATT&CK technique {mitre} with correlated audit logs."
+        })
+
+        return [
+            # Phase 1: Mission Briefing
+            {
+                "id": "phase-1",
+                "phase_num": 1,
+                "title": "Mission Briefing",
+                "tag": "BRIEFING",
+                "objective": f"Master {title} and validate {mitre} detection coverage.",
+                "mission": spec["mission"],
+                "difficulty": difficulty,
+                "mitre": mitre,
+                "time": meta.get("estimated_time", "20–30 min"),
+                "source": source,
+                "target_index": target_index,
+                "checklist_items": [
+                    "Review Mission Briefing & Scenario",
+                    "Verify Lab Infrastructure Status",
+                    "Trigger Telemetry Simulation",
+                    "Locate Security Event in OpenSearch",
+                    "Collect Artifact Evidence",
+                    "Form Final Analyst Verdict"
+                ]
+            },
+            # Phase 2: Generate Telemetry
+            {
+                "id": "phase-2",
+                "phase_num": 2,
+                "title": "Generate Telemetry",
+                "tag": "SIMULATION",
+                "attack_host": spec["attack_host"],
+                "target_host": spec["target_host"],
+                "technique": f"{mitre} — {title}",
+                "command": spec["attack_cmd"],
+                "instructions": "Execute the following simulation command from your terminal. It will securely ProxyJump through the Bastion jumpbox and fire the adversary emulation payload."
+            },
+            # Phase 3: Locate Event & OpenSearch Discovery
+            {
+                "id": "phase-3",
+                "phase_num": 3,
+                "title": "Locate & Query Events",
+                "tag": "DISCOVERY",
+                "data_source": source,
+                "target_index": target_index,
+                "query": spec["query"],
+                "query_field": spec.get("query_field", "data.win.eventdata"),
+                "hints": [
+                    {"title": f"How to search {target_index}", "content": spec["hint_1"]},
+                    {"title": "Where to find the payload", "content": spec["hint_2"]}
+                ]
+            },
+            # Phase 4: Cross-Reference & Analyst Thinking
+            {
+                "id": "phase-4",
+                "phase_num": 4,
+                "title": "Cross-Reference & Analyst Thinking",
+                "tag": "METHODOLOGY",
+                "cross_query": spec.get("cross_query", spec["query"]),
+                "cross_index": spec.get("cross_index", target_index),
+                "thinking_title": "🧠 SOC Analyst Thinking",
+                "thinking_prompts": spec["thinking_prompts"]
+            },
+            # Phase 5: Analyst Decision & Verdict
+            {
+                "id": "phase-5",
+                "phase_num": 5,
+                "title": "Analyst Decision & Verdict",
+                "tag": "ASSESSMENT",
+                "questions": spec["questions"],
+                "verdict_options": [
+                    {"value": "True Positive", "label": "True Positive (Confirmed Threat / Exploit)"},
+                    {"value": "Suspicious", "label": "Suspicious Activity (Requires Containment)"},
+                    {"value": "False Positive", "label": "False Positive (Benign Admin Action)"},
+                    {"value": "Inconclusive", "label": "Inconclusive (Needs Further Telemetry)"}
+                ]
+            },
+            # Phase 6: Debrief & Solutions Gate
+            {
+                "id": "phase-6",
+                "phase_num": 6,
+                "title": "Debrief & Solutions",
+                "tag": "SOLUTIONS",
+                "expected_verdict": spec["expected_verdict"],
+                "expected_findings": spec["expected_findings"],
+                "mitre_tactic": "Execution / Discovery",
+                "mitre_technique": mitre,
+                "solution_markdown": raw_md
+            }
+        ]
+
+    @classmethod
+    def add_evidence(cls, lab_id: str, source: str, event_id: str, timestamp: str, finding: str) -> Dict[str, Any]:
+        """Add an evidence item to the learner's investigation board."""
+        cls.init_db()
+        created_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        with cls._get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO lab_evidence (lab_id, source, event_id, timestamp, finding, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (lab_id, source, event_id or "", timestamp or created_at, finding, created_at))
+            conn.commit()
+            evidence_id = cur.lastrowid
+
+        return {
+            "id": evidence_id,
+            "lab_id": lab_id,
+            "source": source,
+            "event_id": event_id,
+            "timestamp": timestamp or created_at,
+            "finding": finding,
+            "created_at": created_at
+        }
+
+    @classmethod
+    def delete_evidence(cls, evidence_id: int) -> Dict[str, Any]:
+        """Delete an evidence item."""
+        cls.init_db()
+        with cls._get_db() as conn:
+            conn.execute("DELETE FROM lab_evidence WHERE id = ?", (evidence_id,))
+            conn.commit()
+        return {"success": True, "deleted_id": evidence_id}
+
+    @classmethod
+    def save_checklist(cls, lab_id: str, checklist: List[str]) -> Dict[str, Any]:
+        """Save learner investigation checklist."""
+        cls.init_db()
+        checklist_json = json.dumps(checklist)
+        with cls._get_db() as conn:
+            conn.execute("""
+                UPDATE lab_progress SET checklist = ? WHERE lab_id = ?
+            """, (checklist_json, lab_id))
+            conn.commit()
+        return {"success": True, "lab_id": lab_id, "checklist": checklist}
+
+    @classmethod
+    def save_verdict(cls, lab_id: str, verdict: str) -> Dict[str, Any]:
+        """Save final analyst verdict."""
+        cls.init_db()
+        with cls._get_db() as conn:
+            conn.execute("""
+                UPDATE lab_progress SET verdict = ? WHERE lab_id = ?
+            """, (verdict, lab_id))
+            conn.commit()
+        return {"success": True, "lab_id": lab_id, "verdict": verdict}
+
+    @classmethod
+    def save_answer(cls, lab_id: str, question_id: str, selected_option: str, is_correct: bool) -> Dict[str, Any]:
+        """Record answer to an assessment question."""
+        cls.init_db()
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        with cls._get_db() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT id FROM lab_answers WHERE lab_id = ? AND question_id = ?", (lab_id, question_id))
+            row = cur.fetchone()
+            if row:
+                conn.execute("""
+                    UPDATE lab_answers SET selected_option = ?, is_correct = ?, answered_at = ? WHERE id = ?
+                """, (selected_option, 1 if is_correct else 0, now_str, row["id"]))
+            else:
+                conn.execute("""
+                    INSERT INTO lab_answers (lab_id, question_id, selected_option, is_correct, answered_at)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (lab_id, question_id, selected_option, 1 if is_correct else 0, now_str))
+            conn.commit()
+
+        return {"success": True, "question_id": question_id, "is_correct": is_correct}
+
+    @classmethod
+    def update_progress(cls, lab_id: str, status: Optional[str] = None, notes: Optional[str] = None, bookmarked: Optional[bool] = None, current_step: Optional[int] = None) -> Dict[str, Any]:
         """Update learner state for a specific lab."""
         cls.init_db()
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -335,13 +811,14 @@ class LearningService:
                 started = now_str if status in ["In Progress", "Completed"] else None
                 completed = now_str if status == "Completed" else None
                 cur.execute("""
-                    INSERT INTO lab_progress (lab_id, status, started_at, completed_at, notes, attempts, bookmarked)
-                    VALUES (?, ?, ?, ?, ?, 1, ?)
-                """, (lab_id, status or "Not Started", started, completed, notes or "", 1 if bookmarked else 0))
+                    INSERT INTO lab_progress (lab_id, status, current_step, started_at, completed_at, notes, attempts, bookmarked)
+                    VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+                """, (lab_id, status or "Not Started", current_step or 0, started, completed, notes or "", 1 if bookmarked else 0))
             else:
                 existing = dict(row)
                 new_status = status if status is not None else existing["status"]
                 new_notes = notes if notes is not None else existing["notes"]
+                new_step = current_step if current_step is not None else existing.get("current_step", 0)
                 new_bm = (1 if bookmarked else 0) if bookmarked is not None else existing["bookmarked"]
 
                 started = existing["started_at"]
@@ -356,12 +833,27 @@ class LearningService:
 
                 cur.execute("""
                     UPDATE lab_progress
-                    SET status = ?, started_at = ?, completed_at = ?, notes = ?, bookmarked = ?, attempts = attempts + 1
+                    SET status = ?, current_step = ?, started_at = ?, completed_at = ?, notes = ?, bookmarked = ?, attempts = attempts + 1
                     WHERE lab_id = ?
-                """, (new_status, started, completed, new_notes, new_bm, lab_id))
+                """, (new_status, new_step, started, completed, new_notes, new_bm, lab_id))
             conn.commit()
 
         return {"success": True, "lab_id": lab_id}
+
+    @classmethod
+    def reset_lab(cls, lab_id: str) -> Dict[str, Any]:
+        """Reset progress, notes, evidence, and answers for a specific lab."""
+        cls.init_db()
+        with cls._get_db() as conn:
+            conn.execute("DELETE FROM lab_evidence WHERE lab_id = ?", (lab_id,))
+            conn.execute("DELETE FROM lab_answers WHERE lab_id = ?", (lab_id,))
+            conn.execute("""
+                UPDATE lab_progress
+                SET status = 'Not Started', current_step = 0, started_at = NULL, completed_at = NULL, notes = '', verdict = '', checklist = '[]'
+                WHERE lab_id = ?
+            """, (lab_id,))
+            conn.commit()
+        return {"success": True, "lab_id": lab_id, "message": "Lab progress reset."}
 
     @classmethod
     def get_curriculum_stats(cls) -> Dict[str, Any]:
@@ -375,7 +867,6 @@ class LearningService:
         in_progress_labs = sum(1 for lab in regular_labs if lab.get("status") == "In Progress")
         not_started_labs = sum(1 for lab in regular_labs if lab.get("status") == "Not Started" or not lab.get("status"))
 
-        # Level breakdowns
         l1 = [l for l in regular_labs if l.get("level_code") == "1"]
         l2 = [l for l in regular_labs if l.get("level_code") == "2"]
         l3 = [l for l in regular_labs if l.get("level_code") == "3"]
@@ -385,7 +876,6 @@ class LearningService:
         l3_completed = sum(1 for l in l3 if l.get("status") == "Completed")
         challenges_completed = sum(1 for c in challenges if c.get("status") == "Completed")
 
-        # Next recommended lab
         next_lab = next((l for l in regular_labs if l.get("status") != "Completed"), None)
 
         return {
@@ -413,10 +903,9 @@ class LearningService:
     @classmethod
     def get_challenge_detail(cls, challenge_id: str) -> Optional[Dict[str, Any]]:
         """Get challenge details without exposing solutions."""
-        detail = cls.get_lab_detail(challenge_id)
+        detail = cls.get_workspace(challenge_id)
         if not detail:
             return None
-        detail["difficulty"] = "Advanced / Mystery"
         return detail
 
     @classmethod
@@ -430,11 +919,11 @@ class LearningService:
             raw_text = f.read()
 
         num = challenge_id.replace("challenge-", "")
-        # Extract section for this challenge
         pattern = rf'## Challenge {num}:[^\n]*\n([\s\S]*?)(?=\n## Challenge|\Z)'
         match = re.search(pattern, raw_text, re.IGNORECASE)
         if not match:
-            return {"solution_markdown": raw_text, "solution_html": cls.render_markdown_safely(raw_text)}
+            sol_raw = cls.interpolate_live_telemetry(raw_text)
+            return {"solution_markdown": sol_raw, "solution_html": cls.render_markdown_safely(sol_raw)}
 
         sol_md = f"## Solution: Challenge {num}\n\n" + match.group(1).strip()
         sol_md = cls.interpolate_live_telemetry(sol_md)
@@ -445,15 +934,25 @@ class LearningService:
         }
 
     @classmethod
+    def render_markdown_safely(cls, text: str) -> str:
+        """Convert Markdown text to sanitized HTML."""
+        if not text:
+            return ""
+        try:
+            import markdown
+            return markdown.markdown(text, extensions=["fenced_code", "tables", "nl2br"])
+        except Exception:
+            return f"<pre>{html.escape(text)}</pre>"
+
+    @classmethod
     def search_content(cls, query: str) -> List[Dict[str, Any]]:
-        """Search across labs, challenges, runbooks, and learning path."""
+        """Search across labs, challenges, and MITRE techniques."""
         if not query or len(query.strip()) < 2:
             return []
 
         q = query.strip().lower()
         results = []
 
-        # 1. Search in LAB_CATALOG
         for lab in LAB_CATALOG:
             title = lab.get("title", "")
             mitre = lab.get("mitre", "")
@@ -470,22 +969,6 @@ class LearningService:
             if q in index.lower():
                 score += 5
 
-            # Search in file content if exists
-            file_path = os.path.join(settings.PROJECT_ROOT, lab.get("rel_path", ""))
-            snippet = ""
-            if os.path.exists(file_path):
-                try:
-                    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                        content = f.read()
-                        if q in content.lower():
-                            score += 3
-                            idx = content.lower().find(q)
-                            start = max(0, idx - 40)
-                            end = min(len(content), idx + 80)
-                            snippet = content[start:end].replace("\n", " ").strip()
-                except Exception:
-                    pass
-
             if score > 0:
                 results.append({
                     "id": lab["id"],
@@ -494,125 +977,8 @@ class LearningService:
                     "level": lab.get("level", ""),
                     "mitre": mitre,
                     "score": score,
-                    "snippet": f"...{snippet}..." if snippet else f"{source} -> {index}",
+                    "snippet": f"{source} • {index}",
                     "url": f"/learning/challenges/{lab['id']}" if lab["id"].startswith("challenge-") else f"/learning/labs/{lab['id']}"
                 })
 
-        # 2. Search runbooks and learning-path
-        extra_docs = [
-            ("learning-path", "THEDAL Learning Path & SOC Curriculum", "docs/learning-path.md", "/learning"),
-            ("detection-catalog", "Detection Rule Catalog", "docs/detection-catalog.md", "/learning"),
-            ("telemetry-arch", "Telemetry Ingest Pipeline Architecture", "docs/telemetry-architecture.md", "/learning"),
-        ]
-
-        for doc_id, doc_title, doc_rel, doc_url in extra_docs:
-            doc_path = os.path.join(settings.PROJECT_ROOT, doc_rel)
-            if os.path.exists(doc_path):
-                try:
-                    with open(doc_path, "r", encoding="utf-8", errors="replace") as f:
-                        content = f.read()
-                        if q in doc_title.lower() or q in content.lower():
-                            idx = content.lower().find(q)
-                            start = max(0, idx - 40) if idx != -1 else 0
-                            end = min(len(content), idx + 80) if idx != -1 else 100
-                            snippet = content[start:end].replace("\n", " ").strip()
-                            results.append({
-                                "id": doc_id,
-                                "title": doc_title,
-                                "type": "Documentation",
-                                "level": "Guide",
-                                "mitre": "Reference",
-                                "score": 4,
-                                "snippet": f"...{snippet}..." if snippet else "Reference guide",
-                                "url": doc_url
-                            })
-                except Exception:
-                    pass
-
-        results.sort(key=lambda x: x["score"], reverse=True)
-        return results
-
-    @classmethod
-    def render_markdown_safely(cls, md_text: str) -> str:
-        """
-        Safely converts standard Markdown into sanitized HTML.
-        Strips arbitrary scripts and dangerous tags while preserving code blocks,
-        tables, headers, bold, italics, links, and blockquotes.
-        """
-        # Escape any raw HTML tags to prevent XSS
-        text = html.escape(md_text)
-
-        # Code blocks (```lang ... ```)
-        def replace_code_block(match):
-            lang = match.group(1) or ""
-            code_content = match.group(2)
-            return f'<div class="code-block-wrap"><div class="code-block-header">{lang}</div><pre class="terminal-window"><code>{code_content}</code></pre></div>'
-
-        text = re.sub(r'```([a-zA-Z0-9_\-]*)\n([\s\S]*?)```', replace_code_block, text)
-
-        # Inline code `code`
-        text = re.sub(r'`([^`]+)`', r'<code class="table-cell-mono code-inline">\1</code>', text)
-
-        # Headings
-        text = re.sub(r'^### (.*)$', r'<h3 class="lab-h3">\1</h3>', text, flags=re.MULTILINE)
-        text = re.sub(r'^## (.*)$', r'<h2 class="lab-h2">\1</h2>', text, flags=re.MULTILINE)
-        text = re.sub(r'^# (.*)$', r'<h1 class="lab-h1">\1</h1>', text, flags=re.MULTILINE)
-
-        # Bold and Italic
-        text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
-        text = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', text)
-
-        # Blockquotes
-        text = re.sub(r'^&gt; (.*)$', r'<blockquote class="lab-quote">\1</blockquote>', text, flags=re.MULTILINE)
-
-        # Markdown links [text](url) -> safe links
-        def replace_link(match):
-            link_text = match.group(1)
-            url = match.group(2)
-            # Sanitize URL
-            if url.startswith("http://") or url.startswith("https://") or url.startswith("#") or url.startswith("file://") or url.startswith("/"):
-                return f'<a href="{url}" target="_blank" rel="noopener noreferrer" class="lab-link">{link_text}</a>'
-            return link_text
-
-        text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', replace_link, text)
-
-        # Unordered list items
-        text = re.sub(r'^\s*-\s+(.*)$', r'<li class="lab-list-item">\1</li>', text, flags=re.MULTILINE)
-
-        # Simple table processing
-        lines = text.split("\n")
-        in_table = False
-        table_html = []
-        out_lines = []
-
-        for line in lines:
-            if line.strip().startswith("|") and line.strip().endswith("|"):
-                if not in_table:
-                    in_table = True
-                    table_html = ['<div class="table-container" style="margin: 1rem 0;"><table>']
-                
-                # Check if it's separator row | :--- | :--- |
-                if re.match(r'^\s*\|(?:\s*:?-+:?\s*\|)+\s*$', line):
-                    continue
-
-                cells = [c.strip() for c in line.strip().strip("|").split("|")]
-                row_type = "th" if len(table_html) == 1 else "td"
-                row_str = "<tr>" + "".join(f"<{row_type}>{c}</{row_type}>" for c in cells) + "</tr>"
-                table_html.append(row_str)
-            else:
-                if in_table:
-                    table_html.append("</table></div>")
-                    out_lines.append("".join(table_html))
-                    in_table = False
-                    table_html = []
-                out_lines.append(line)
-
-        if in_table:
-            table_html.append("</table></div>")
-            out_lines.append("".join(table_html))
-
-        html_out = "\n".join(out_lines)
-
-        # Paragraphs for standalone lines
-        html_out = re.sub(r'\n\n+', '</p><p class="lab-paragraph">', html_out)
-        return f'<div class="lab-rendered-content"><p class="lab-paragraph">{html_out}</p></div>'
+        return sorted(results, key=lambda x: x["score"], reverse=True)
