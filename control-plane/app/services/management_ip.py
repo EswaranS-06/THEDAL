@@ -337,6 +337,37 @@ class ManagementIPService:
         except Exception as e:
             raise SecurityValidationError(f"Failed to persist configuration to Terraform files: {str(e)}")
 
+        # Ensure any unmanaged / manual port 22 rules on the security group don't conflict with Terraform
+        try:
+            ec2 = AWSService.get_client("ec2")
+            response = ec2.describe_security_groups(
+                Filters=[{"Name": "tag:Project", "Values": ["THEDAL", "thedal", "SOCForge", "socforge"]}]
+            )
+            for sg in response.get("SecurityGroups", []):
+                sg_name = sg.get("GroupName", "").lower()
+                if "management" in sg_name or "bastion" in sg_name:
+                    sg_id = sg.get("GroupId")
+                    for rule in sg.get("IpPermissions", []):
+                        if rule.get("IpProtocol") in ("tcp", "-1") and (rule.get("FromPort") == 22 or rule.get("FromPort") is None):
+                            for ip_range in rule.get("IpRanges", []):
+                                r_cidr = ip_range.get("CidrIp")
+                                desc = ip_range.get("Description", "")
+                                if "temporary" in desc.lower() or "manual" in desc.lower() or r_cidr == clean_cidr:
+                                    try:
+                                        ec2.revoke_security_group_ingress(
+                                            GroupId=sg_id,
+                                            IpPermissions=[{
+                                                "IpProtocol": "tcp",
+                                                "FromPort": 22,
+                                                "ToPort": 22,
+                                                "IpRanges": [{"CidrIp": r_cidr}]
+                                            }]
+                                        )
+                                    except Exception:
+                                        pass
+        except Exception:
+            pass
+
         # Run Terraform Apply targeting the management security group rules for rapid deployment
         cmd = [
             "terraform",
