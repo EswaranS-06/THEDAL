@@ -16,6 +16,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | undefined>(undefined);
   const [isOffline, setIsOffline] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const fetchStatus = async () => {
     setIsRefreshing(true);
@@ -40,9 +41,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen w-screen overflow-hidden bg-background text-slate-100 font-sans">
-        {/* Sidebar */}
-        <Sidebar systemStatus={systemStatus} />
+      <div className="flex h-screen w-screen overflow-hidden bg-background text-text-primary font-sans antialiased">
+        {/* Persistent Collapsible Left Sidebar */}
+        {isSidebarOpen && <Sidebar systemStatus={systemStatus} />}
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -51,30 +52,32 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             isRefreshing={isRefreshing}
             activeOperation={systemStatus?.active_operation}
             status={systemStatus?.environment_health}
+            systemStatus={systemStatus}
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           />
 
           {/* Backend Offline Warning Banner */}
           {isOffline && (
-            <div className="bg-rose-950/80 border-b border-rose-800/60 px-6 py-2.5 flex items-center justify-between text-xs text-rose-200">
+            <div className="bg-accent-red/20 border-b border-accent-red/40 px-4 py-2 flex items-center justify-between text-xs text-accent-red">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>
-                  <strong>THEDAL backend is unavailable.</strong> Ensure the FastAPI server is running on <code className="font-mono text-rose-100">127.0.0.1:8080</code>.
+                  <strong>Control Plane backend disconnected.</strong> Ensure FastAPI is active on port 8080.
                 </span>
               </div>
               <button
                 onClick={fetchStatus}
-                className="flex items-center gap-1 px-2.5 py-1 rounded bg-rose-900 hover:bg-rose-800 text-rose-100 text-xs font-semibold transition-colors"
+                className="flex items-center gap-1 px-2 py-0.5 rounded bg-accent-red text-white text-[11px] font-semibold transition-colors"
               >
                 <RefreshCw className="w-3 h-3" />
-                <span>Retry Connection</span>
+                <span>Retry</span>
               </button>
             </div>
           )}
 
-          {/* Scrollable Page Body */}
-          <main className="flex-1 overflow-y-auto p-6 bg-background">
-            <div className="max-w-7xl mx-auto w-full space-y-6">
+          {/* Scrollable Main Workspace */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background scrollbar-thin">
+            <div className="max-w-7xl mx-auto w-full space-y-5">
               {children}
             </div>
           </main>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Terminal } from "lucide-react";
 import { useToast } from "./Toast";
 
 interface CommandBlockProps {
@@ -24,50 +24,52 @@ export const CommandBlock: React.FC<CommandBlockProps> = ({
     try {
       await navigator.clipboard.writeText(command);
       setCopied(true);
-      success("Copied to clipboard", title || "Command ready to execute in your terminal");
+      success("Copied to clipboard", title || "Command ready to execute in terminal");
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
       setCopied(false);
     }
   };
 
   return (
-    <div className="rounded border border-border-subtle bg-surface/80 overflow-hidden text-xs">
+    <div className="rounded-md border border-border-subtle bg-panel overflow-hidden text-xs">
       {(title || description) && (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle bg-card/40">
-          <div>
-            {title && <span className="font-semibold text-slate-200">{title}</span>}
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-subtle bg-surface/60">
+          <div className="flex items-center gap-1.5">
+            <Terminal className="w-3.5 h-3.5 text-primary shrink-0" />
+            {title && <span className="font-mono font-semibold text-text-primary text-[11px]">{title}</span>}
             {description && (
-              <span className="text-slate-400 ml-2 text-[11px] font-normal">{description}</span>
+              <span className="text-text-muted text-[10px] hidden sm:inline">• {description}</span>
             )}
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">Dynamic IP</span>
+          <span className="text-[9px] text-text-muted font-mono px-1.5 py-0.2 rounded bg-surface border border-border-subtle">
+            LIVE IP
+          </span>
         </div>
       )}
-      <div className="flex items-center justify-between p-2.5 gap-2 bg-code/90">
-        <pre className="font-mono text-slate-200 overflow-x-auto text-[11px] leading-relaxed whitespace-pre-wrap break-all flex-1 select-all">
+      <div className="flex items-center justify-between p-2.5 gap-2 bg-[#071017]">
+        <pre className="font-mono text-text-primary overflow-x-auto text-[11px] leading-relaxed whitespace-pre-wrap break-all flex-1 select-all">
           <code>{command}</code>
         </pre>
         <button
           onClick={handleCopy}
-          className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors flex-shrink-0 ${
+          className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-mono font-semibold transition-all flex-shrink-0 border ${
             copied
-              ? "bg-emerald-950/80 text-emerald-400 border border-emerald-700/50"
-              : "bg-muted hover:bg-slate-700 text-slate-300 border border-border-default"
+              ? "bg-primary/20 text-primary border-primary/50"
+              : "bg-surface hover:bg-panel text-text-secondary hover:text-text-primary border-border-subtle"
           }`}
           title="Copy command to clipboard"
           aria-label="Copy command"
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5" />
-              <span>Copied</span>
+              <Check className="w-3 h-3 text-primary" />
+              <span className="text-primary font-bold">COPIED</span>
             </>
           ) : (
             <>
-              <Copy className="w-3.5 h-3.5" />
-              <span>Copy</span>
+              <Copy className="w-3 h-3 text-text-muted" />
+              <span>COPY</span>
             </>
           )}
         </button>

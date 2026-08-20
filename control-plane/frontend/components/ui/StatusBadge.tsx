@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle, AlertTriangle, XCircle, HelpCircle, Circle, Play, Square } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, Circle, Play, Square } from "lucide-react";
 
 interface StatusBadgeProps {
   status: string;
@@ -16,30 +16,30 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 }) => {
   const norm = (status || "UNKNOWN").toUpperCase();
 
-  let colorClasses = "bg-muted text-slate-300 border-border-subtle";
+  let colorClasses = "bg-panel text-text-muted border-border-subtle";
   let IconComponent = HelpCircle;
 
-  if (["PASS", "RUNNING", "SUCCESS", "COMPLETED", "VALID", "READY", "ONLINE"].includes(norm)) {
-    colorClasses = "bg-status-pass-bg text-emerald-400 border-emerald-500/30";
-    IconComponent = norm === "RUNNING" ? Play : CheckCircle;
-  } else if (["WARNING", "STOPPED", "IN PROGRESS", "PAUSED", "DEGRADED", "DRIFT"].includes(norm)) {
-    colorClasses = "bg-status-warn-bg text-amber-400 border-amber-500/30";
+  if (["PASS", "RUNNING", "SUCCESS", "COMPLETED", "VALID", "READY", "ONLINE", "OPERATIONAL", "HEALTHY", "ACTIVE"].includes(norm)) {
+    colorClasses = "bg-primary/10 text-primary border-primary/30";
+    IconComponent = norm === "RUNNING" ? Play : CheckCircle2;
+  } else if (["WARNING", "STOPPED", "IN PROGRESS", "PAUSED", "DEGRADED", "DRIFT", "UNHEALTHY"].includes(norm)) {
+    colorClasses = "bg-accent-yellow/10 text-accent-yellow border-accent-yellow/30";
     IconComponent = norm === "STOPPED" ? Square : AlertTriangle;
   } else if (["FAIL", "FAILURE", "ERROR", "TERMINATED", "CRITICAL", "OFFLINE", "INVALID"].includes(norm)) {
-    colorClasses = "bg-status-fail-bg text-rose-400 border-rose-500/30";
+    colorClasses = "bg-accent-red/10 text-accent-red border-accent-red/30";
     IconComponent = XCircle;
   } else if (["INFO", "NOT STARTED", "UNCHECKED", "PENDING"].includes(norm)) {
-    colorClasses = "bg-status-info-bg text-blue-400 border-blue-500/30";
+    colorClasses = "bg-accent-blue/10 text-accent-blue border-accent-blue/30";
     IconComponent = Circle;
   }
 
-  const sizeClasses = size === "sm" ? "px-1.5 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs";
+  const sizeClasses = size === "sm" ? "px-1.5 py-0.2 text-[10px] font-mono" : "px-2 py-0.5 text-[11px] font-mono";
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 font-medium rounded border ${sizeClasses} ${colorClasses} tracking-tight select-none`}
+      className={`inline-flex items-center gap-1 font-medium rounded border ${sizeClasses} ${colorClasses} tracking-tight select-none`}
     >
-      {showIcon && <IconComponent className={size === "sm" ? "w-3 h-3" : "w-3.5 h-3.5"} />}
+      {showIcon && <IconComponent className={size === "sm" ? "w-2.5 h-2.5" : "w-3 h-3"} />}
       <span>{status}</span>
     </span>
   );
