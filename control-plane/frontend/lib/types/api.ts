@@ -283,3 +283,50 @@ export interface ApiResponse<T = any> {
   error?: string;
   log_file?: string;
 }
+
+export interface ManagementIPStatus {
+  detected_ip?: string | null;
+  configured_cidr: string;
+  effective_cidr: string;
+  status: "READY" | "MISMATCH" | "DRIFT" | "OPEN_ACCESS" | "UNKNOWN";
+  is_match: boolean;
+  has_drift: boolean;
+  live_bastion_ip?: string | null;
+  port_22_reachable?: boolean | null;
+  access_mode: "automatic" | "custom" | "open";
+  last_sync_timestamp?: string | null;
+  previous_ip?: string | null;
+  aws_allowed_cidrs: string[];
+  message: string;
+}
+
+export interface ManagementIPPreviewResult {
+  success: boolean;
+  proposed_cidr: string;
+  plan_output: string;
+  log_file: string;
+  exit_code: number;
+}
+
+export interface ManagementIPSyncResult {
+  success: boolean;
+  previous_cidr: string;
+  applied_cidr: string;
+  detected_ip?: string | null;
+  live_bastion_ip?: string | null;
+  port_22_reachable?: boolean | null;
+  connectivity_message?: string | null;
+  log_file: string;
+  exit_code: number;
+}
+
+export interface ManagementIPHistoryItem {
+  id: number;
+  previous_cidr: string;
+  applied_cidr: string;
+  detected_ip: string;
+  access_mode: string;
+  status: string;
+  timestamp: string;
+  actor: string;
+}

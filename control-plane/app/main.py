@@ -13,7 +13,8 @@ from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.models import (
     SystemStatus, OperationRequest, OperationResponse,
-    HealthCheckSummary
+    HealthCheckSummary, ManagementIPPreviewRequest, ManagementIPApplyRequest,
+    ConnectivityCheckRequest
 )
 from app.services.terraform import TerraformService
 from app.services.ansible import AnsibleService
@@ -25,6 +26,7 @@ from app.services.learning import LearningService
 from app.services.commands import CommandService
 from app.services.profiles import AWSProfileService
 from app.services.autostop import SafetyService
+from app.services.management_ip import ManagementIPService
 
 
 app = FastAPI(
@@ -665,5 +667,97 @@ async def api_settings_config():
         "autostop": SafetyService.get_autostop_status(),
         "profiles": AWSProfileService.list_profiles(),
         "ssh_info": SSHService.get_connection_info()
+    }
+
+
+# ==============================================================================
+# Dynamic SSH Access & Management IP Endpoints
+# ==============================================================================
+
+@app.get("/api/management-ip/status")
+async def api_management_ip_status():
+    """Retrieves current detected IP, configured CIDR, status, and drift state."""
+    try:
+        return ManagementIPService.get_status()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to assess management IP status: {str(e)}"
+        )
+
+
+@app.post("/api/management-ip/preview")
+async def api_management_ip_preview(req: ManagementIPPreviewRequest):
+    """Generates a dry-run Terraform execution plan for the proposed CIDR."""
+    try:
+        return ManagementIPService.preview_sync(req.cidr)
+    except SecurityValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except OperationLockError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate Terraform plan preview: {str(e)}"
+        )
+
+
+@app.post("/api/management-ip/apply")
+async def api_management_ip_apply(req: ManagementIPApplyRequest):
+    """Applies the CIDR update to Terraform, executes apply, and verifies TCP port 22."""
+    if not req.confirmation:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Confirmation is required to apply management CIDR changes."
+        )
+
+    try:
+        return ManagementIPService.apply_sync(
+            new_cidr=req.cidr,
+            mode=req.mode or "automatic",
+            understand_open_risk=req.understand_open_risk or False
+        )
+    except SecurityValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except OperationLockError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to apply management IP update: {str(e)}"
+        )
+
+
+@app.post("/api/management-ip/check-connectivity")
+async def api_management_ip_check_connectivity(req: ConnectivityCheckRequest = Body(default=ConnectivityCheckRequest())):
+    """Verifies TCP port 22 reachability on the Bastion or specified host."""
+    host = req.host
+    if not host:
+        instances = AWSService.get_instances()
+        bastion_inst = next((i for i in instances if "bastion" in i.name.lower() or "jumpbox" in i.name.lower()), None)
+        host = bastion_inst.public_ip if bastion_inst and bastion_inst.state == "running" else None
+
+    if not host:
+        return {
+            "reachable": False,
+            "host": None,
+            "port": req.port or 22,
+            "message": "No running Bastion host with public IPv4 address found."
+        }
+
+    reachable, error_msg = ManagementIPService.check_port_22(host, timeout=3.0)
+    return {
+        "reachable": reachable,
+        "host": host,
+        "port": req.port or 22,
+        "message": "Port 22 is reachable on Bastion" if reachable else error_msg
+    }
+
+
+@app.get("/api/management-ip/history")
+async def api_management_ip_history(limit: int = Query(5, ge=1, le=50)):
+    """Retrieves recent management IP synchronization audit history."""
+    return {
+        "history": ManagementIPService.get_sync_history(limit=limit)
     }
 

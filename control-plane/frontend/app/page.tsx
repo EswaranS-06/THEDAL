@@ -20,20 +20,26 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
+  Wifi,
+  AlertTriangle,
+  Lock,
 } from "lucide-react";
 import { operationsApi } from "../lib/api/operations";
 import { awsApi } from "../lib/api/aws";
 import { healthApi } from "../lib/api/health";
 import { learningApi } from "../lib/api/learning";
+import { managementIpApi } from "../lib/api/managementIp";
 import {
   SystemStatus,
   EC2InstanceInfo,
   HealthCheckSummary,
   OperationLogMeta,
   CurriculumStats,
+  ManagementIPStatus,
 } from "../lib/types/api";
 import { StatusBadge } from "../components/ui/StatusBadge";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { SyncIPDialog } from "../components/management/SyncIPDialog";
 import { CardSkeleton } from "../components/ui/LoadingSkeleton";
 import { ErrorState } from "../components/ui/ErrorState";
 import { useToast } from "../components/ui/Toast";
@@ -50,9 +56,13 @@ export default function OverviewPage() {
   const [healthSummary, setHealthSummary] = useState<HealthCheckSummary | null>(null);
   const [recentLogs, setRecentLogs] = useState<OperationLogMeta[]>([]);
   const [curriculum, setCurriculum] = useState<CurriculumStats | null>(null);
+  const [ipStatus, setIpStatus] = useState<ManagementIPStatus | null>(null);
   const [isStartingTunnel, setIsStartingTunnel] = useState(false);
 
-  // Dialog state
+  // Sync Dialog state
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+
+  // Action Dialog state
   const [actionDialog, setActionDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -71,12 +81,13 @@ export default function OverviewPage() {
       setLoading(true);
       setErrorMsg(null);
 
-      const [statusRes, resRes, healthRes, opsRes, learnRes] = await Promise.all([
+      const [statusRes, resRes, healthRes, opsRes, learnRes, ipRes] = await Promise.all([
         operationsApi.getSystemStatus().catch(() => null),
         awsApi.getResources().catch(() => ({ instances: [], network: null })),
         healthApi.getSummary().catch(() => null),
         operationsApi.listOperations().catch(() => ({ active_operation: null, logs: [] })),
         learningApi.getStats().catch(() => null),
+        managementIpApi.getStatus().catch(() => null),
       ]);
 
       if (statusRes) setStatus(statusRes);
@@ -84,6 +95,7 @@ export default function OverviewPage() {
       if (healthRes) setHealthSummary(healthRes);
       if (opsRes?.logs) setRecentLogs(opsRes.logs.slice(0, 5));
       if (learnRes) setCurriculum(learnRes);
+      if (ipRes) setIpStatus(ipRes);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to load overview data.");
     } finally {
@@ -156,6 +168,11 @@ export default function OverviewPage() {
       />
     );
   }
+
+  const isIpMismatch = ipStatus?.status === "MISMATCH";
+  const isIpReady = ipStatus?.status === "READY";
+  const isIpDrift = ipStatus?.status === "DRIFT";
+  const isIpOpen = ipStatus?.status === "OPEN_ACCESS";
 
   return (
     <div className="space-y-4">
@@ -270,7 +287,103 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* 3. System Fleet Health Overview (Compact Rows) */}
+      {/* 3. Dedicated SSH Management Access Card */}
+      <div
+        className={`p-3.5 rounded-md border transition-all ${
+          isIpMismatch
+            ? "bg-accent-yellow/10 border-accent-yellow/40"
+            : isIpDrift
+            ? "bg-accent-red/10 border-accent-red/40"
+            : isIpOpen
+            ? "bg-accent-yellow/10 border-accent-yellow/30"
+            : "bg-panel border-border-subtle"
+        }`}
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div
+              className={`w-7 h-7 rounded flex items-center justify-center shrink-0 mt-0.5 ${
+                isIpReady
+                  ? "bg-primary/20 text-primary border border-primary/40"
+                  : isIpMismatch
+                  ? "bg-accent-yellow/20 text-accent-yellow border border-accent-yellow/40"
+                  : "bg-accent-red/20 text-accent-red border border-accent-red/40"
+              }`}
+            >
+              <Wifi className="w-4 h-4" />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold font-mono text-text-primary uppercase tracking-wider">
+                  SSH MANAGEMENT ACCESS
+                </h3>
+                <span
+                  className={`text-[10px] font-mono px-2 py-0.2 rounded font-bold border ${
+                    isIpReady
+                      ? "bg-primary/10 text-primary border-primary/30"
+                      : isIpMismatch
+                      ? "bg-accent-yellow/15 text-accent-yellow border-accent-yellow/40 animate-pulse"
+                      : isIpOpen
+                      ? "bg-accent-yellow/10 text-accent-yellow border-accent-yellow/30"
+                      : "bg-accent-red/15 text-accent-red border-accent-red/40"
+                  }`}
+                >
+                  {isIpReady
+                    ? "● AUTHORIZED"
+                    : isIpMismatch
+                    ? "⚠ IP MISMATCH"
+                    : isIpOpen
+                    ? "⚠ OPEN ACCESS"
+                    : "● ACTION REQUIRED"}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono">
+                <div>
+                  <span className="text-text-muted">Current Network: </span>
+                  <strong className="text-text-primary">{ipStatus?.detected_ip || "Detecting..."}</strong>
+                </div>
+                <div>
+                  <span className="text-text-muted">Allowed CIDR: </span>
+                  <span className="text-text-secondary">{ipStatus?.configured_cidr || "127.0.0.1/32"}</span>
+                </div>
+                {ipStatus?.live_bastion_ip && (
+                  <div>
+                    <span className="text-text-muted">Bastion Port 22: </span>
+                    <span className={ipStatus?.port_22_reachable ? "text-primary font-bold" : "text-text-muted"}>
+                      {ipStatus?.port_22_reachable ? "Reachable" : "Testing..."}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {isIpMismatch && (
+                <p className="text-[10px] text-accent-yellow mt-0.5">
+                  Your public IP has changed. Bastion SSH connections may time out until synchronized with AWS.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setSyncDialogOpen(true)}
+              className={isIpMismatch ? "soc-btn-primary" : "soc-btn-secondary"}
+            >
+              Sync My IP
+            </button>
+            <Link
+              href="/settings#management-access"
+              className="soc-btn-secondary text-[11px]"
+            >
+              Configure Access
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. System Fleet Health Overview (Compact Rows) */}
       <div className="rounded-md bg-panel border border-border-subtle overflow-hidden">
         <div className="p-3 border-b border-border-subtle flex items-center justify-between bg-surface/50">
           <div className="flex items-center gap-2">
@@ -349,7 +462,7 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* 4. Bottom Grid: Learning Next Step & Recent Activity */}
+      {/* 5. Bottom Grid: Learning Next Step & Recent Activity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
         {/* Next Recommended Investigation */}
         <div className="p-3.5 rounded-md bg-panel border border-border-subtle space-y-2.5 flex flex-col justify-between">
@@ -413,7 +526,9 @@ export default function OverviewPage() {
                     className="flex items-center justify-between p-1.5 rounded bg-surface/70 border border-border-subtle/50"
                   >
                     <span className="truncate max-w-[200px] text-text-primary">{log.action || log.filename}</span>
-                    <span className="text-[10px] text-text-muted shrink-0">{log.timestamp ? log.timestamp.substring(11, 19) : ""}</span>
+                    <span className="text-[10px] text-text-muted shrink-0">
+                      {log.timestamp ? log.timestamp.substring(11, 19) : ""}
+                    </span>
                   </div>
                 ))
               )}
@@ -428,6 +543,14 @@ export default function OverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* Synchronize IP Dialog Modal */}
+      <SyncIPDialog
+        isOpen={syncDialogOpen}
+        onClose={() => setSyncDialogOpen(false)}
+        onSuccess={loadData}
+        initialStatus={ipStatus}
+      />
 
       {/* Confirmation Dialog */}
       <ConfirmDialog

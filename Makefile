@@ -6,7 +6,7 @@
 .DEFAULT_GOAL := help
 SHELL := /usr/bin/env bash
 
-.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check wazuh-index-check detection-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check atomic-deploy atomic-check atomic-test web-attack-deploy web-attack-check web-test control-plane test-control-plane
+.PHONY: help preflight health-check lint tf-fmt tf-validate tf-plan inventory ansible-syntax wazuh-deploy wazuh-tunnel wazuh-check wazuh-index-check detection-check windows-agent-deploy windows-check web-target-deploy web-check juice-shop-deploy juice-shop-check atomic-deploy atomic-check atomic-test web-attack-deploy web-attack-check web-test control-plane test-control-plane check-ip sync-ip ssh-status
 
 help: ## Show this help message
 	@echo "================================================================="
@@ -42,6 +42,7 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 	@echo "Shell syntax verification: OK"
 	@echo "Validating Python scripts..."
 	@python3 -m py_compile scripts/generate-inventory.py
+	@python3 -m py_compile scripts/sync_admin_ip.py
 	@python3 -m py_compile control-plane/app/config.py
 	@python3 -m py_compile control-plane/app/models.py
 	@python3 -m py_compile control-plane/app/main.py
@@ -51,6 +52,7 @@ lint: ## Check shell scripts, Python, Terraform, and Ansible for syntax errors
 	@python3 -m py_compile control-plane/app/services/ssh.py
 	@python3 -m py_compile control-plane/app/services/health.py
 	@python3 -m py_compile control-plane/app/services/operations.py
+	@python3 -m py_compile control-plane/app/services/management_ip.py
 	@echo "Python syntax verification: OK"
 	@if command -v terraform >/dev/null 2>&1; then \
 		echo "Validating Terraform formatting and syntax..."; \
@@ -172,3 +174,18 @@ test-control-plane: ## Run pytest test suite on control-plane
 
 test-frontend-e2e: ## Run Playwright E2E tests for Next.js frontend
 	@cd control-plane/frontend && npm run test:e2e
+
+check-ip: ## Check current public IP against configured Terraform management CIDR
+	@python3 scripts/sync_admin_ip.py --check
+
+sync-ip: ## Synchronize current public IP with Terraform and apply to AWS Security Group (Usage: make sync-ip [CIDR_SUFFIX=24] [CIDR=x.x.x.x/32])
+	@if [ -n "$(CIDR)" ]; then \
+		python3 scripts/sync_admin_ip.py --sync --cidr "$(CIDR)"; \
+	elif [ -n "$(CIDR_SUFFIX)" ]; then \
+		python3 scripts/sync_admin_ip.py --sync --suffix "$(CIDR_SUFFIX)"; \
+	else \
+		python3 scripts/sync_admin_ip.py --sync; \
+	fi
+
+ssh-status: ## Check full SSH readiness, public IP coverage, and port 22 TCP connectivity
+	@python3 scripts/sync_admin_ip.py --status

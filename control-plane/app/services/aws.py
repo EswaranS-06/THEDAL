@@ -310,3 +310,30 @@ class AWSService:
             "purpose": profile["purpose"],
             "services": profile["services"]
         }
+
+    @classmethod
+    def get_bastion_ingress_cidrs(cls) -> List[str]:
+        """Retrieves active authorized ingress CIDRs for SSH (port 22) on the Management Bastion Security Group."""
+        try:
+            ec2 = cls.get_client("ec2")
+            response = ec2.describe_security_groups(
+                Filters=[
+                    {"Name": "tag:Project", "Values": ["THEDAL", "thedal", "SOCForge", "socforge"]}
+                ]
+            )
+            cidrs = []
+            for sg in response.get("SecurityGroups", []):
+                sg_name = sg.get("GroupName", "").lower()
+                if "management" in sg_name or "bastion" in sg_name:
+                    for rule in sg.get("IpPermissions", []):
+                        from_port = rule.get("FromPort")
+                        to_port = rule.get("ToPort")
+                        ip_proto = rule.get("IpProtocol")
+                        if ip_proto in ("tcp", "-1") and (from_port is None or (from_port <= 22 and to_port >= 22)):
+                            for ip_range in rule.get("IpRanges", []):
+                                cidr = ip_range.get("CidrIp")
+                                if cidr and cidr not in cidrs:
+                                    cidrs.append(cidr)
+            return cidrs
+        except Exception:
+            return []

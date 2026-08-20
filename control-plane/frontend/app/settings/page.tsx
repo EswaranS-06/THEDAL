@@ -12,20 +12,50 @@ import {
   RefreshCw,
   Plus,
   Lock,
+  Wifi,
+  ChevronDown,
+  ChevronUp,
+  FileCode,
+  Terminal,
+  HelpCircle,
+  Clock,
+  Radio,
 } from "lucide-react";
 import { settingsApi } from "../../lib/api/settings";
-import { SettingsConfig, AWSProfile, AutoStopStatus } from "../../lib/types/api";
+import { managementIpApi } from "../../lib/api/managementIp";
+import {
+  SettingsConfig,
+  AWSProfile,
+  AutoStopStatus,
+  ManagementIPStatus,
+  ManagementIPPreviewResult,
+  ManagementIPHistoryItem,
+} from "../../lib/types/api";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { CardSkeleton } from "../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { useToast } from "../../components/ui/Toast";
 
 export default function SettingsPage() {
-  const { success, error } = useToast();
+  const { success, error, info } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [config, setConfig] = useState<SettingsConfig | null>(null);
+
+  // Management IP State
+  const [ipStatus, setIpStatus] = useState<ManagementIPStatus | null>(null);
+  const [ipHistory, setIpHistory] = useState<ManagementIPHistoryItem[]>([]);
+  const [accessMode, setAccessMode] = useState<"automatic" | "custom" | "open">("automatic");
+  const [cidrSuffix, setCidrSuffix] = useState<"32" | "24" | "custom">("32");
+  const [customCidrInput, setCustomCidrInput] = useState("");
+  const [openConfirmed, setOpenConfirmed] = useState(false);
+  const [previewPlan, setPreviewPlan] = useState<ManagementIPPreviewResult | null>(null);
+  const [isTestingConn, setIsTestingConn] = useState(false);
+  const [connTestResult, setConnTestResult] = useState<{ reachable: boolean; message: string } | null>(null);
+  const [isApplyingIp, setIsApplyingIp] = useState(false);
+  const [isPreviewingIp, setIsPreviewingIp] = useState(false);
+  const [isEducationOpen, setIsEducationOpen] = useState(false);
 
   // Auto-stop form
   const [autoStopEnabled, setAutoStopEnabled] = useState(false);
@@ -47,12 +77,29 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const res = await settingsApi.getConfig();
-      setConfig(res);
-      if (res.autostop) {
-        setAutoStopEnabled(res.autostop.enabled);
-        setGracePeriod(res.autostop.grace_period_minutes);
+      const [res, ipRes, histRes] = await Promise.all([
+        settingsApi.getConfig().catch(() => null),
+        managementIpApi.getStatus().catch(() => null),
+        managementIpApi.getHistory(3).catch(() => []),
+      ]);
+
+      if (res) {
+        setConfig(res);
+        if (res.autostop) {
+          setAutoStopEnabled(res.autostop.enabled);
+          setGracePeriod(res.autostop.grace_period_minutes);
+        }
       }
+
+      if (ipRes) {
+        setIpStatus(ipRes);
+        setAccessMode(ipRes.access_mode || "automatic");
+        if (ipRes.detected_ip) {
+          setCustomCidrInput(ipRes.configured_cidr || `${ipRes.detected_ip}/32`);
+        }
+      }
+
+      setIpHistory(histRes);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to load settings.");
     } finally {
@@ -63,6 +110,74 @@ export default function SettingsPage() {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  const getEffectiveProposedCidr = (): string => {
+    if (accessMode === "open") return "0.0.0.0/0";
+    if (accessMode === "custom") return customCidrInput.trim();
+    const det = ipStatus?.detected_ip;
+    if (!det) return "127.0.0.1/32";
+    if (cidrSuffix === "24") {
+      const p = det.split(".");
+      return `${p[0]}.${p[1]}.${p[2]}.0/24`;
+    }
+    return `${det}/32`;
+  };
+
+  const effectiveCidr = getEffectiveProposedCidr();
+
+  const handleTestConnectivity = async () => {
+    setIsTestingConn(true);
+    setConnTestResult(null);
+    try {
+      const res = await managementIpApi.checkConnectivity();
+      setConnTestResult({
+        reachable: res.reachable,
+        message: res.message || (res.reachable ? "Port 22 is reachable" : "Unreachable"),
+      });
+      if (res.reachable) {
+        success("Bastion Reachable", "TCP Port 22 connection successful.");
+      } else {
+        error("Port 22 Unreachable", res.message || "Connection failed.");
+      }
+    } catch (err: any) {
+      setConnTestResult({ reachable: false, message: err.message });
+      error("Connectivity Check Failed", err.message);
+    } finally {
+      setIsTestingConn(false);
+    }
+  };
+
+  const handlePreviewIpChanges = async () => {
+    setIsPreviewingIp(true);
+    setPreviewPlan(null);
+    try {
+      const res = await managementIpApi.previewSync(effectiveCidr);
+      setPreviewPlan(res);
+      success("Plan Generated", `Terraform plan preview ready for ${effectiveCidr}`);
+    } catch (err: any) {
+      error("Preview Failed", err.message);
+    } finally {
+      setIsPreviewingIp(false);
+    }
+  };
+
+  const handleApplyIpSync = async () => {
+    setIsApplyingIp(true);
+    try {
+      const res = await managementIpApi.applySync(effectiveCidr, accessMode, openConfirmed);
+      if (res.success) {
+        success("Management Access Updated", `Applied ${res.applied_cidr} via Terraform.`);
+        setPreviewPlan(null);
+        loadSettings();
+      } else {
+        error("Apply Failed", "Terraform reported non-zero exit code.");
+      }
+    } catch (err: any) {
+      error("Sync Failed", err.message);
+    } finally {
+      setIsApplyingIp(false);
+    }
+  };
 
   const handleSaveAutoStop = async () => {
     setIsUpdatingAutoStop(true);
@@ -84,7 +199,7 @@ export default function SettingsPage() {
     setIsGeneratingKey(true);
     try {
       const res = await settingsApi.ensureSshKey();
-      success("SSH Keypair Ready", res.message || "Ed25519 key verified at ~/.ssh/thedal_key.");
+      success("SSH Keypair Ready", res.message || "SSH key verified.");
       loadSettings();
     } catch (err: any) {
       error("SSH Key Check Failed", err.message);
@@ -103,19 +218,19 @@ export default function SettingsPage() {
     setIsSavingProfile(true);
     try {
       const res = await settingsApi.createProfile({
-        profile_name: profileName,
-        access_key_id: accessKey,
-        secret_access_key: secretKey,
+        profile_name: profileName.trim(),
+        access_key_id: accessKey.trim(),
+        secret_access_key: secretKey.trim(),
         region: profileRegion,
       });
-      success("AWS Profile Saved", res.message || `Profile '${profileName}' saved to ~/.aws/credentials.`);
+      success("AWS Profile Created", res.message || `Profile '${profileName}' saved.`);
+      setIsAddingProfile(false);
       setProfileName("");
       setAccessKey("");
       setSecretKey("");
-      setIsAddingProfile(false);
       loadSettings();
     } catch (err: any) {
-      error("Failed to Save Profile", err.message);
+      error("Failed to create profile", err.message);
     } finally {
       setIsSavingProfile(false);
     }
@@ -123,10 +238,10 @@ export default function SettingsPage() {
 
   if (loading && !config) {
     return (
-      <div className="space-y-6">
-        <CardSkeleton className="h-32" />
-        <CardSkeleton className="h-64" />
-        <CardSkeleton className="h-64" />
+      <div className="space-y-4">
+        <CardSkeleton className="h-14" />
+        <CardSkeleton className="h-48" />
+        <CardSkeleton className="h-48" />
       </div>
     );
   }
@@ -136,332 +251,539 @@ export default function SettingsPage() {
       <ErrorState
         title="Failed to Load Settings"
         message={errorMsg}
-        isOffline={true}
         onRetry={loadSettings}
       />
     );
   }
 
+  const isIpMismatch = ipStatus?.status === "MISMATCH";
+  const isIpReady = ipStatus?.status === "READY";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 text-xs font-sans">
       {/* Header */}
-      <div>
-        <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-primary" />
-          <span>Control Plane Settings & Credential Profiles</span>
-        </h2>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Local runtime configuration, AWS credential chain verification, SSH key lifecycle, and safety auto-stop.
-        </p>
-      </div>
-
-      {/* 1. Environment & Paths */}
-      <div className="rounded border border-border-subtle bg-card/60 p-5 space-y-4 shadow-sm">
-        <div className="flex items-center gap-2 border-b border-border-subtle pb-3">
-          <Folder className="w-4 h-4 text-primary" />
-          <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-            Environment & Filesystem Paths
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="text-[11px] text-slate-500">Application Version</div>
-            <div className="font-mono text-slate-200 font-medium">
-              {config?.app_name} {config?.app_version}
-            </div>
-          </div>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="text-[11px] text-slate-500">Default AWS Region</div>
-            <div className="font-mono text-slate-200 font-medium">
-              {config?.aws_region}
-            </div>
-          </div>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="text-[11px] text-slate-500">Terraform Root</div>
-            <div className="font-mono text-slate-300 text-[11px] truncate">
-              {config?.terraform_dir}
-            </div>
-          </div>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="text-[11px] text-slate-500">Ansible Root</div>
-            <div className="font-mono text-slate-300 text-[11px] truncate">
-              {config?.ansible_dir}
-            </div>
-          </div>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1 md:col-span-2">
-            <div className="text-[11px] text-slate-500">Operation Audit Logs Directory</div>
-            <div className="font-mono text-slate-300 text-[11px] truncate">
-              {config?.logs_dir}
-            </div>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold font-mono text-text-primary flex items-center gap-2">
+            <Settings className="w-4 h-4 text-primary" />
+            <span>CONTROL PLANE & AWS CONFIGURATION</span>
+          </h2>
+          <p className="text-[11px] text-text-muted mt-0.5">
+            Manage dynamic management access, AWS credentials, SSH keypairs, and cost-safety controls.
+          </p>
         </div>
       </div>
 
-      {/* 2. SSH Keypair Lifecycle */}
-      <div className="rounded border border-border-subtle bg-card/60 p-5 space-y-4 shadow-sm">
+      {/* 1. AWS MANAGEMENT ACCESS (Dynamic SSH Ingress Automation) */}
+      <div id="management-access" className="p-4 rounded-md bg-panel border border-border-subtle space-y-4">
         <div className="flex items-center justify-between border-b border-border-subtle pb-3">
           <div className="flex items-center gap-2">
-            <Key className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-              SSH Keypair Lifecycle
-            </h3>
+            <Wifi className="w-4 h-4 text-primary" />
+            <div>
+              <h3 className="text-xs font-bold font-mono text-text-primary uppercase tracking-wider">
+                AWS Management Access (Dynamic SSH CIDR)
+              </h3>
+              <p className="text-[10px] text-text-muted">
+                Terraform Security Group configuration for Bastion administrative ingress.
+              </p>
+            </div>
           </div>
-          <button
-            onClick={handleEnsureKey}
-            disabled={isGeneratingKey}
-            className="px-3 py-1.5 rounded bg-muted hover:bg-slate-700 text-xs font-medium text-slate-200 border border-border-default transition-colors"
+
+          <span
+            className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
+              isIpReady
+                ? "bg-primary/10 text-primary border-primary/30"
+                : isIpMismatch
+                ? "bg-accent-yellow/15 text-accent-yellow border-accent-yellow/40"
+                : "bg-accent-blue/10 text-accent-blue border-accent-blue/30"
+            }`}
           >
-            {isGeneratingKey ? "Verifying..." : "Verify / Generate Key"}
-          </button>
+            {isIpReady ? "● NETWORK AUTHORIZED" : isIpMismatch ? "⚠ IP MISMATCH" : "● STATUS ACTIVE"}
+          </span>
         </div>
 
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center justify-between p-3 rounded bg-surface/60 border border-border-subtle/50">
-            <div>
-              <div className="font-semibold text-slate-200">Local Ed25519 Private Key</div>
-              <div className="font-mono text-slate-400 text-[11px] mt-0.5">
-                {config?.ssh_key_path}
-              </div>
-            </div>
-            <StatusBadge
-              status={config?.ssh_info?.key_exists ? "VALID" : "UNCHECKED"}
-              size="sm"
-            />
+        {/* Current State Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-[11px]">
+          <div className="p-2.5 rounded bg-surface border border-border-subtle space-y-1">
+            <span className="text-[10px] text-text-muted uppercase">Detected Public IPv4</span>
+            <div className="text-text-primary font-bold">{ipStatus?.detected_ip || "Unknown"}</div>
           </div>
 
-          {config?.ssh_info?.public_key_preview && (
-            <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-              <div className="text-[11px] text-slate-500">Public Key Preview</div>
-              <pre className="font-mono text-[11px] text-slate-300 overflow-x-auto">
-                <code>{config.ssh_info.public_key_preview}</code>
-              </pre>
+          <div className="p-2.5 rounded bg-surface border border-border-subtle space-y-1">
+            <span className="text-[10px] text-text-muted uppercase">Terraform Allowed CIDR</span>
+            <div className="text-text-secondary font-bold">{ipStatus?.configured_cidr || "127.0.0.1/32"}</div>
+          </div>
+
+          <div className="p-2.5 rounded bg-surface border border-border-subtle space-y-1">
+            <span className="text-[10px] text-text-muted uppercase">Bastion TCP Port 22</span>
+            <div className={ipStatus?.port_22_reachable ? "text-primary font-bold" : "text-text-muted"}>
+              {ipStatus?.port_22_reachable ? "● Reachable" : "Unverified / Offline"}
+            </div>
+          </div>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="space-y-2">
+          <label className="text-[11px] font-mono font-bold text-text-muted uppercase">
+            Management Access Mode
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setAccessMode("automatic")}
+              className={`p-2.5 rounded border text-left transition-all ${
+                accessMode === "automatic"
+                  ? "bg-primary/12 border-primary text-primary font-semibold"
+                  : "bg-surface border-border-subtle text-text-secondary hover:border-border-default"
+              }`}
+            >
+              <div className="font-bold text-[11px]">Automatic Current IP</div>
+              <div className="text-[10px] text-text-muted mt-0.5">Auto-synchronize detected public IPv4</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAccessMode("custom")}
+              className={`p-2.5 rounded border text-left transition-all ${
+                accessMode === "custom"
+                  ? "bg-primary/12 border-primary text-primary font-semibold"
+                  : "bg-surface border-border-subtle text-text-secondary hover:border-border-default"
+              }`}
+            >
+              <div className="font-bold text-[11px]">Custom CIDR</div>
+              <div className="text-[10px] text-text-muted mt-0.5">Manually specify CIDR block</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAccessMode("open")}
+              className={`p-2.5 rounded border text-left transition-all ${
+                accessMode === "open"
+                  ? "bg-accent-red/15 border-accent-red text-accent-red font-semibold"
+                  : "bg-surface border-border-subtle text-text-secondary hover:border-border-default"
+              }`}
+            >
+              <div className="font-bold text-[11px]">Open Access</div>
+              <div className="text-[10px] text-text-muted mt-0.5">0.0.0.0/0 (Temporary Lab Use)</div>
+            </button>
+          </div>
+        </div>
+
+        {/* Mode Specific Inputs */}
+        {accessMode === "automatic" && (
+          <div className="space-y-2">
+            <label className="text-[10px] font-mono text-text-muted uppercase">
+              CIDR Suffix
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCidrSuffix("32")}
+                className={`px-3 py-1 rounded font-mono text-[11px] border transition-all ${
+                  cidrSuffix === "32"
+                    ? "bg-primary/20 border-primary text-primary font-bold"
+                    : "bg-surface border-border-subtle text-text-secondary hover:bg-panel"
+                }`}
+              >
+                /32 (Exact Host — Recommended)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCidrSuffix("24")}
+                className={`px-3 py-1 rounded font-mono text-[11px] border transition-all ${
+                  cidrSuffix === "24"
+                    ? "bg-accent-yellow/20 border-accent-yellow text-accent-yellow font-bold"
+                    : "bg-surface border-border-subtle text-text-secondary hover:bg-panel"
+                }`}
+              >
+                /24 (Class C Subnet / ISP Block)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {accessMode === "custom" && (
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-mono text-text-muted uppercase">
+              Custom IPv4 CIDR Block
+            </label>
+            <input
+              type="text"
+              value={customCidrInput}
+              onChange={(e) => setCustomCidrInput(e.target.value)}
+              placeholder="e.g. 203.0.113.10/32"
+              className="w-full max-w-md px-3 py-1.5 rounded bg-surface border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
+            />
+          </div>
+        )}
+
+        {accessMode === "open" && (
+          <div className="p-3 rounded bg-accent-red/10 border border-accent-red/30 space-y-2 text-[11px]">
+            <div className="font-bold text-accent-red flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4" />
+              <span>SECURITY RISK WARNING</span>
+            </div>
+            <p className="text-text-secondary leading-relaxed text-[10px]">
+              Authorizing 0.0.0.0/0 exposes port 22 on the Bastion jumpbox to the public internet. Use strictly for temporary lab troubleshooting.
+            </p>
+            <label className="flex items-center gap-2 pt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={openConfirmed}
+                onChange={(e) => setOpenConfirmed(e.target.checked)}
+                className="rounded border-border-subtle text-accent-red focus:ring-accent-red"
+              />
+              <span className="font-medium text-text-primary text-[10px]">
+                I understand the security risk.
+              </span>
+            </label>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border-subtle/60">
+          <div className="flex items-center gap-2 font-mono text-[11px]">
+            <span className="text-text-muted">Effective Target CIDR:</span>
+            <strong className="text-primary">{effectiveCidr}</strong>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleTestConnectivity}
+              disabled={isTestingConn}
+              className="soc-btn-secondary flex items-center gap-1.5"
+            >
+              <Radio className={`w-3.5 h-3.5 ${isTestingConn ? "animate-spin text-primary" : ""}`} />
+              <span>Test Connectivity</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePreviewIpChanges}
+              disabled={isPreviewingIp}
+              className="soc-btn-secondary flex items-center gap-1.5"
+            >
+              <FileCode className="w-3.5 h-3.5 text-accent-blue" />
+              <span>Preview Changes</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleApplyIpSync}
+              disabled={isApplyingIp || (accessMode === "open" && !openConfirmed)}
+              className="soc-btn-primary flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {isApplyingIp ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              <span>Apply CIDR Update</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Plan Preview Box */}
+        {previewPlan && (
+          <div className="p-3 rounded bg-[#071017] border border-border-subtle space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-primary font-bold">Terraform Plan Preview:</span>
+              <span className="text-text-muted">{previewPlan.proposed_cidr}</span>
+            </div>
+            <pre className="p-2 rounded bg-surface font-mono text-[10px] text-text-secondary max-h-48 overflow-y-auto whitespace-pre-wrap select-all scrollbar-thin">
+              {previewPlan.plan_output}
+            </pre>
+          </div>
+        )}
+
+        {/* Last Sync History */}
+        {ipHistory.length > 0 && (
+          <div className="pt-2 text-[10px] font-mono text-text-muted flex items-center gap-3">
+            <Clock className="w-3 h-3" />
+            <span>
+              Last Updated: <strong className="text-text-primary">{ipHistory[0].timestamp}</strong>
+            </span>
+            <span>
+              Previous CIDR: <strong className="text-text-secondary">{ipHistory[0].previous_cidr}</strong>
+            </span>
+          </div>
+        )}
+
+        {/* Collapsible Educational Guide */}
+        <div className="pt-2 border-t border-border-subtle/50">
+          <button
+            type="button"
+            onClick={() => setIsEducationOpen(!isEducationOpen)}
+            className="w-full flex items-center justify-between p-2 rounded bg-surface/60 hover:bg-surface border border-border-subtle text-left transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <HelpCircle className="w-3.5 h-3.5 text-accent-blue" />
+              <span className="font-mono font-bold text-[11px] text-text-primary">
+                WHY DID MY SSH ACCESS STOP WORKING?
+              </span>
+            </div>
+            {isEducationOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {isEducationOpen && (
+            <div className="p-3 mt-2 rounded bg-surface border border-border-subtle space-y-2 text-[11px] text-text-secondary leading-relaxed">
+              <p>
+                • <strong>Public IP changes:</strong> Residential ISPs and mobile hotspots assign dynamic IPv4 addresses that change periodically when restarting your router or switching networks.
+              </p>
+              <p>
+                • <strong>/32 CIDR restriction:</strong> A <code className="text-primary font-mono">/32</code> suffix restricts access to exactly one single IPv4 address. When your public IP changes, AWS Security Groups block incoming packets.
+              </p>
+              <p>
+                • <strong>Hypervisor stateful firewall:</strong> AWS Security Groups operate at the hypervisor network layer. The EC2 instance and OpenSSH daemon remain completely healthy while incoming connection attempts simply time out.
+              </p>
+              <p>
+                • <strong>Terraform single source of truth:</strong> Clicking <em>Apply CIDR Update</em> modifies the Terraform configuration state and updates AWS through controlled Terraform execution without creating unmanaged infrastructure drift.
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* 3. Safety Auto-Stop Configuration */}
-      <div className="rounded border border-border-subtle bg-card/60 p-5 space-y-4 shadow-sm">
+      {/* 2. AUTO-STOP IDLE PROTECTION */}
+      <div className="p-4 rounded-md bg-panel border border-border-subtle space-y-3">
         <div className="flex items-center justify-between border-b border-border-subtle pb-3">
           <div className="flex items-center gap-2">
-            <Power className="w-4 h-4 text-amber-400" />
-            <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-              Safety Auto-Stop Protection
-            </h3>
+            <Power className="w-4 h-4 text-accent-yellow" />
+            <div>
+              <h3 className="text-xs font-bold font-mono text-text-primary uppercase tracking-wider">
+                EC2 Auto-Stop & Cost Protection
+              </h3>
+              <p className="text-[10px] text-text-muted">
+                Background daemon that halts idle EC2 compute instances to minimize AWS charges.
+              </p>
+            </div>
           </div>
+
           <StatusBadge
-            status={config?.autostop?.enabled ? "ACTIVE" : "DISABLED"}
+            status={autoStopEnabled ? "ENABLED" : "DISABLED"}
+            variant="state"
             size="sm"
           />
         </div>
 
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Automatically stops EC2 instances when critical services remain unresponsive past the grace period. Halts compute charges while preserving EBS volumes.
-        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoStopEnabled}
+                onChange={(e) => setAutoStopEnabled(e.target.checked)}
+                className="rounded border-border-subtle text-primary focus:ring-primary"
+              />
+              <span className="font-medium text-text-primary text-xs">
+                Enable automatic idle instance stop
+              </span>
+            </label>
+            <p className="text-[11px] text-text-muted">
+              Safely stops running EC2 virtual machines when no activity is detected. Preserves EBS disk state and Ansible deployments.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2">
-          <label className="flex items-center gap-3 p-3 rounded bg-surface/60 border border-border-subtle cursor-pointer select-none">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-mono text-text-muted uppercase">
+              Idle Grace Period (Minutes)
+            </label>
             <input
-              type="checkbox"
-              checked={autoStopEnabled}
-              onChange={(e) => setAutoStopEnabled(e.target.checked)}
-              className="rounded border-border-default bg-surface text-primary focus:ring-primary h-4 w-4"
-            />
-            <div>
-              <div className="font-semibold text-slate-200">Enable Automatic EC2 Stop</div>
-              <div className="text-[11px] text-slate-400">Trigger safe stop during persistent downtime</div>
-            </div>
-          </label>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle space-y-1">
-            <div className="text-[11px] text-slate-400 font-medium">Grace Period (Minutes)</div>
-            <select
+              type="number"
+              min="5"
+              max="120"
               value={gracePeriod}
               onChange={(e) => setGracePeriod(Number(e.target.value))}
-              className="w-full px-3 py-1.5 rounded bg-card border border-border-default text-xs font-mono text-slate-200 focus:outline-none focus:border-primary"
-            >
-              <option value={15}>15 Minutes</option>
-              <option value={30}>30 Minutes</option>
-              <option value={60}>60 Minutes</option>
-            </select>
+              className="w-full max-w-xs px-3 py-1.5 rounded bg-surface border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
+            />
           </div>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="pt-2 flex justify-end">
           <button
+            type="button"
             onClick={handleSaveAutoStop}
             disabled={isUpdatingAutoStop}
-            className="px-3.5 py-1.5 rounded bg-primary hover:bg-primary-hover text-xs font-semibold text-white transition-colors"
+            className="soc-btn-primary flex items-center gap-1.5"
           >
-            {isUpdatingAutoStop ? "Saving..." : "Save Auto-Stop Policy"}
+            {isUpdatingAutoStop ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
+            <span>Save Auto-Stop Policy</span>
           </button>
         </div>
       </div>
 
-      {/* 4. AWS Profile Management */}
-      <div className="rounded border border-border-subtle bg-card/60 p-5 space-y-4 shadow-sm">
+      {/* 3. SSH KEYPAIR MANAGEMENT */}
+      <div className="p-4 rounded-md bg-panel border border-border-subtle space-y-3">
         <div className="flex items-center justify-between border-b border-border-subtle pb-3">
           <div className="flex items-center gap-2">
-            <Lock className="w-4 h-4 text-blue-400" />
-            <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-              AWS Credential Profiles
-            </h3>
+            <Key className="w-4 h-4 text-primary" />
+            <div>
+              <h3 className="text-xs font-bold font-mono text-text-primary uppercase tracking-wider">
+                Operator SSH Keypair
+              </h3>
+              <p className="text-[10px] text-text-muted">
+                Local private key used for Bastion authentication and jumpbox proxying.
+              </p>
+            </div>
           </div>
+
+          <StatusBadge
+            status={config?.ssh_info?.key_exists ? "PRESENT" : "MISSING"}
+            variant="state"
+            size="sm"
+          />
+        </div>
+
+        <div className="space-y-2 font-mono text-[11px]">
+          <div className="p-2.5 rounded bg-surface border border-border-subtle flex items-center justify-between">
+            <span className="text-text-muted">Key Location:</span>
+            <span className="text-text-primary">{config?.ssh_info?.key_path || "~/.ssh/socforge_key"}</span>
+          </div>
+
+          {config?.ssh_info?.public_key_preview && (
+            <div className="p-2.5 rounded bg-[#071017] border border-border-subtle space-y-1">
+              <span className="text-[10px] text-text-muted uppercase">Public Key Preview:</span>
+              <pre className="text-[10px] text-text-secondary overflow-x-auto whitespace-pre-wrap select-all">
+                {config.ssh_info.public_key_preview}
+              </pre>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-1 flex justify-end">
           <button
-            onClick={() => setIsAddingProfile(!isAddingProfile)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-muted hover:bg-slate-700 text-xs font-medium text-slate-200 border border-border-default transition-colors"
+            type="button"
+            onClick={handleEnsureKey}
+            disabled={isGeneratingKey}
+            className="soc-btn-secondary flex items-center gap-1.5"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{isAddingProfile ? "Cancel" : "Add Profile"}</span>
+            {isGeneratingKey ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+            <span>Verify / Ensure SSH Key</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 4. AWS PROFILES & CREDENTIALS */}
+      <div className="p-4 rounded-md bg-panel border border-border-subtle space-y-3">
+        <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-accent-blue" />
+            <div>
+              <h3 className="text-xs font-bold font-mono text-text-primary uppercase tracking-wider">
+                AWS Named Profiles
+              </h3>
+              <p className="text-[10px] text-text-muted">
+                Configured local AWS CLI profiles in <code className="font-mono text-text-primary">~/.aws/credentials</code>.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAddingProfile(!isAddingProfile)}
+            className="soc-btn-secondary flex items-center gap-1 text-[11px]"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Add Profile</span>
           </button>
         </div>
 
-        <div className="space-y-2 text-xs">
-          {config?.profiles?.map((prof) => (
-            <div
-              key={prof.name}
-              className="flex items-center justify-between p-3 rounded bg-surface/60 border border-border-subtle/50"
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-200 font-mono">[{prof.name}]</span>
-                  {prof.is_active && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">
-                      Active
-                    </span>
-                  )}
-                </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
-                  Region: <span className="font-mono text-slate-300">{prof.region}</span>
-                  {prof.account_id && (
-                    <span> • Account: <span className="font-mono text-slate-300">{prof.account_id}</span></span>
-                  )}
-                </div>
-              </div>
-              <StatusBadge status={prof.status} size="sm" />
+        {/* Profile List */}
+        <div className="space-y-1.5 font-mono text-[11px]">
+          {config?.profiles?.length === 0 ? (
+            <div className="p-4 text-center text-text-muted italic">
+              No named AWS profiles found.
             </div>
-          ))}
+          ) : (
+            config?.profiles?.map((p) => (
+              <div
+                key={p.name}
+                className="flex items-center justify-between p-2.5 rounded bg-surface border border-border-subtle"
+              >
+                <div>
+                  <div className="font-bold text-text-primary">{p.name}</div>
+                  <div className="text-[10px] text-text-muted">
+                    Account ID: {p.account_id || "Active Profile"} • Region: {p.region || "ap-south-1"}
+                  </div>
+                </div>
+                <StatusBadge status={p.status || "VALID"} size="sm" />
+              </div>
+            ))
+          )}
         </div>
 
-        {/* Add Profile Drawer */}
+        {/* Add Profile Form */}
         {isAddingProfile && (
-          <form
-            onSubmit={handleCreateProfile}
-            className="p-4 rounded bg-surface border border-border-default space-y-3 animate-in fade-in duration-150"
-          >
-            <div className="text-xs font-semibold text-slate-200">
-              Configure New AWS Profile (~/.aws/credentials)
+          <form onSubmit={handleCreateProfile} className="p-3.5 rounded bg-surface border border-border-subtle space-y-3">
+            <div className="text-xs font-bold font-mono text-text-primary">
+              Register New AWS Profile
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Profile Name</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-text-muted uppercase">Profile Name</label>
                 <input
                   type="text"
+                  required
+                  placeholder="e.g. socforge-dev"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  placeholder="default"
-                  required
-                  className="w-full px-3 py-1.5 rounded bg-card border border-border-subtle focus:border-primary focus:outline-none text-slate-100 text-xs font-mono"
+                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">AWS Region</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-text-muted uppercase">Default Region</label>
                 <input
                   type="text"
+                  required
                   value={profileRegion}
                   onChange={(e) => setProfileRegion(e.target.value)}
-                  placeholder="ap-south-1"
-                  required
-                  className="w-full px-3 py-1.5 rounded bg-card border border-border-subtle focus:border-primary focus:outline-none text-slate-100 text-xs font-mono"
+                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">AWS Access Key ID</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-text-muted uppercase">AWS Access Key ID</label>
                 <input
                   type="text"
+                  required
+                  placeholder="AKIA..."
                   value={accessKey}
                   onChange={(e) => setAccessKey(e.target.value)}
-                  placeholder="AKIA..."
-                  required
-                  className="w-full px-3 py-1.5 rounded bg-card border border-border-subtle focus:border-primary focus:outline-none text-slate-100 text-xs font-mono"
+                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] text-slate-400 mb-1">AWS Secret Access Key</label>
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-text-muted uppercase">AWS Secret Access Key</label>
                 <input
                   type="password"
+                  required
+                  placeholder="••••••••••••••••••••"
                   value={secretKey}
                   onChange={(e) => setSecretKey(e.target.value)}
-                  placeholder="••••••••••••••••••••"
-                  required
-                  className="w-full px-3 py-1.5 rounded bg-card border border-border-subtle focus:border-primary focus:outline-none text-slate-100 text-xs font-mono"
+                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-[11px] text-slate-500">
-                Secrets are written to ~/.aws/credentials and never stored in databases.
-              </span>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsAddingProfile(false)}
+                className="soc-btn-secondary"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 disabled={isSavingProfile}
-                className="px-4 py-1.5 rounded bg-primary hover:bg-primary-hover text-xs font-semibold text-white transition-colors"
+                className="soc-btn-primary flex items-center gap-1.5"
               >
-                {isSavingProfile ? "Saving..." : "Validate & Save"}
+                {isSavingProfile ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
+                <span>Save Profile</span>
               </button>
             </div>
           </form>
         )}
-      </div>
-
-      {/* 5. Security Guardrails & Safety Boundaries */}
-      <div className="rounded border border-border-subtle bg-card/60 p-5 space-y-3 shadow-sm">
-        <div className="flex items-center gap-2 border-b border-border-subtle pb-3">
-          <Shield className="w-4 h-4 text-primary" />
-          <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
-            Active Security Guardrails
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="font-semibold text-slate-200">Localhost Default Binding</div>
-            <p className="text-[11px] text-slate-400">
-              FastAPI and Next.js bind strictly to <code className="text-slate-300 font-mono">127.0.0.1</code> to prevent network exposure.
-            </p>
-          </div>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="font-semibold text-slate-200">Allowlisted Operations Only</div>
-            <p className="text-[11px] text-slate-400">
-              Arbitrary command execution is impossible. Only validated Terraform, Ansible, and health check actions execute.
-            </p>
-          </div>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="font-semibold text-slate-200">Double-Confirmed Destroy</div>
-            <p className="text-[11px] text-slate-400">
-              Infrastructure teardown requires an explicit acknowledgement checkbox and typed phrase confirmation: <code className="text-rose-400 font-mono">DESTROY THEDAL</code>.
-            </p>
-          </div>
-
-          <div className="p-3 rounded bg-surface/60 border border-border-subtle/50 space-y-1">
-            <div className="font-semibold text-slate-200">Zero Secret Leaks</div>
-            <p className="text-[11px] text-slate-400">
-              AWS secret access keys and private SSH keys are never written to SQLite, browser localStorage, or operational log outputs.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

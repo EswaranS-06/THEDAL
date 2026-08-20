@@ -109,3 +109,35 @@ class AnswerSubmit(BaseModel):
 
 class StartRequiredHostsRequest(BaseModel):
     host_keys: List[str]
+
+
+class ManagementIPStatus(BaseModel):
+    detected_ip: Optional[str] = None
+    configured_cidr: str
+    effective_cidr: str
+    status: str  # READY, MISMATCH, DRIFT, OPEN_ACCESS, UNKNOWN
+    is_match: bool
+    has_drift: bool
+    live_bastion_ip: Optional[str] = None
+    port_22_reachable: Optional[bool] = None
+    access_mode: str = "automatic"  # automatic, custom, open
+    last_sync_timestamp: Optional[str] = None
+    previous_ip: Optional[str] = None
+    aws_allowed_cidrs: List[str] = []
+    message: str
+
+
+class ManagementIPPreviewRequest(BaseModel):
+    cidr: str
+
+
+class ManagementIPApplyRequest(BaseModel):
+    cidr: str
+    mode: Optional[str] = "automatic"
+    confirmation: bool = True
+    understand_open_risk: Optional[bool] = False
+
+
+class ConnectivityCheckRequest(BaseModel):
+    host: Optional[str] = None
+    port: Optional[int] = 22
