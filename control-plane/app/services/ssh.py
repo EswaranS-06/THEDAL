@@ -90,22 +90,28 @@ class SSHService:
                     "url": "https://localhost:8443"
                 }
 
-        outputs = TerraformService.get_outputs()
-        bastion_ip = outputs.get("bastion_public_ip")
-        if not bastion_ip:
-            # Fall back to AWS EC2 instance lookup
-            instances = AWSService.get_instances()
-            bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip), None)
-            if bastion_node and bastion_node.public_ip:
-                bastion_ip = bastion_node.public_ip
+        # Always prioritize live EC2 instance public IP over potentially stale Terraform outputs
+        instances = AWSService.get_instances()
+        bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip and i.public_ip != "None"), None)
+        if bastion_node and bastion_node.public_ip:
+            bastion_ip = bastion_node.public_ip
+        else:
+            outputs = TerraformService.get_outputs()
+            bastion_ip = outputs.get("bastion_public_ip")
 
-        if not bastion_ip:
+        if not bastion_ip or bastion_ip == "<BASTION_PUBLIC_IP>":
             return {
                 "success": False,
                 "error": "Bastion host is not running or public IP is not available. Please ensure infrastructure is deployed and running."
             }
 
-        wazuh_ip = outputs.get("wazuh_private_ip", "10.10.10.33")
+        wazuh_node = next((i for i in instances if "wazuh" in i.name.lower() and i.private_ip and i.private_ip != "None"), None)
+        if wazuh_node and wazuh_node.private_ip:
+            wazuh_ip = wazuh_node.private_ip
+        else:
+            outputs = TerraformService.get_outputs()
+            wazuh_ip = outputs.get("wazuh_private_ip", "10.10.10.33")
+
         key_path = settings.SSH_KEY_PATH
         if not key_path.exists():
             return {

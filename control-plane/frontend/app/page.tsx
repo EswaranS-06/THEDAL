@@ -132,8 +132,10 @@ export default function OverviewPage() {
     try {
       setIsStartingTunnel(true);
       const res = await operationsApi.startWazuhTunnel();
-      success("Wazuh Tunnel Active", "SSH port forward established on 127.0.0.1:8443");
-      window.open("https://127.0.0.1:8443", "_blank");
+      const host = typeof window !== "undefined" ? window.location.hostname : "localhost";
+      const targetUrl = `https://${host}:8443`;
+      success("Wazuh Tunnel Active", `SSH port forward active on 0.0.0.0:8443 (${targetUrl})`);
+      window.open(targetUrl, "_blank");
     } catch (err: any) {
       error("Tunnel Error", err.message || "Failed to establish tunnel.");
     } finally {
