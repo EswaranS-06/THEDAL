@@ -17,6 +17,9 @@ FRONTEND_PORT="3000"
 BACKEND_HOST="0.0.0.0"
 FRONTEND_HOST="0.0.0.0"
 
+# Silence legacy Node.js transitive dependency warnings
+export NODE_OPTIONS="${NODE_OPTIONS:-} --no-deprecation"
+
 echo "======================================================================"
 echo "  THEDAL — Control Plane End-to-End Environment Starter"
 echo "======================================================================"
