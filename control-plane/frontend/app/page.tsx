@@ -400,12 +400,12 @@ export default function OverviewPage() {
           <div className="space-y-2 text-xs">
             {healthSummary?.checks?.slice(0, 5).map((chk) => (
               <div
-                key={chk.name}
+                key={chk.component}
                 className="flex items-center justify-between p-2 rounded bg-surface/60 border border-border-subtle/50"
               >
                 <div>
-                  <span className="font-medium text-slate-200">{chk.name}</span>
-                  <span className="text-slate-400 ml-2 text-[11px]">{chk.details}</span>
+                  <span className="font-medium text-slate-200">{chk.component}</span>
+                  <span className="text-slate-400 ml-2 text-[11px]">{chk.message}</span>
                 </div>
                 <StatusBadge status={chk.status} size="sm" />
               </div>

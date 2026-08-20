@@ -79,15 +79,24 @@ export default function HealthPage() {
   }
 
   const checks = summary?.checks || [];
-  const categories = ["ALL", ...Array.from(new Set(checks.map((c) => c.category)))];
+  const categories = ["ALL", ...Array.from(new Set(checks.map((c) => {
+    if (c.component.startsWith("Node:")) return "COMPUTE";
+    if (c.component.includes("AWS") || c.component.includes("Terraform")) return "INFRASTRUCTURE";
+    return "SYSTEM";
+  })))];
 
   const filteredChecks =
     filterCategory === "ALL"
       ? checks
-      : checks.filter((c) => c.category === filterCategory);
+      : checks.filter((c) => {
+          let cat = "SYSTEM";
+          if (c.component.startsWith("Node:")) cat = "COMPUTE";
+          else if (c.component.includes("AWS") || c.component.includes("Terraform")) cat = "INFRASTRUCTURE";
+          return cat === filterCategory;
+        });
 
   const passCount = checks.filter((c) => c.status === "PASS").length;
-  const warnCount = checks.filter((c) => c.status === "WARNING").length;
+  const warnCount = checks.filter((c) => c.status === "WARNING" || c.status === "DEGRADED").length;
   const failCount = checks.filter((c) => c.status === "FAIL").length;
 
   return (
@@ -158,35 +167,41 @@ export default function HealthPage() {
 
       {/* Diagnostic Checks List */}
       <div className="space-y-3">
-        {filteredChecks.map((chk) => (
-          <div
-            key={chk.name}
-            className="p-4 rounded border border-border-subtle bg-card/60 space-y-2 hover:border-border-default transition-colors shadow-sm"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-semibold text-slate-200">{chk.name}</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted text-slate-400 border border-border-subtle">
-                  {chk.category}
-                </span>
+        {filteredChecks.map((chk) => {
+          let cat = "SYSTEM";
+          if (chk.component.startsWith("Node:")) cat = "COMPUTE";
+          else if (chk.component.includes("AWS") || chk.component.includes("Terraform")) cat = "INFRASTRUCTURE";
+          
+          return (
+            <div
+              key={chk.component}
+              className="p-4 rounded border border-border-subtle bg-card/60 space-y-2 hover:border-border-default transition-colors shadow-sm"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs font-semibold text-slate-200">{chk.component}</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted text-slate-400 border border-border-subtle">
+                    {cat}
+                  </span>
+                </div>
+                <StatusBadge status={chk.status} size="sm" />
               </div>
-              <StatusBadge status={chk.status} size="sm" />
-            </div>
 
-            <div className="text-xs text-slate-300 leading-relaxed font-mono text-[11px] bg-surface/80 p-2.5 rounded border border-border-subtle/50">
-              {chk.details}
-            </div>
-
-            {chk.remediation && chk.status !== "PASS" && (
-              <div className="text-xs text-amber-300/90 flex items-start gap-1.5 pt-1">
-                <Wrench className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <span>
-                  <strong>Remediation:</strong> {chk.remediation}
-                </span>
+              <div className="text-xs text-slate-300 leading-relaxed font-mono text-[11px] bg-surface/80 p-2.5 rounded border border-border-subtle/50">
+                {chk.message}
               </div>
-            )}
-          </div>
-        ))}
+
+              {chk.details && chk.status !== "PASS" && (
+                <div className="text-xs text-amber-300/90 flex items-start gap-1.5 pt-1">
+                  <Wrench className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Details:</strong> {chk.details}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
