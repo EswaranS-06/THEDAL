@@ -94,11 +94,17 @@ else
     echo "[-] Warning: Backend did not respond within 15 seconds. Proceeding anyway..."
 fi
 
-# 2. Start Next.js Frontend
-echo "[*] Starting Next.js Frontend on http://${FRONTEND_HOST}:${FRONTEND_PORT}..."
+# 2. Build and Start Next.js Production Frontend
+echo "[*] Building Next.js Frontend for production..."
 (
     cd "${FRONTEND_DIR}"
-    exec npm run dev -- -H "${FRONTEND_HOST}"
+    npm run build
+)
+
+echo "[*] Starting Next.js Production Server on http://${FRONTEND_HOST}:${FRONTEND_PORT}..."
+(
+    cd "${FRONTEND_DIR}"
+    exec npm start -- -H "${FRONTEND_HOST}" -p "${FRONTEND_PORT}"
 ) &
 FRONTEND_PID=$!
 
