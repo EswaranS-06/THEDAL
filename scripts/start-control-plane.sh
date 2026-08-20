@@ -14,8 +14,8 @@ FRONTEND_DIR="${PROJECT_ROOT}/control-plane/frontend"
 
 BACKEND_PORT="8080"
 FRONTEND_PORT="3000"
-BACKEND_HOST="127.0.0.1"
-FRONTEND_HOST="127.0.0.1"
+BACKEND_HOST="0.0.0.0"
+FRONTEND_HOST="0.0.0.0"
 
 echo "======================================================================"
 echo "  THEDAL — Control Plane End-to-End Environment Starter"
@@ -98,7 +98,7 @@ fi
 echo "[*] Starting Next.js Frontend on http://${FRONTEND_HOST}:${FRONTEND_PORT}..."
 (
     cd "${FRONTEND_DIR}"
-    exec npm run dev
+    exec npm run dev -- -H "${FRONTEND_HOST}"
 ) &
 FRONTEND_PID=$!
 

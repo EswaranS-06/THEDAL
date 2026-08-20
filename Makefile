@@ -146,22 +146,29 @@ web-attack-check: ## Check health and scenario status of Web Security Testing Su
 web-test: ## Run controlled Web Security Testing scenario (Usage: make web-test ARGS="--list")
 	@./scripts/run-web-test.sh $(ARGS)
 
-control-plane: ## Start local THEDAL Control Plane (Backend + Frontend)
+control-plane: ## Start full E2E control plane (Frontend + Backend)
+	@echo "Starting THEDAL Control Plane (Backend + Frontend)..."
+	@chmod +x scripts/start-control-plane.sh
 	@./scripts/start-control-plane.sh
 
-control-plane-backend: ## Start local FastAPI backend server on 127.0.0.1:8080
-	@cd control-plane && /home/rex/.local/bin/uv run uvicorn app.main:app --host 127.0.0.1 --port 8080
+control-plane-backend: ## Start local FastAPI backend server on 0.0.0.0:8080
+	@echo "Starting FastAPI backend..."
+	@cd control-plane && /home/rex/.local/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port 8080
 
-control-plane-frontend: ## Start Next.js frontend dev server on 127.0.0.1:3000
-	@cd control-plane/frontend && npm run dev
+control-plane-frontend: ## Start Next.js frontend dev server on 0.0.0.0:3000
+	@echo "Starting Next.js frontend (dev)..."
+	@cd control-plane/frontend && npm run dev -- -H 0.0.0.0
 
-control-plane-frontend-build: ## Build Next.js frontend production bundle
+control-plane-frontend-build: ## Build Next.js frontend
+	@echo "Building Next.js frontend..."
 	@cd control-plane/frontend && npm run build
 
-control-plane-frontend-start: ## Start Next.js frontend production server on 127.0.0.1:3000
-	@cd control-plane/frontend && npm run start
+control-plane-frontend-start: ## Start Next.js frontend production server on 0.0.0.0:3000
+	@echo "Starting Next.js frontend (production)..."
+	@cd control-plane/frontend && npm start -- -H 0.0.0.0
 
 test-control-plane: ## Run pytest test suite on control-plane
-	@cd control-plane && /home/rex/.local/bin/uv run pytest tests/
+	@cd control-plane && /home/rex/.local/bin/uv run pytest tests/ -v
 
-
+test-frontend-e2e: ## Run Playwright E2E tests for Next.js frontend
+	@cd control-plane/frontend && npm run test:e2e
