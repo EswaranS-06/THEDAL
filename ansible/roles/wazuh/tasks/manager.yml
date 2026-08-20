@@ -98,3 +98,16 @@
     - web-targets
     - attack-hosts
   changed_when: false
+
+- name: Ensure Wazuh API user password matches centralized credentials
+  ansible.builtin.shell: |
+    if /var/ossec/framework/python/bin/python3 /var/ossec/api/scripts/auth_user.py -u "{{ wazuh_api_username }}" -P '{{ wazuh_api_password }}' 2>/dev/null; then
+      echo "API user password updated"
+    else
+      /var/ossec/framework/python/bin/python3 /var/ossec/api/scripts/auth_user.py -a "{{ wazuh_api_username }}" '{{ wazuh_api_password }}' administrator
+      echo "API user created"
+    fi
+  no_log: true
+  register: api_user_sync_result
+  changed_when: "'updated' in api_user_sync_result.stdout or 'created' in api_user_sync_result.stdout"
+  notify: Restart wazuh-manager

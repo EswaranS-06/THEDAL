@@ -13,11 +13,13 @@ import {
   Wrench,
 } from "lucide-react";
 import { healthApi } from "../../lib/api/health";
-import { HealthCheckSummary, HealthCheckItem } from "../../lib/types/api";
+import { wazuhApi } from "../../lib/api/wazuh";
+import { HealthCheckSummary, HealthCheckItem, WazuhDetailedHealth } from "../../lib/types/api";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { CardSkeleton } from "../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { useToast } from "../../components/ui/Toast";
+import { WazuhHealthCard } from "../../components/health/WazuhHealthCard";
 
 export default function HealthPage() {
   const { success, error } = useToast();
@@ -25,6 +27,7 @@ export default function HealthPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [summary, setSummary] = useState<HealthCheckSummary | null>(null);
+  const [wazuhHealth, setWazuhHealth] = useState<WazuhDetailedHealth | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
 
@@ -32,8 +35,12 @@ export default function HealthPage() {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const res = await healthApi.getSummary();
+      const [res, wzRes] = await Promise.all([
+        healthApi.getSummary(),
+        wazuhApi.getDetailedHealth().catch(() => null),
+      ]);
       setSummary(res);
+      if (wzRes) setWazuhHealth(wzRes);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to load health summary.");
     } finally {
@@ -147,6 +154,15 @@ export default function HealthPage() {
           <div className="text-lg font-bold font-mono text-rose-300">{failCount}</div>
         </div>
       </div>
+
+      {/* Wazuh SIEM Component Health & Credential Synchronization Card */}
+      {wazuhHealth && (
+        <WazuhHealthCard
+          health={wazuhHealth}
+          onRefresh={loadHealthData}
+          isLoading={loading}
+        />
+      )}
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle pb-3">

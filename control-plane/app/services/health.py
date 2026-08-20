@@ -1,5 +1,8 @@
 """
 THEDAL Control Plane — Health Check & Diagnostics Service
+=========================================================
+Executes unified health diagnostics across infrastructure, networking,
+EC2 compute fleet, Wazuh SIEM stack, and API credential synchronization.
 """
 
 from typing import List
@@ -9,6 +12,7 @@ from app.config import settings
 from app.models import HealthCheckItem, HealthCheckSummary
 from app.services.terraform import TerraformService
 from app.services.aws import AWSService
+from app.services.wazuh_credentials import WazuhCredentialService
 
 
 class HealthService:
@@ -77,6 +81,45 @@ class HealthService:
             status="PASS" if inv_exists else "WARNING",
             message="Ansible hosts.ini generated" if inv_exists else "Inventory file missing. Run 'Generate Inventory'."
         ))
+
+        # 6. Check Wazuh SIEM Credentials & Service Sync
+        wazuh_node = next((i for i in instances if "wazuh" in i.name.lower() or "siem" in i.name.lower()), None)
+        if wazuh_node and wazuh_node.state == "running":
+            try:
+                wazuh_diag = WazuhCredentialService.get_wazuh_detailed_health()
+                comps = wazuh_diag.get("components", {})
+
+                # Wazuh Manager
+                mgr_stat = comps.get("wazuh_manager", {}).get("status", "UNKNOWN")
+                checks.append(HealthCheckItem(
+                    component="Wazuh Manager Service",
+                    status="PASS" if mgr_stat == "HEALTHY" else "FAIL" if mgr_stat == "OFFLINE" else "WARNING",
+                    message=comps.get("wazuh_manager", {}).get("message", "Status checked")
+                ))
+
+                # Wazuh Dashboard
+                dash_stat = comps.get("wazuh_dashboard", {}).get("status", "UNKNOWN")
+                checks.append(HealthCheckItem(
+                    component="Wazuh Dashboard Service",
+                    status="PASS" if dash_stat == "HEALTHY" else "FAIL" if dash_stat == "OFFLINE" else "WARNING",
+                    message=comps.get("wazuh_dashboard", {}).get("message", "Status checked")
+                ))
+
+                # Wazuh API Auth & Dashboard Sync
+                auth_stat = comps.get("api_authentication", {}).get("status", "UNKNOWN")
+                sync_stat = comps.get("dashboard_api_sync", {}).get("status", "UNKNOWN")
+
+                checks.append(HealthCheckItem(
+                    component="Wazuh API & Dashboard Sync",
+                    status="PASS" if auth_stat == "VERIFIED" and sync_stat == "VERIFIED" else "FAIL" if auth_stat == "AUTHENTICATION_FAILED" or sync_stat == "MISMATCH" else "WARNING",
+                    message="Credentials verified & synchronized" if auth_stat == "VERIFIED" and sync_stat == "VERIFIED" else "Credential mismatch detected (401 Unauthorized)" if auth_stat == "AUTHENTICATION_FAILED" or sync_stat == "MISMATCH" else "Wazuh API check pending"
+                ))
+            except Exception as e:
+                checks.append(HealthCheckItem(
+                    component="Wazuh SIEM Health",
+                    status="WARNING",
+                    message=f"Could not complete Wazuh health probe: {str(e)}"
+                ))
 
         # Calculate overall status
         statuses = [c.status for c in checks]

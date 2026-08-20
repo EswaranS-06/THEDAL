@@ -29,6 +29,7 @@ from app.services.autostop import SafetyService
 from app.services.management_ip import ManagementIPService
 from app.services.runtime import RuntimeService
 from app.services.simulations import SimulationService
+from app.services.wazuh_credentials import WazuhCredentialService
 
 
 app = FastAPI(
@@ -821,4 +822,64 @@ async def api_simulations_history(limit: int = Query(10, ge=1, le=50)):
     return {
         "history": SimulationService.get_simulation_history(limit=limit)
     }
+
+
+# ==============================================================================
+# 6. Wazuh SIEM Health, Credential Synchronization & Repair Endpoints
+# ==============================================================================
+
+@app.get("/api/wazuh/health")
+async def api_wazuh_health():
+    """Returns detailed Wazuh component health and credential synchronization status."""
+    try:
+        return WazuhCredentialService.get_wazuh_detailed_health()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Wazuh health probe failed: {str(e)}"
+        )
+
+
+@app.post("/api/wazuh/verify-auth")
+async def api_wazuh_verify_auth():
+    """Explicitly tests authentication against the Wazuh API using centralized credentials."""
+    try:
+        return WazuhCredentialService.verify_api_authentication()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Wazuh authentication verification failed: {str(e)}"
+        )
+
+
+@app.post("/api/wazuh/repair")
+async def api_wazuh_repair():
+    """Repairs and synchronizes Wazuh API user password and Dashboard wazuh.yml."""
+    try:
+        return WazuhCredentialService.repair_wazuh_configuration()
+    except SecurityValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except OperationLockError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Wazuh configuration repair failed: {str(e)}"
+        )
+
+
+@app.post("/api/wazuh/rotate-credentials")
+async def api_wazuh_rotate_credentials():
+    """Atomically rotates Wazuh API credentials across Manager and Dashboard."""
+    try:
+        return WazuhCredentialService.rotate_api_credentials()
+    except SecurityValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except OperationLockError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Wazuh credential rotation failed: {str(e)}"
+        )
 

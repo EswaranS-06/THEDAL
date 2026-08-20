@@ -413,3 +413,30 @@ export interface SimulationHistoryItem {
   log_file?: string;
   runtime_mode: string;
 }
+
+export interface WazuhComponentHealth {
+  status: "HEALTHY" | "REACHABLE" | "VERIFIED" | "DEGRADED" | "AUTHENTICATION_FAILED" | "MISMATCH" | "OFFLINE" | "UNKNOWN";
+  message: string;
+}
+
+export interface WazuhDetailedHealth {
+  overall_status: "HEALTHY" | "AUTHENTICATION_FAILED" | "DEGRADED" | "OFFLINE" | "UNAVAILABLE";
+  components: {
+    wazuh_manager: WazuhComponentHealth;
+    wazuh_indexer: WazuhComponentHealth;
+    wazuh_dashboard: WazuhComponentHealth;
+    api_connectivity: WazuhComponentHealth;
+    api_authentication: WazuhComponentHealth;
+    dashboard_api_sync: WazuhComponentHealth;
+  };
+  credentials_configured: boolean;
+  node_ip?: string | null;
+}
+
+export interface WazuhRepairResult {
+  success: boolean;
+  message: string;
+  auth_status?: string;
+  http_status?: number;
+  details?: string;
+}

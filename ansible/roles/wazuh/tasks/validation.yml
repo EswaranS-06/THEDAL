@@ -24,41 +24,57 @@
     status_code: [200, 201]
     timeout: 15
   register: indexer_health
-  ignore_errors: true
 
-- name: Verify Wazuh Manager REST API endpoint
+- name: Verify Wazuh API authentication with synchronized centralized credentials
   ansible.builtin.uri:
-    url: "https://127.0.0.1:{{ wazuh_api_port }}"
-    method: GET
+    url: "https://127.0.0.1:{{ wazuh_api_port }}/security/user/authenticate"
+    method: POST
     user: "{{ wazuh_api_username }}"
     password: "{{ wazuh_api_password }}"
+    force_basic_auth: true
     validate_certs: false
-    status_code: [200, 401]
+    status_code: 200
     timeout: 15
-  register: manager_api_health
-  ignore_errors: true
+  no_log: true
+  register: manager_api_auth
+  until: manager_api_auth.status == 200
+  retries: 5
+  delay: 3
+  failed_when: manager_api_auth.status != 200
+
+- name: Validate Dashboard wazuh.yml configuration exists with secure permissions
+  ansible.builtin.stat:
+    path: /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+  register: dashboard_wazuh_stat
+  failed_when: not dashboard_wazuh_stat.stat.exists or dashboard_wazuh_stat.stat.pw_name != 'wazuh-dashboard'
 
 - name: Verify Wazuh Dashboard HTTPS web interface
   ansible.builtin.uri:
     url: "https://127.0.0.1:{{ wazuh_dashboard_port }}"
     method: GET
     validate_certs: false
-    status_code: [200, 302, 401]
+    status_code: [200, 302]
     timeout: 15
   register: dashboard_health
-  ignore_errors: true
+
+- name: Check recent Wazuh Dashboard logs for authentication failures (401)
+  ansible.builtin.shell: |
+    journalctl -u wazuh-dashboard -n 50 --no-pager | grep -iE '401|unauthorized|invalid credentials' | tail -n 5 || true
+  register: dashboard_auth_logs
+  changed_when: false
+  failed_when: dashboard_auth_logs.stdout != ''
 
 - name: Display Wazuh SIEM Deployment Summary
   ansible.builtin.debug:
     msg:
       - "================================================================="
-      - "             SOCForge Wazuh SIEM Deployment Complete              "
+      - "              THEDAL Wazuh SIEM Deployment Complete              "
       - "================================================================="
       - "Wazuh Version     : {{ wazuh_version }}"
       - "Wazuh Host        : {{ inventory_hostname }} ({{ ansible_default_ipv4.address | default(ansible_host) }})"
-      - "Wazuh Indexer     : Port {{ wazuh_indexer_port }} (Status: Active)"
+      - "Wazuh Indexer     : Port {{ wazuh_indexer_port }} (Status: Active & Healthy)"
       - "Wazuh Manager     : Port {{ wazuh_agent_event_port }} / {{ wazuh_agent_auth_port }} (Status: Active)"
-      - "Wazuh API         : Port {{ wazuh_api_port }} (Status: Active)"
-      - "Wazuh Dashboard   : Port {{ wazuh_dashboard_port }} (Status: Active)"
-      - "Dashboard Access  : Use './scripts/wazuh-tunnel.sh' to access via https://localhost:8443"
+      - "Wazuh API         : Port {{ wazuh_api_port }} (Status: Active, Auth Verified [HTTP 200])"
+      - "Wazuh Dashboard   : Port {{ wazuh_dashboard_port }} (Status: Active & Synchronized)"
+      - "Dashboard Access  : Use 'make tunnel' to access via https://localhost:8443"
       - "================================================================="

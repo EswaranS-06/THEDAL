@@ -1,7 +1,7 @@
 ---
 # Defaults for role: wazuh
 # ==============================================================================
-# SOCForge — Wazuh SIEM Role Defaults (Phases 6 & 12)
+# THEDAL — Wazuh SIEM Role Defaults (Phases 6 & 12)
 # ==============================================================================
 
 # Wazuh Version Specification
@@ -9,8 +9,8 @@ wazuh_version: "4.14.7"
 wazuh_major_version: "4.x"
 
 # Node & Cluster Configuration
-wazuh_node_name: "socforge-wazuh"
-wazuh_cluster_name: "socforge-cluster"
+wazuh_node_name: "thedal-wazuh"
+wazuh_cluster_name: "thedal-cluster"
 wazuh_node_ip: "127.0.0.1"
 
 # Service Ports
@@ -39,11 +39,12 @@ wazuh_indexer_jvm_max_heap: "1g"
 wazuh_dashboard_https: true
 wazuh_dashboard_app_timeout: 30000
 
-# Administrative Credentials
+# Administrative Credentials (Single Source of Truth)
 wazuh_admin_username: "admin"
-wazuh_admin_password: "{{ lookup('env', 'WAZUH_ADMIN_PASSWORD') | default('SOCForge_Adm1n_Lab2026!', true) }}"
-wazuh_api_username: "wazuh-wui"
-wazuh_api_password: "{{ lookup('env', 'WAZUH_API_PASSWORD') | default('SOCForgeWuiPass2026!', true) }}"
+wazuh_admin_password: "{{ thedal_wazuh_admin_password | default(lookup('env', 'THEDAL_WAZUH_ADMIN_PASSWORD') | default(lookup('env', 'WAZUH_ADMIN_PASSWORD') | default('THEDAL_Adm1n_Lab2026!', true), true), true) }}"
+
+wazuh_api_username: "{{ thedal_wazuh_api_user | default(lookup('env', 'THEDAL_WAZUH_API_USER') | default(lookup('env', 'WAZUH_API_USER') | default('wazuh-wui', true), true), true) }}"
+wazuh_api_password: "{{ thedal_wazuh_api_password | default(lookup('env', 'THEDAL_WAZUH_API_PASSWORD') | default(lookup('env', 'WAZUH_API_PASSWORD') | default('THEDAL_Wui_Lab2026!', true), true), true) }}"
 
 # ==============================================================================
 # Phase 12: Index State Management (ISM) & Retention Configuration
@@ -55,7 +56,7 @@ socforge_archive_retention_days: 3
 socforge_ism_rollover_size_gb: 10
 socforge_ism_rollover_age_days: 7
 
-# Canonical SOCForge Log Sources & Index Names
+# Canonical THEDAL Log Sources & Index Names
 socforge_sources:
   - id: "windows_security"
     index_prefix: "socforge-windows-security"
@@ -89,4 +90,4 @@ socforge_sources:
     description: "Atomic Red Team Ground-Truth Simulation Audit Logs"
   - id: "web_attack"
     index_prefix: "socforge-web-attack"
-    description: "SOCForge Web Attack Testing Suite Audit Logs"
+    description: "THEDAL Web Attack Testing Suite Audit Logs"

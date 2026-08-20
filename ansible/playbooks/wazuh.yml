@@ -1,6 +1,6 @@
 ---
 # ==============================================================================
-# SOCForge — Wazuh SIEM Deployment Playbook (Phase 6)
+# THEDAL — Wazuh SIEM Deployment Playbook (Phase 6)
 # ==============================================================================
 # Deploys the complete single-node Wazuh SIEM stack (Indexer, Manager, Filebeat,
 # Dashboard) onto the dedicated private Wazuh instance.
@@ -10,6 +10,12 @@
   hosts: wazuh
   become: true
   gather_facts: true
+  pre_tasks:
+    - name: Load centralized THEDAL secrets if present
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../inventory/secrets.yml"
+      failed_when: false
+      no_log: true
   roles:
     - role: common
     - role: linux-base

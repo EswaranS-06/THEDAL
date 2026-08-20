@@ -106,6 +106,15 @@ wazuh-tunnel: ## Open SSH port forward tunnel to Wazuh Dashboard (https://localh
 wazuh-check: ## Check health and service status of Wazuh SIEM
 	@./scripts/wazuh-health-check.sh
 
+verify-wazuh: ## Verify Wazuh services, listeners, API authentication, and dashboard sync
+	@./scripts/verify-wazuh.sh
+
+repair-wazuh-config: ## Repair and synchronize Wazuh API credentials and Dashboard wazuh.yml
+	@./scripts/repair-wazuh.sh
+
+rotate-wazuh-credentials: ## Atomically rotate Wazuh API credentials across Manager and Dashboard
+	@./scripts/rotate-wazuh-credentials.sh
+
 wazuh-index-check: ## Check telemetry routing, OpenSearch index templates, and ISM policies
 	@./scripts/wazuh-index-health-check.sh
 
@@ -130,7 +139,7 @@ juice-shop-deploy: ## Deploy OWASP Juice Shop Container on Port 3000
 juice-shop-check: ## Check OWASP Juice Shop container and port 3000 status
 	@./scripts/juice-shop-health-check.sh
 
-atomic-deploy: ## Deploy Atomic Red Team Simulation Framework on SOCForge-attack
+atomic-deploy: ## Deploy Atomic Red Team Simulation Framework on THEDAL-attack
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/atomic-red-team.yml
 
 atomic-check: ## Check health and catalog status of Atomic Red Team attack simulation host
@@ -139,7 +148,7 @@ atomic-check: ## Check health and catalog status of Atomic Red Team attack simul
 atomic-test: ## Run controlled Atomic Red Team simulation test (Usage: make atomic-test ARGS="--list")
 	@./scripts/run-atomic-test.sh $(ARGS)
 
-web-attack-deploy: ## Deploy Web Security Testing Suite on SOCForge-attack
+web-attack-deploy: ## Deploy Web Security Testing Suite on THEDAL-attack
 	@ANSIBLE_CONFIG=ansible/ansible.cfg LC_ALL=C.UTF-8 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/web-attack.yml
 
 web-attack-check: ## Check health and scenario status of Web Security Testing Suite
