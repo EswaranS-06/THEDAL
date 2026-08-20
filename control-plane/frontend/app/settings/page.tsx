@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { settingsApi } from "../../lib/api/settings";
 import { managementIpApi } from "../../lib/api/managementIp";
+import { runtimeApi } from "../../lib/api/runtime";
 import {
   SettingsConfig,
   AWSProfile,
@@ -30,6 +31,7 @@ import {
   ManagementIPStatus,
   ManagementIPPreviewResult,
   ManagementIPHistoryItem,
+  RuntimeStatus,
 } from "../../lib/types/api";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { CardSkeleton } from "../../components/ui/LoadingSkeleton";
@@ -42,6 +44,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [config, setConfig] = useState<SettingsConfig | null>(null);
+  const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
 
   // Management IP State
   const [ipStatus, setIpStatus] = useState<ManagementIPStatus | null>(null);
@@ -77,11 +80,14 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       setErrorMsg(null);
-      const [res, ipRes, histRes] = await Promise.all([
+      const [res, ipRes, histRes, runRes] = await Promise.all([
         settingsApi.getConfig().catch(() => null),
         managementIpApi.getStatus().catch(() => null),
         managementIpApi.getHistory(3).catch(() => []),
+        runtimeApi.getStatus().catch(() => null),
       ]);
+
+      if (runRes) setRuntime(runRes);
 
       if (res) {
         setConfig(res);
@@ -269,8 +275,110 @@ export default function SettingsPage() {
             <span>CONTROL PLANE & AWS CONFIGURATION</span>
           </h2>
           <p className="text-[11px] text-text-muted mt-0.5">
-            Manage dynamic management access, AWS credentials, SSH keypairs, and cost-safety controls.
+            Manage runtime modes, operator toolchains, dynamic management access, AWS credentials, and safety controls.
           </p>
+        </div>
+      </div>
+
+      {/* 0. RUNTIME MODE & OPERATOR TOOLCHAIN STATUS */}
+      <div className="p-4 rounded-md bg-panel border border-border-subtle space-y-3">
+        <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary" />
+            <div>
+              <h3 className="text-xs font-bold font-mono text-text-primary uppercase tracking-wider">
+                Runtime Environment & Operator Toolchain
+              </h3>
+              <p className="text-[10px] text-text-muted">
+                Active execution adapter, tool binaries, and host networking status.
+              </p>
+            </div>
+          </div>
+
+          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded font-bold bg-primary/10 text-primary border border-primary/30">
+            ● {runtime?.display_name || "Native Linux"}
+          </span>
+        </div>
+
+        {runtime?.network?.warning && (
+          <div className="p-2.5 rounded bg-accent-yellow/10 border border-accent-yellow/30 text-accent-yellow text-[10px] flex items-center gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>{runtime.network.warning}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 font-mono text-[11px]">
+          {/* Terraform */}
+          <div className="p-2.5 rounded bg-surface border border-border-subtle space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-text-muted">
+              <span>TERRAFORM</span>
+              {runtime?.tools?.terraform?.available ? (
+                <CheckCircle2 className="w-3 h-3 text-primary" />
+              ) : (
+                <AlertTriangle className="w-3 h-3 text-accent-red" />
+              )}
+            </div>
+            <div className="text-text-primary font-bold">
+              {runtime?.tools?.terraform?.available ? "Installed" : "Missing"}
+            </div>
+            <div className="text-[9px] text-text-muted truncate">
+              {runtime?.tools?.terraform?.version || "Not found in PATH"}
+            </div>
+          </div>
+
+          {/* Ansible */}
+          <div className="p-2.5 rounded bg-surface border border-border-subtle space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-text-muted">
+              <span>ANSIBLE</span>
+              {runtime?.tools?.ansible?.available ? (
+                <CheckCircle2 className="w-3 h-3 text-primary" />
+              ) : (
+                <AlertTriangle className="w-3 h-3 text-accent-red" />
+              )}
+            </div>
+            <div className="text-text-primary font-bold">
+              {runtime?.tools?.ansible?.available ? "Installed" : "Missing"}
+            </div>
+            <div className="text-[9px] text-text-muted truncate">
+              {runtime?.tools?.ansible?.version || "Not found in PATH"}
+            </div>
+          </div>
+
+          {/* AWS CLI */}
+          <div className="p-2.5 rounded bg-surface border border-border-subtle space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-text-muted">
+              <span>AWS CLI</span>
+              {runtime?.tools?.aws_cli?.available ? (
+                <CheckCircle2 className="w-3 h-3 text-primary" />
+              ) : (
+                <AlertTriangle className="w-3 h-3 text-accent-red" />
+              )}
+            </div>
+            <div className="text-text-primary font-bold">
+              {runtime?.tools?.aws_cli?.available ? "Installed" : "Missing"}
+            </div>
+            <div className="text-[9px] text-text-muted truncate">
+              {runtime?.tools?.aws_cli?.version || "Not found in PATH"}
+            </div>
+          </div>
+
+          {/* OpenSSH */}
+          <div className="p-2.5 rounded bg-surface border border-border-subtle space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-text-muted">
+              <span>OPENSSH</span>
+              {runtime?.tools?.ssh?.available ? (
+                <CheckCircle2 className="w-3 h-3 text-primary" />
+              ) : (
+                <AlertTriangle className="w-3 h-3 text-accent-red" />
+              )}
+            </div>
+            <div className="text-text-primary font-bold">
+              {runtime?.tools?.ssh?.available ? "Installed" : "Missing"}
+            </div>
+            <div className="text-[9px] text-text-muted truncate">
+              {runtime?.tools?.ssh?.version || "Not found in PATH"}
+            </div>
+          </div>
         </div>
       </div>
 

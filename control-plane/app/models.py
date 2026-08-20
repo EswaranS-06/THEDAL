@@ -141,3 +141,34 @@ class ManagementIPApplyRequest(BaseModel):
 class ConnectivityCheckRequest(BaseModel):
     host: Optional[str] = None
     port: Optional[int] = 22
+
+
+class RuntimeModeStatus(BaseModel):
+    mode: str  # native / docker
+    display_name: str
+    is_container: bool
+    tools: Dict[str, Any]
+    runtime_diagnostics: Dict[str, Any]
+    network: Dict[str, Any]
+
+
+class SimulationRunRequest(BaseModel):
+    simulation_type: str  # atomic / web / baseline
+    identifier: str       # e.g. T1082, DVWA-SQLI, BASELINE-AUTH
+    confirmation: bool = True
+
+
+class SimulationRunResponse(BaseModel):
+    simulation_id: str
+    simulation_type: str
+    identifier: str
+    name: str
+    target: str
+    status: str
+    exit_code: int
+    started_at: str
+    completed_at: str
+    log_file: Optional[str] = None
+    output_preview: str
+    expected_index: Optional[str] = None
+    expected_events: List[str] = []

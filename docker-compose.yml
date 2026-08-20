@@ -1,28 +1,38 @@
 # ==============================================================================
 # THEDAL Control Plane — Docker Compose
+# Threat Hunting, Exploration, Detection, Analysis and Learn
 # ==============================================================================
-
-version: '3.8'
 
 services:
   control-plane:
     build:
       context: .
       dockerfile: Dockerfile
+    image: thedal/control-plane:latest
     container_name: thedal-control-plane
     ports:
-      # Bind strictly to localhost by default for security
-      - "127.0.0.1:8080:8080"
+      # Control Plane Web Dashboard
+      - "8080:8080"
+      # Wazuh OpenSearch SIEM SSH Tunnel Endpoint
+      - "8443:8443"
     environment:
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-ap-south-1}
+      - THEDAL_MODE=docker
       - HOST=0.0.0.0
       - PORT=8080
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-ap-south-1}
+      - AWS_PROFILE=${AWS_PROFILE:-default}
     volumes:
-      # Mount host AWS credentials (read-only)
-      - ${HOME}/.aws:/root/.aws:ro
-      # Mount host SSH key (read-only)
-      - ${HOME}/.ssh:/root/.ssh:ro
-      # Persist Terraform state and logs
+      # 1. SQLite Database & Learner State Persistence
+      - ./runtime/data:/workspace/control-plane/data
+      # 2. Audit & Operation Logs
+      - ./runtime/logs:/workspace/control-plane/logs
+      # 3. Persistent Operator SSH Keypair
+      - ./runtime/ssh:/home/thedal/.ssh
+      # 4. AWS Credentials (mounted securely or provisioned via UI)
+      - ./runtime/aws:/home/thedal/.aws
+      # 5. Infrastructure & Configuration State
       - ./terraform:/workspace/terraform
-      - ./control-plane/logs:/workspace/control-plane/logs
+      - ./ansible:/workspace/ansible
+      - ./scripts:/workspace/scripts
+      - ./docs:/workspace/docs
     restart: unless-stopped

@@ -15,26 +15,44 @@
 
 ## 1. Quick Start
 
-Deploy THEDAL in four simple steps on Debian 13 or Ubuntu 22.04+:
+THEDAL supports two first-class operator runtime modes:
 
+### Option A: Native Linux / VM (Full CLI + Web Experience)
+Recommended for learners who want direct hands-on terminal access to Terraform, Ansible, and AWS CLI:
 ```bash
-# 1. Clone the repository
 git clone https://github.com/EswaranS-06/THEDAL.git
 cd THEDAL
-
-# 2. Run the universal installer
-chmod +x install.sh
-./install.sh
-
-# 3. Deploy cloud infrastructure & provision hosts
-make deploy
-make inventory
-make provision
-
-# 4. Launch the local Control Plane
+./install.sh --mode native
 make control-plane
-# Open in your browser: http://127.0.0.1:8080
+# Open in your browser: http://localhost:8080
 ```
+
+### Option B: Docker Container (Zero Host Tooling / Browser-First)
+Recommended for beginners on Windows, macOS, or Linux who want a zero-configuration, browser-driven experience without installing Terraform or Ansible on the host:
+```bash
+git clone https://github.com/EswaranS-06/THEDAL.git
+cd THEDAL
+./install.sh --mode docker
+# Open in your browser: http://localhost:8080
+```
+
+---
+
+## 2. Runtime Options
+
+| Feature | Native Linux / VM | Docker |
+| :--- | :--- | :--- |
+| **Control Plane** | Yes | Yes |
+| **Terminal commands** | Yes | Optional |
+| **Terraform operations** | CLI + UI | UI |
+| **AWS start/stop** | CLI + UI | UI |
+| **IP synchronization** | CLI + UI | UI |
+| **SSH tunnel** | CLI + UI | UI |
+| **Wazuh access** | Browser | Browser |
+| **Lab simulations** | CLI + UI | UI |
+
+### Windows & macOS Users
+Windows and macOS operators can run THEDAL in Docker mode without installing Python, Terraform, or Ansible on their host machine. All cloud orchestration, dynamic SSH access synchronization, and adversary threat simulations run securely inside the container and are managed directly through the Control Plane web interface.
 
 ---
 

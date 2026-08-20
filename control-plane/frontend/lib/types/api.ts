@@ -330,3 +330,86 @@ export interface ManagementIPHistoryItem {
   timestamp: string;
   actor: string;
 }
+
+export interface RuntimeToolInfo {
+  available: boolean;
+  version?: string | null;
+  path?: string | null;
+}
+
+export interface RuntimeStatus {
+  mode: "native" | "docker";
+  display_name: string;
+  is_container: boolean;
+  tools: {
+    terraform: RuntimeToolInfo;
+    ansible: RuntimeToolInfo;
+    aws_cli: RuntimeToolInfo;
+    ssh: RuntimeToolInfo;
+  };
+  runtime_diagnostics: {
+    mode: string;
+    display_name: string;
+    is_container: boolean;
+    os?: string;
+    user?: string;
+    mounts?: Record<string, { mounted: boolean; path: string }>;
+    ports?: Record<string, number>;
+  };
+  network: {
+    bind_host: string;
+    bind_port: number;
+    is_open_bind: boolean;
+    warning?: string | null;
+  };
+}
+
+export interface SimulationItem {
+  technique?: string;
+  scenario?: string;
+  event_type?: string;
+  name: string;
+  category?: string;
+  target: string;
+  target_host?: string;
+  description: string;
+  expected_index?: string;
+  expected_events?: string[];
+  remote_cmd?: string;
+}
+
+export interface SimulationCatalog {
+  atomic_tests: SimulationItem[];
+  web_scenarios: SimulationItem[];
+  baseline_events: SimulationItem[];
+}
+
+export interface SimulationRunResult {
+  simulation_id: string;
+  simulation_type: "atomic" | "web" | "baseline";
+  identifier: string;
+  name: string;
+  target: string;
+  status: "COMPLETED" | "FAILED" | "RUNNING";
+  exit_code: number;
+  started_at: string;
+  completed_at: string;
+  log_file?: string | null;
+  output_preview: string;
+  expected_index?: string;
+  expected_events: string[];
+}
+
+export interface SimulationHistoryItem {
+  id: string;
+  simulation_type: string;
+  identifier: string;
+  name: string;
+  target: string;
+  status: string;
+  exit_code: number;
+  started_at: string;
+  completed_at: string;
+  log_file?: string;
+  runtime_mode: string;
+}

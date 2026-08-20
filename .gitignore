@@ -89,14 +89,13 @@ venv.bak/
 *.db
 *.sqlite3
 
-# ------------------------------------------------------------------------------
-# Logs & Diagnostic Outputs
-# ------------------------------------------------------------------------------
 *.log
 /logs/
 *.out
 .operation.lock
+runtime/
 !control-plane/logs/.gitkeep
+!control-plane/data/.gitkeep
 !tests/detections/*.log
 
 # ------------------------------------------------------------------------------

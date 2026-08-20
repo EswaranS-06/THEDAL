@@ -36,6 +36,16 @@ export const TopBar: React.FC<TopBarProps> = ({
 }) => {
   const pathname = usePathname();
   const router = useRouter();
+  const [runtimeMode, setRuntimeMode] = useState<string>("Native Linux");
+
+  React.useEffect(() => {
+    fetch("/api/runtime/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.display_name) setRuntimeMode(data.display_name);
+      })
+      .catch(() => {});
+  }, []);
 
   const isHealthy = status === "HEALTHY" || status === "PASS" || status === "OPERATIONAL";
 
@@ -67,16 +77,22 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <div className="h-4 w-px bg-border-subtle hidden sm:block mx-1" />
 
+        {/* Runtime Mode Pill */}
+        <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded bg-panel border border-border-subtle text-[10px] font-mono text-text-muted">
+          <span>Runtime:</span>
+          <strong className="text-text-primary">{runtimeMode}</strong>
+        </div>
+
         {/* Environment Status Pill */}
-        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded bg-panel border border-border-subtle text-[11px] font-mono">
+        <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded bg-panel border border-border-subtle text-[11px] font-mono">
           <span
             className={`w-2 h-2 rounded-full ${
               isHealthy ? "bg-primary animate-pulse" : "bg-accent-yellow"
             }`}
           />
-          <span className="text-text-secondary font-medium">Lab Environment:</span>
+          <span className="text-text-secondary font-medium">Lab:</span>
           <span className={isHealthy ? "text-primary font-bold" : "text-accent-yellow font-bold"}>
-            {isHealthy ? "All Systems Online" : "Degraded / Starting"}
+            {isHealthy ? "Online" : "Degraded"}
           </span>
         </div>
 

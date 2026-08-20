@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# THEDAL — Universal Linux Installer & Environment Setup
+# THEDAL — Multi-Mode Installer & Environment Setup
 # Product: Threat Hunting, Exploration, Detection, Analysis and Learn
+# Modes: Native Linux / VM & Docker Container
 # ==============================================================================
 
 set -eo pipefail
@@ -11,7 +12,8 @@ export LANG=C.UTF-8
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CHECK_ONLY=false
 NON_INTERACTIVE=false
-BIND_HOST="127.0.0.1"
+SELECTED_MODE=""
+BIND_HOST="0.0.0.0"
 BIND_PORT="8080"
 SSH_KEY_PATH="${HOME}/.ssh/thedal_key"
 
@@ -31,6 +33,10 @@ while [[ "$#" -gt 0 ]]; do
             CHECK_ONLY=true
             shift
             ;;
+        --mode)
+            SELECTED_MODE="$2"
+            shift 2
+            ;;
         --non-interactive|-n)
             NON_INTERACTIVE=true
             shift
@@ -44,15 +50,16 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
         --help|-h)
-            echo -e "${BOLD}THEDAL Universal Installer${NC}"
+            echo -e "${BOLD}THEDAL Multi-Mode Installer${NC}"
             echo -e "Usage: ./install.sh [OPTIONS]"
             echo -e ""
             echo -e "Options:"
-            echo -e "  --check             Check dependencies without installing or configuring"
-            echo -e "  --non-interactive   Run without interactive prompts (will not auto-install packages)"
-            echo -e "  --host HOST         Control plane bind host (default: 127.0.0.1)"
-            echo -e "  --port PORT         Control plane bind port (default: 8080)"
-            echo -e "  -h, --help          Show this help message"
+            echo -e "  --mode native|docker Select execution mode"
+            echo -e "  --check              Check dependencies without installing or configuring"
+            echo -e "  --non-interactive    Run without interactive prompts"
+            echo -e "  --host HOST          Control plane bind host (default: 0.0.0.0)"
+            echo -e "  --port PORT          Control plane bind port (default: 8080)"
+            echo -e "  -h, --help           Show this help message"
             exit 0
             ;;
         *)
@@ -63,7 +70,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 echo -e "${BOLD}${BLUE}╔═══════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${BLUE}║                     THEDAL Universal Linux Installer                      ║${NC}"
+echo -e "${BOLD}${BLUE}║                     THEDAL Multi-Mode Installer                           ║${NC}"
 echo -e "${BOLD}${BLUE}║       Threat Hunting, Exploration, Detection, Analysis and Learn          ║${NC}"
 echo -e "${BOLD}${BLUE}╚═══════════════════════════════════════════════════════════════════════════╝${NC}"
 echo -e ""
@@ -90,219 +97,150 @@ elif command -v zypper &>/dev/null; then
     PKG_MGR="zypper"
 fi
 
-echo -e "${CYAN}Platform:${NC} ${OS_NAME} ${OS_VER} (${ARCH}) &bull; Package Manager: ${PKG_MGR}"
+echo -e "${CYAN}Platform:${NC} ${OS_NAME} ${OS_VER} (${ARCH}) • Package Manager: ${PKG_MGR}"
 echo -e ""
 
-# 2. Dependency Checking Function
-declare -A DEPS_INSTALLED
-declare -A DEPS_REQUIRED=(
-    ["git"]="2.x+"
-    ["python3"]="3.11+"
-    ["ssh"]="OpenSSH"
-    ["terraform"]="1.5+"
-    ["ansible"]="2.14+"
-    ["aws"]="AWS CLI v2"
-    ["uv"]="0.1+"
-    ["node"]="18.x+ (Optional)"
-)
-
-MISSING_DEPS=0
-
-check_dependencies() {
-    MISSING_DEPS=0
-    echo -e "${BOLD}┌──────────────────┬──────────────────────┬──────────────────────┬──────────┐${NC}"
-    echo -e "${BOLD}│ Dependency       │ Installed Version    │ Required             │ Status   │${NC}"
-    echo -e "${BOLD}├──────────────────┼──────────────────────┼──────────────────────┼──────────┤${NC}"
-
-    # Git
-    if command -v git &>/dev/null; then
-        GIT_VER="$(git --version | awk '{print $3}')"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "git" "$GIT_VER" "${DEPS_REQUIRED[git]}" "OK"
+# 2. Select Execution Mode
+if [[ -z "${SELECTED_MODE}" ]]; then
+    if [[ "${NON_INTERACTIVE}" == true ]]; then
+        SELECTED_MODE="native"
     else
-        printf "│ %-16s │ %-20s │ %-20s │ ${RED}%-8s${NC} │\n" "git" "Missing" "${DEPS_REQUIRED[git]}" "MISSING"
-        MISSING_DEPS=$((MISSING_DEPS + 1))
-    fi
-
-    # Python3
-    if command -v python3 &>/dev/null; then
-        PY_VER="$(python3 --version 2>&1 | awk '{print $2}')"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "python3" "$PY_VER" "${DEPS_REQUIRED[python3]}" "OK"
-    else
-        printf "│ %-16s │ %-20s │ %-20s │ ${RED}%-8s${NC} │\n" "python3" "Missing" "${DEPS_REQUIRED[python3]}" "MISSING"
-        MISSING_DEPS=$((MISSING_DEPS + 1))
-    fi
-
-    # SSH
-    if command -v ssh &>/dev/null; then
-        SSH_VER="$(ssh -V 2>&1 | awk '{print $1}')"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "ssh" "$SSH_VER" "${DEPS_REQUIRED[ssh]}" "OK"
-    else
-        printf "│ %-16s │ %-20s │ %-20s │ ${RED}%-8s${NC} │\n" "ssh" "Missing" "${DEPS_REQUIRED[ssh]}" "MISSING"
-        MISSING_DEPS=$((MISSING_DEPS + 1))
-    fi
-
-    # Terraform
-    if command -v terraform &>/dev/null; then
-        TF_VER="$(terraform version 2>&1 | sed -n '1p' | awk '{print $2}')"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "terraform" "$TF_VER" "${DEPS_REQUIRED[terraform]}" "OK"
-    else
-        printf "│ %-16s │ %-20s │ %-20s │ ${RED}%-8s${NC} │\n" "terraform" "Missing" "${DEPS_REQUIRED[terraform]}" "MISSING"
-        MISSING_DEPS=$((MISSING_DEPS + 1))
-    fi
-
-    # Ansible
-    if command -v ansible &>/dev/null; then
-        ANS_VER="$(LC_ALL=C.UTF-8 ansible --version 2>&1 | grep -E '^ansible ' | awk '{print $NF}' | tr -d '[]' || echo 'Installed')"
-        [[ -z "$ANS_VER" ]] && ANS_VER="Installed"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "ansible" "$ANS_VER" "${DEPS_REQUIRED[ansible]}" "OK"
-    else
-        printf "│ %-16s │ %-20s │ %-20s │ ${RED}%-8s${NC} │\n" "ansible" "Missing" "${DEPS_REQUIRED[ansible]}" "MISSING"
-        MISSING_DEPS=$((MISSING_DEPS + 1))
-    fi
-
-    # AWS CLI
-    if command -v aws &>/dev/null; then
-        AWS_VER="$(aws --version 2>&1 | awk '{print $1}' | cut -d/ -f2)"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "aws" "$AWS_VER" "${DEPS_REQUIRED[aws]}" "OK"
-    else
-        printf "│ %-16s │ %-20s │ %-20s │ ${RED}%-8s${NC} │\n" "aws" "Missing" "${DEPS_REQUIRED[aws]}" "MISSING"
-        MISSING_DEPS=$((MISSING_DEPS + 1))
-    fi
-
-    # uv
-    if command -v uv &>/dev/null; then
-        UV_VER="$(uv --version 2>&1 | awk '{print $2}')"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "uv" "$UV_VER" "${DEPS_REQUIRED[uv]}" "OK"
-    else
-        printf "│ %-16s │ %-20s │ %-20s │ ${AMBER}%-8s${NC} │\n" "uv" "Missing" "${DEPS_REQUIRED[uv]}" "OPTIONAL"
-    fi
-
-    # Node.js
-    if command -v node &>/dev/null; then
-        NODE_VER="$(node --version)"
-        printf "│ %-16s │ %-20s │ %-20s │ ${GREEN}%-8s${NC} │\n" "node" "$NODE_VER" "${DEPS_REQUIRED[node]}" "OK"
-    else
-        printf "│ %-16s │ %-20s │ %-20s │ ${AMBER}%-8s${NC} │\n" "node" "Missing" "${DEPS_REQUIRED[node]}" "OPTIONAL"
-    fi
-
-    echo -e "${BOLD}└──────────────────┴──────────────────────┴──────────────────────┴──────────┘${NC}"
-}
-
-check_dependencies
-
-if [[ "$CHECK_ONLY" == true ]]; then
-    echo -e ""
-    if [[ $MISSING_DEPS -eq 0 ]]; then
-        echo -e "${GREEN}All required dependencies are satisfied.${NC}"
-        exit 0
-    else
-        echo -e "${RED}${MISSING_DEPS} required dependency/dependencies missing.${NC}"
-        exit 1
-    fi
-fi
-
-# 3. Handle Missing Dependencies
-if [[ $MISSING_DEPS -gt 0 ]]; then
-    echo -e ""
-    if [[ "$NON_INTERACTIVE" == true ]]; then
-        echo -e "${RED}Error: Missing dependencies detected in non-interactive mode. Please install them before proceeding.${NC}"
-        exit 1
-    fi
-
-    read -r -p "Missing dependencies were detected. Attempt to install them now? [y/N]: " INSTALL_CONFIRM
-    if [[ "$INSTALL_CONFIRM" =~ ^[Yy]$ ]]; then
-        echo -e "${BLUE}Installing required packages using ${PKG_MGR}...${NC}"
-        if [[ "$PKG_MGR" == "apt" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y git python3 python3-pip python3-venv openssh-client curl unzip
-            # Check if terraform needs installation
-            if ! command -v terraform &>/dev/null; then
-                sudo apt-get install -y wget gpg
-                wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg --yes
-                echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-                sudo apt-get update && sudo apt-get install -y terraform
-            fi
-            # Check if ansible needs installation
-            if ! command -v ansible &>/dev/null; then
-                sudo apt-get install -y ansible
-            fi
-            # Check if aws cli needs installation
-            if ! command -v aws &>/dev/null; then
-                sudo apt-get install -y awscli || true
-            fi
-        elif [[ "$PKG_MGR" == "dnf" ]]; then
-            sudo dnf install -y git python3 python3-pip openssh-clients terraform ansible awscli
+        echo -e "${BOLD}Select THEDAL Runtime Execution Mode:${NC}"
+        echo -e "  ${BOLD}[1]${NC} Native Linux / VM  ${CYAN}(Recommended for full CLI + Web Control Plane)${NC}"
+        echo -e "  ${BOLD}[2]${NC} Docker Container   ${CYAN}(Self-contained image, UI-first, no host tool installs)${NC}"
+        read -r -p "Enter choice [1]: " MODE_CHOICE
+        if [[ "${MODE_CHOICE}" == "2" ]]; then
+            SELECTED_MODE="docker"
         else
-            echo -e "${AMBER}Automated installation not configured for package manager: ${PKG_MGR}. Please install missing tools manually.${NC}"
+            SELECTED_MODE="native"
         fi
-        echo -e ""
-        echo -e "${BLUE}Re-evaluating dependencies...${NC}"
-        check_dependencies
-    else
-        echo -e "${AMBER}Skipping automatic dependency installation.${NC}"
     fi
 fi
 
-# 4. Validate AWS Credentials
+echo -e "${GREEN}✓ Selected Runtime Mode: ${BOLD}${SELECTED_MODE^^}${NC}"
 echo -e ""
-echo -e "${BOLD}Checking AWS Authentication...${NC}"
-if command -v aws &>/dev/null; then
-    if AWS_IDENTITY="$(aws sts get-caller-identity --output json 2>/dev/null)"; then
-        AWS_ACCOUNT="$(echo "$AWS_IDENTITY" | grep '"Account"' | awk -F'"' '{print $4}')"
-        AWS_ARN="$(echo "$AWS_IDENTITY" | grep '"Arn"' | awk -F'"' '{print $4}')"
-        echo -e "${GREEN}✓ AWS Authentication Verified!${NC}"
-        echo -e "  Account ID: ${AWS_ACCOUNT}"
-        echo -e "  IAM Identity: ${AWS_ARN}"
-    else
-        echo -e "${AMBER}⚠ AWS credentials not configured or session expired.${NC}"
-        if [[ "$NON_INTERACTIVE" == false ]]; then
-            read -r -p "Would you like to run 'aws configure' now? [y/N]: " AWS_CONF_PROMPT
-            if [[ "$AWS_CONF_PROMPT" =~ ^[Yy]$ ]]; then
-                aws configure
-            fi
-        fi
+
+# Save mode selection to runtime metadata
+mkdir -p "${SCRIPT_DIR}/control-plane/data"
+echo "{\"mode\": \"${SELECTED_MODE}\"}" > "${SCRIPT_DIR}/control-plane/data/runtime_mode.json"
+
+# ==============================================================================
+# DOCKER INSTALLATION PATH
+# ==============================================================================
+if [[ "${SELECTED_MODE}" == "docker" ]]; then
+    echo -e "${BOLD}${BLUE}Setting up THEDAL in Docker Mode...${NC}"
+
+    # Verify Docker & Docker Compose
+    if ! command -v docker &>/dev/null; then
+        echo -e "${RED}Error: Docker is not installed. Please install Docker first (https://docs.docker.com/get-docker/).${NC}"
+        exit 1
     fi
-else
-    echo -e "${RED}AWS CLI not found. Please install aws-cli v2.${NC}"
+
+    if ! docker compose version &>/dev/null && ! command -v docker-compose &>/dev/null; then
+        echo -e "${RED}Error: Docker Compose is required. Please install docker-compose-plugin.${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✓ Docker & Docker Compose detected.${NC}"
+
+    # Initialize runtime persistent directories
+    echo -e "${BLUE}Initializing persistent runtime directories...${NC}"
+    mkdir -p "${SCRIPT_DIR}/runtime/data" \
+             "${SCRIPT_DIR}/runtime/logs" \
+             "${SCRIPT_DIR}/runtime/ssh" \
+             "${SCRIPT_DIR}/runtime/aws"
+
+    chmod 700 "${SCRIPT_DIR}/runtime/ssh"
+
+    # Setup SSH Key for Docker volume
+    DOCKER_SSH_KEY="${SCRIPT_DIR}/runtime/ssh/thedal_key"
+    if [[ -f "${HOME}/.ssh/thedal_key" ]]; then
+        echo -e "${GREEN}✓ Reusing existing SSH key from host ~/.ssh/thedal_key${NC}"
+        cp "${HOME}/.ssh/thedal_key" "${DOCKER_SSH_KEY}"
+        cp "${HOME}/.ssh/thedal_key.pub" "${DOCKER_SSH_KEY}.pub" 2>/dev/null || true
+    elif [[ -f "${HOME}/.ssh/socforge_key" ]]; then
+        echo -e "${GREEN}✓ Reusing existing SSH key from host ~/.ssh/socforge_key${NC}"
+        cp "${HOME}/.ssh/socforge_key" "${DOCKER_SSH_KEY}"
+        cp "${HOME}/.ssh/socforge_key.pub" "${DOCKER_SSH_KEY}.pub" 2>/dev/null || true
+    elif [[ ! -f "${DOCKER_SSH_KEY}" ]]; then
+        echo -e "${BLUE}Generating new Ed25519 SSH keypair in runtime/ssh/...${NC}"
+        ssh-keygen -t ed25519 -f "${DOCKER_SSH_KEY}" -N "" -C "thedal-docker-operator"
+    fi
+    chmod 600 "${DOCKER_SSH_KEY}" 2>/dev/null || true
+
+    # Link host AWS credentials if available
+    if [[ -d "${HOME}/.aws" && ! -f "${SCRIPT_DIR}/runtime/aws/credentials" ]]; then
+        echo -e "${GREEN}✓ Linking existing AWS credentials from ~/.aws${NC}"
+        cp -r "${HOME}/.aws/"* "${SCRIPT_DIR}/runtime/aws/" 2>/dev/null || true
+    fi
+
+    # Build and start container
+    echo -e "${BLUE}Building and launching THEDAL Control Plane container...${NC}"
+    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" build
+    docker compose -f "${SCRIPT_DIR}/docker-compose.yml" up -d
+
+    echo -e ""
+    echo -e "${BOLD}${GREEN}╔═══════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}${GREEN}║                      THEDAL is Ready in Docker Mode!                      ║${NC}"
+    echo -e "${BOLD}${GREEN}╚═══════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo -e ""
+    echo -e "${BOLD}Control Plane Dashboard:${NC} ${CYAN}http://localhost:8080${NC}"
+    echo -e ""
+    echo -e "${BOLD}What you can do directly from the browser:${NC}"
+    echo -e "  ✓ Configure AWS Credentials in Settings"
+    echo -e "  ✓ Sync Dynamic SSH Management IP"
+    echo -e "  ✓ Deploy & Start Cloud Infrastructure"
+    echo -e "  ✓ Establish Wazuh SIEM SSH Tunnel (https://localhost:8443)"
+    echo -e "  ✓ Run Adversary Lab Simulations (Atomic & Web Attacks)"
+    echo -e "  ✓ Track Investigation Progress in SQLite"
+    echo -e ""
+    echo -e "Container management: ${GREEN}docker compose ps${NC} / ${GREEN}docker compose logs -f${NC}"
+    exit 0
 fi
 
-# 5. Local SSH Key Lifecycle
+# ==============================================================================
+# NATIVE LINUX INSTALLATION PATH
+# ==============================================================================
+
+# Check dependencies
+echo -e "${BOLD}Checking host dependencies...${NC}"
+MISSING_DEPS=0
+for tool in git python3 openssh-client curl unzip; do
+    if ! command -v "$tool" &>/dev/null; then
+        echo -e "  ❌ ${tool} : Missing"
+        ((MISSING_DEPS++))
+    else
+        echo -e "  ✓ ${tool} : Installed"
+    fi
+done
+
+if [[ $MISSING_DEPS -gt 0 && "${NON_INTERACTIVE}" == false ]]; then
+    read -r -p "Missing dependencies detected. Install them now with ${PKG_MGR}? [y/N]: " INSTALL_CONFIRM
+    if [[ "$INSTALL_CONFIRM" =~ ^[Yy]$ ]]; then
+        if [[ "$PKG_MGR" == "apt" ]]; then
+            sudo apt-get update && sudo apt-get install -y git python3 python3-pip python3-venv openssh-client curl unzip
+        fi
+    fi
+fi
+
+# SSH Keypair Setup
 echo -e ""
-echo -e "${BOLD}Checking Local SSH Key Pair...${NC}"
+echo -e "${BOLD}Checking Local SSH Keypair...${NC}"
 if [[ -f "${SSH_KEY_PATH}" ]]; then
     echo -e "${GREEN}✓ SSH private key exists at: ${SSH_KEY_PATH}${NC}"
 elif [[ -f "${HOME}/.ssh/socforge_key" ]]; then
     echo -e "${GREEN}✓ Legacy SSH key found at: ${HOME}/.ssh/socforge_key${NC}"
     SSH_KEY_PATH="${HOME}/.ssh/socforge_key"
 else
-    echo -e "${BLUE}Generating new Ed25519 key pair for THEDAL at ${SSH_KEY_PATH}...${NC}"
-    mkdir -p "${HOME}/.ssh"
-    chmod 700 "${HOME}/.ssh"
+    echo -e "${BLUE}Generating new Ed25519 keypair for THEDAL at ${SSH_KEY_PATH}...${NC}"
+    mkdir -p "${HOME}/.ssh" && chmod 700 "${HOME}/.ssh"
     ssh-keygen -t ed25519 -f "${SSH_KEY_PATH}" -N "" -C "thedal-operator-key"
     chmod 600 "${SSH_KEY_PATH}"
-    chmod 644 "${SSH_KEY_PATH}.pub"
-    echo -e "${GREEN}✓ SSH Key Pair generated successfully!${NC}"
 fi
 
-# 6. Configure Control Plane Environment
-echo -e ""
-echo -e "${BOLD}Configuring Control Plane...${NC}"
-if [[ "$NON_INTERACTIVE" == false ]]; then
-    echo -e "Select Control Plane Bind Address:"
-    echo -e "  1) 127.0.0.1 (Recommended — Localhost Only, Safe)"
-    echo -e "  2) 0.0.0.0   (All Interfaces — ${RED}Warning: Exposes UI to local network${NC})"
-    read -r -p "Enter choice [1]: " BIND_CHOICE
-    if [[ "$BIND_CHOICE" == "2" ]]; then
-        BIND_HOST="0.0.0.0"
-        echo -e "${AMBER}Notice: Binding to 0.0.0.0 allows remote access on your network.${NC}"
-    else
-        BIND_HOST="127.0.0.1"
-    fi
-fi
-
-# Initialize Python Virtual Environment for Control Plane
+# Setup Virtualenv
 if [[ -d "${SCRIPT_DIR}/control-plane" ]]; then
-    echo -e "${BLUE}Setting up Python environment for Control Plane...${NC}"
+    echo -e "${BLUE}Setting up Python virtual environment...${NC}"
     cd "${SCRIPT_DIR}/control-plane"
     if command -v uv &>/dev/null; then
         uv venv .venv --quiet || true
@@ -316,14 +254,15 @@ fi
 
 echo -e ""
 echo -e "${BOLD}${GREEN}╔═══════════════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BOLD}${GREEN}║                          THEDAL is Ready!                                 ║${NC}"
+echo -e "${BOLD}${GREEN}║                      THEDAL is Ready in Native Mode!                      ║${NC}"
 echo -e "${BOLD}${GREEN}╚═══════════════════════════════════════════════════════════════════════════╝${NC}"
 echo -e ""
 echo -e "${BOLD}Control Plane Dashboard:${NC} ${CYAN}http://${BIND_HOST}:${BIND_PORT}${NC}"
 echo -e ""
-echo -e "${BOLD}Next Steps:${NC}"
+echo -e "${BOLD}Native Operator Next Steps:${NC}"
 echo -e "  1. Launch Control Plane:  ${GREEN}make control-plane${NC}"
-echo -e "  2. Deploy Infrastructure: ${GREEN}make deploy${NC}"
-echo -e "  3. Provision Hosts:       ${GREEN}make inventory && make provision${NC}"
-echo -e "  4. Open Wazuh Dashboard:  ${GREEN}make tunnel${NC}"
+echo -e "  2. Sync Admin IP:         ${GREEN}make sync-ip${NC}"
+echo -e "  3. Deploy Infrastructure: ${GREEN}make deploy${NC}"
+echo -e "  4. Provision Hosts:       ${GREEN}make inventory && make provision${NC}"
+echo -e "  5. Open Wazuh Dashboard:  ${GREEN}make tunnel${NC}"
 echo -e ""

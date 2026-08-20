@@ -18,6 +18,7 @@ import { LabWorkspaceData, LabItem, CurriculumStats } from "../../../../lib/type
 import { LabNavigator } from "../../../../components/learning/LabNavigator";
 import { InvestigationWorkspace } from "../../../../components/learning/InvestigationWorkspace";
 import { EvidenceBoard } from "../../../../components/learning/EvidenceBoard";
+import { SimulationRunnerDialog } from "../../../../components/learning/SimulationRunnerDialog";
 import { CardSkeleton } from "../../../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../../../components/ui/ErrorState";
 import { useToast } from "../../../../components/ui/Toast";
@@ -38,6 +39,7 @@ export default function LabDetailPage() {
   const [showRightBoard, setShowRightBoard] = useState(true);
   const [isResetting, setIsResetting] = useState(false);
   const [isStartingHosts, setIsStartingHosts] = useState(false);
+  const [simulationDialogOpen, setSimulationDialogOpen] = useState(false);
 
   const loadWorkspaceData = useCallback(async () => {
     if (!labId) return;
@@ -265,6 +267,15 @@ export default function LabDetailPage() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setSimulationDialogOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary/15 hover:bg-primary/25 text-primary border border-primary/40 font-mono text-[11px] font-bold transition-colors"
+            title="Execute adversary simulation to generate telemetry"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Simulate Threat</span>
+          </button>
+
+          <button
             onClick={() => setShowRightBoard(!showRightBoard)}
             className="flex items-center gap-1 px-2 py-1 rounded bg-card hover:bg-surface text-slate-300 hover:text-white border border-border-subtle font-mono text-[11px] transition-colors"
             title="Toggle Evidence Board"
@@ -319,6 +330,13 @@ export default function LabDetailPage() {
           </aside>
         )}
       </div>
+
+      {/* Lab Simulation Runner Modal */}
+      <SimulationRunnerDialog
+        isOpen={simulationDialogOpen}
+        onClose={() => setSimulationDialogOpen(false)}
+        defaultTechnique={workspace.lab.mitre}
+      />
     </div>
   );
 }

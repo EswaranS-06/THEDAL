@@ -14,7 +14,7 @@ from app.config import settings
 from app.models import (
     SystemStatus, OperationRequest, OperationResponse,
     HealthCheckSummary, ManagementIPPreviewRequest, ManagementIPApplyRequest,
-    ConnectivityCheckRequest
+    ConnectivityCheckRequest, RuntimeModeStatus, SimulationRunRequest, SimulationRunResponse
 )
 from app.services.terraform import TerraformService
 from app.services.ansible import AnsibleService
@@ -27,6 +27,8 @@ from app.services.commands import CommandService
 from app.services.profiles import AWSProfileService
 from app.services.autostop import SafetyService
 from app.services.management_ip import ManagementIPService
+from app.services.runtime import RuntimeService
+from app.services.simulations import SimulationService
 
 
 app = FastAPI(
@@ -759,5 +761,64 @@ async def api_management_ip_history(limit: int = Query(5, ge=1, le=50)):
     """Retrieves recent management IP synchronization audit history."""
     return {
         "history": ManagementIPService.get_sync_history(limit=limit)
+    }
+
+
+# ==============================================================================
+# 5. Multi-Mode Runtime & Controlled Lab Simulation Endpoints
+# ==============================================================================
+
+@app.get("/api/runtime/status", response_model=RuntimeModeStatus)
+async def api_runtime_status():
+    """Returns active runtime execution mode (Native Linux vs Docker) and tool versions."""
+    return RuntimeService.get_runtime_info()
+
+
+@app.post("/api/runtime/mode")
+async def api_runtime_mode_set(mode: str = Body(..., embed=True)):
+    """Switches runtime mode configuration ('native' or 'docker')."""
+    try:
+        RuntimeService.set_runtime_mode(mode)
+        return {
+            "success": True,
+            "message": f"Runtime mode set to '{mode}'.",
+            "runtime": RuntimeService.get_runtime_info()
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@app.get("/api/simulations/catalog")
+async def api_simulations_catalog():
+    """Returns catalog of approved Atomic and Web simulation tests."""
+    return SimulationService.get_catalog()
+
+
+@app.post("/api/simulations/run", response_model=SimulationRunResponse)
+async def api_simulations_run(req: SimulationRunRequest):
+    """Executes an approved adversary simulation on the Attack host."""
+    try:
+        result = SimulationService.run_simulation(
+            simulation_type=req.simulation_type,
+            identifier=req.identifier,
+            confirm=req.confirmation
+        )
+        return result
+    except SecurityValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except OperationLockError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Simulation execution failed: {str(e)}"
+        )
+
+
+@app.get("/api/simulations/history")
+async def api_simulations_history(limit: int = Query(10, ge=1, le=50)):
+    """Returns audit history of executed adversary simulations."""
+    return {
+        "history": SimulationService.get_simulation_history(limit=limit)
     }
 
