@@ -41,13 +41,23 @@ export default function HostDetailPage() {
       // Normalize commands list (handle flat array or grouped format)
       let flatCmds: DynamicCommand[] = [];
       if (Array.isArray(cmdRes)) {
-        if (cmdRes.length > 0 && "commands" in cmdRes[0] && Array.isArray((cmdRes[0] as any).commands)) {
-          flatCmds = (cmdRes as any).flatMap((g: any) => g.commands || []);
+        if (
+          cmdRes.length > 0 &&
+          cmdRes[0] &&
+          typeof cmdRes[0] === "object" &&
+          "commands" in cmdRes[0] &&
+          Array.isArray((cmdRes[0] as any).commands)
+        ) {
+          flatCmds = (cmdRes as any)
+            .flatMap((g: any) => (g && Array.isArray(g.commands) ? g.commands : []))
+            .filter(Boolean);
         } else {
-          flatCmds = (cmdRes as DynamicCommand[]).map((c) => ({
-            ...c,
-            title: c.title || c.target || c.id || "Command",
-          }));
+          flatCmds = (cmdRes as DynamicCommand[])
+            .filter((c) => c && typeof c === "object")
+            .map((c) => ({
+              ...c,
+              title: c.title || c.target || c.id || "Command",
+            }));
         }
       }
       setCommands(flatCmds);
@@ -93,9 +103,10 @@ export default function HostDetailPage() {
     );
   }
 
-  // Filter commands relevant to this host
-  const relevantCommands = commands.filter((c) => {
-    const hostLower = host.key.toLowerCase();
+  // Filter commands relevant to this host safely
+  const relevantCommands = (commands || []).filter((c) => {
+    if (!c || typeof c !== "object") return false;
+    const hostLower = (host?.key || "").toLowerCase();
     const targetHostLower = (c.target_host || "").toLowerCase();
     const titleLower = (c.title || "").toLowerCase();
     const targetLower = (c.target || "").toLowerCase();
@@ -103,12 +114,11 @@ export default function HostDetailPage() {
     const idLower = (c.id || "").toLowerCase();
 
     return (
-      targetHostLower === hostLower ||
-      targetHostLower.includes(hostLower) ||
-      titleLower.includes(hostLower) ||
-      targetLower.includes(hostLower) ||
-      descLower.includes(hostLower) ||
-      idLower.includes(hostLower) ||
+      (targetHostLower && (targetHostLower === hostLower || targetHostLower.includes(hostLower))) ||
+      (titleLower && titleLower.includes(hostLower)) ||
+      (targetLower && targetLower.includes(hostLower)) ||
+      (descLower && descLower.includes(hostLower)) ||
+      (idLower && idLower.includes(hostLower)) ||
       (hostLower === "bastion" && (idLower.includes("bastion") || titleLower.includes("bastion"))) ||
       (hostLower === "wazuh" && (idLower.includes("wazuh") || titleLower.includes("wazuh") || titleLower.includes("siem"))) ||
       (hostLower === "windows" && (idLower.includes("windows") || idLower.includes("winrm") || titleLower.includes("winrm"))) ||
@@ -200,7 +210,7 @@ export default function HostDetailPage() {
           </div>
 
           <div className="space-y-2 text-xs">
-            {host.services.length === 0 ? (
+            {!host.services || host.services.length === 0 ? (
               <div className="text-xs text-slate-500 italic p-4 text-center">
                 No telemetry services configured.
               </div>
