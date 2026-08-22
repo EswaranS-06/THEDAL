@@ -6,6 +6,9 @@ import {
   AWSProfile,
   AutoStopStatus,
   ApiResponse,
+  AWSProfileCreateInput,
+  AWSProfileUpdateInput,
+  AWSProfileOperationResponse,
 } from "../types/api";
 
 export const settingsApi = {
@@ -18,15 +21,27 @@ export const settingsApi = {
   getProfiles: () =>
     apiClient<AWSProfile[]>("/api/aws/profiles"),
 
-  createProfile: (payload: {
-    profile_name: string;
-    access_key_id: string;
-    secret_access_key: string;
-    region?: string;
-  }) =>
-    apiClient<ApiResponse>("/api/aws/profiles/create", {
+  createProfile: (payload: AWSProfileCreateInput) =>
+    apiClient<AWSProfileOperationResponse>("/api/aws/profiles/create", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  updateProfile: (payload: AWSProfileUpdateInput) =>
+    apiClient<AWSProfileOperationResponse>("/api/aws/profiles/update", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  validateProfile: (profileName: string) =>
+    apiClient<AWSProfileOperationResponse>("/api/aws/profiles/validate", {
+      method: "POST",
+      body: JSON.stringify({ profile_name: profileName }),
+    }),
+
+  deleteProfile: (profileName: string) =>
+    apiClient<AWSProfileOperationResponse>(`/api/aws/profiles/${encodeURIComponent(profileName)}`, {
+      method: "DELETE",
     }),
 
   getAutoStop: () =>

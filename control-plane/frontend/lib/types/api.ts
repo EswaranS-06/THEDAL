@@ -245,10 +245,39 @@ export interface SearchResult {
 export interface AWSProfile {
   name: string;
   region: string;
-  is_active: boolean;
-  account_id?: string | null;
+  is_active?: boolean;
+  valid: boolean;
   status: "VALID" | "INVALID" | "UNCHECKED";
+  account_id?: string | null;
+  account?: string | null;
+  arn?: string | null;
+  access_key_preview?: string;
   error?: string | null;
+}
+
+export interface AWSProfileCreateInput {
+  profile_name: string;
+  access_key_id: string;
+  secret_access_key: string;
+  region: string;
+}
+
+export interface AWSProfileUpdateInput {
+  profile_name: string;
+  old_profile_name?: string;
+  access_key_id?: string;
+  secret_access_key?: string;
+  region: string;
+}
+
+export interface AWSProfileOperationResponse {
+  success: boolean;
+  profile?: string;
+  account?: string | null;
+  arn?: string | null;
+  error?: string | null;
+  valid?: boolean;
+  message?: string;
 }
 
 export interface AutoStopStatus {

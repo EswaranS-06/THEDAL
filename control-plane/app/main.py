@@ -59,6 +59,14 @@ class AWSProfileCreate(BaseModel):
     region: str = "ap-south-1"
 
 
+class AWSProfileUpdate(BaseModel):
+    profile_name: str
+    old_profile_name: Optional[str] = None
+    access_key_id: Optional[str] = None
+    secret_access_key: Optional[str] = None
+    region: str = "ap-south-1"
+
+
 class AutoStopConfig(BaseModel):
     enabled: bool
     grace_period_minutes: int = 15
@@ -462,6 +470,41 @@ async def api_aws_profiles_create(prof: AWSProfileCreate):
             region=prof.region
         )
         return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/aws/profiles/update")
+async def api_aws_profiles_update(prof: AWSProfileUpdate):
+    try:
+        res = AWSProfileService.save_profile(
+            profile_name=prof.profile_name,
+            access_key_id=prof.access_key_id or "",
+            secret_access_key=prof.secret_access_key or "",
+            region=prof.region,
+            old_profile_name=prof.old_profile_name
+        )
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/aws/profiles/validate")
+async def api_aws_profiles_validate(profile_name: str = Body(..., embed=True)):
+    try:
+        res = AWSProfileService.validate_profile(profile_name)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/aws/profiles/{profile_name}")
+async def api_aws_profiles_delete(profile_name: str):
+    try:
+        res = AWSProfileService.delete_profile(profile_name)
+        return res
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

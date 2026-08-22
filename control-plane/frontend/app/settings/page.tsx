@@ -37,6 +37,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { CardSkeleton } from "../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { useToast } from "../../components/ui/Toast";
+import { AWSProfilesManager } from "../../components/settings/AWSProfilesManager";
 
 export default function SettingsPage() {
   const { success, error, info } = useToast();
@@ -64,14 +65,6 @@ export default function SettingsPage() {
   const [autoStopEnabled, setAutoStopEnabled] = useState(false);
   const [gracePeriod, setGracePeriod] = useState(15);
   const [isUpdatingAutoStop, setIsUpdatingAutoStop] = useState(false);
-
-  // New AWS Profile form
-  const [isAddingProfile, setIsAddingProfile] = useState(false);
-  const [profileName, setProfileName] = useState("");
-  const [accessKey, setAccessKey] = useState("");
-  const [secretKey, setSecretKey] = useState("");
-  const [profileRegion, setProfileRegion] = useState("ap-south-1");
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // SSH Key Ensure
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
@@ -211,34 +204,6 @@ export default function SettingsPage() {
       error("SSH Key Check Failed", err.message);
     } finally {
       setIsGeneratingKey(false);
-    }
-  };
-
-  const handleCreateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profileName || !accessKey || !secretKey) {
-      error("Missing Fields", "Profile name, access key ID, and secret access key are required.");
-      return;
-    }
-
-    setIsSavingProfile(true);
-    try {
-      const res = await settingsApi.createProfile({
-        profile_name: profileName.trim(),
-        access_key_id: accessKey.trim(),
-        secret_access_key: secretKey.trim(),
-        region: profileRegion,
-      });
-      success("AWS Profile Created", res.message || `Profile '${profileName}' saved.`);
-      setIsAddingProfile(false);
-      setProfileName("");
-      setAccessKey("");
-      setSecretKey("");
-      loadSettings();
-    } catch (err: any) {
-      error("Failed to create profile", err.message);
-    } finally {
-      setIsSavingProfile(false);
     }
   };
 
@@ -768,131 +733,11 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 4. AWS PROFILES & CREDENTIALS */}
-      <div className="p-4 rounded-md bg-panel border border-border-subtle space-y-3">
-        <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-accent-blue" />
-            <div>
-              <h3 className="text-xs font-bold font-mono text-text-primary uppercase tracking-wider">
-                AWS Named Profiles
-              </h3>
-              <p className="text-[10px] text-text-muted">
-                Configured local AWS CLI profiles in <code className="font-mono text-text-primary">~/.aws/credentials</code>.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsAddingProfile(!isAddingProfile)}
-            className="soc-btn-secondary flex items-center gap-1 text-[11px]"
-          >
-            <Plus className="w-3 h-3" />
-            <span>Add Profile</span>
-          </button>
-        </div>
-
-        {/* Profile List */}
-        <div className="space-y-1.5 font-mono text-[11px]">
-          {config?.profiles?.length === 0 ? (
-            <div className="p-4 text-center text-text-muted italic">
-              No named AWS profiles found.
-            </div>
-          ) : (
-            config?.profiles?.map((p) => (
-              <div
-                key={p.name}
-                className="flex items-center justify-between p-2.5 rounded bg-surface border border-border-subtle"
-              >
-                <div>
-                  <div className="font-bold text-text-primary">{p.name}</div>
-                  <div className="text-[10px] text-text-muted">
-                    Account ID: {p.account_id || "Active Profile"} • Region: {p.region || "ap-south-1"}
-                  </div>
-                </div>
-                <StatusBadge status={p.status || "VALID"} size="sm" />
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Add Profile Form */}
-        {isAddingProfile && (
-          <form onSubmit={handleCreateProfile} className="p-3.5 rounded bg-surface border border-border-subtle space-y-3">
-            <div className="text-xs font-bold font-mono text-text-primary">
-              Register New AWS Profile
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono text-text-muted uppercase">Profile Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. socforge-dev"
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono text-text-muted uppercase">Default Region</label>
-                <input
-                  type="text"
-                  required
-                  value={profileRegion}
-                  onChange={(e) => setProfileRegion(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono text-text-muted uppercase">AWS Access Key ID</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="AKIA..."
-                  value={accessKey}
-                  onChange={(e) => setAccessKey(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono text-text-muted uppercase">AWS Secret Access Key</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••••••••••"
-                  value={secretKey}
-                  onChange={(e) => setSecretKey(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded bg-panel border border-border-subtle font-mono text-xs text-text-primary focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsAddingProfile(false)}
-                className="soc-btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSavingProfile}
-                className="soc-btn-primary flex items-center gap-1.5"
-              >
-                {isSavingProfile ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
-                <span>Save Profile</span>
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
+      {/* 4. AWS PROFILES & CREDENTIALS (Live Validation, Edit, Delete, Options Menu) */}
+      <AWSProfilesManager
+        profiles={config?.profiles || []}
+        onRefresh={loadSettings}
+      />
     </div>
   );
 }

@@ -227,3 +227,41 @@ def test_api_operations_list_and_config(client):
     assert "aws_region" in cfg
     assert "autostop" in cfg
 
+
+def test_api_aws_profiles_crud_and_validation(client):
+    with patch("app.services.profiles.AWSProfileService.save_profile") as mock_save, \
+         patch("app.services.profiles.AWSProfileService.validate_profile") as mock_val, \
+         patch("app.services.profiles.AWSProfileService.delete_profile") as mock_del:
+
+        mock_save.return_value = {"success": True, "profile": "test-prof", "account": "123456789012"}
+        mock_val.return_value = {"valid": True, "account": "123456789012", "arn": "arn:aws:iam::123456789012:user/dev"}
+        mock_del.return_value = {"success": True, "message": "Profile deleted."}
+
+        # Create
+        create_res = client.post("/api/aws/profiles/create", json={
+            "profile_name": "test-prof",
+            "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+            "secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+            "region": "ap-south-1"
+        })
+        assert create_res.status_code == 200
+        assert create_res.json()["success"] is True
+
+        # Update
+        update_res = client.post("/api/aws/profiles/update", json={
+            "old_profile_name": "test-prof",
+            "profile_name": "test-prof-updated",
+            "region": "us-east-1"
+        })
+        assert update_res.status_code == 200
+
+        # Validate
+        val_res = client.post("/api/aws/profiles/validate", json={"profile_name": "test-prof"})
+        assert val_res.status_code == 200
+        assert val_res.json()["valid"] is True
+
+        # Delete
+        del_res = client.delete("/api/aws/profiles/test-prof")
+        assert del_res.status_code == 200
+        assert del_res.json()["success"] is True
+
