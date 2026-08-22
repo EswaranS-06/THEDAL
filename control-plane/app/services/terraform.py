@@ -114,6 +114,15 @@ class TerraformService:
         _, log_path = OperationsManager.run_command_async(cmd, settings.TERRAFORM_DIR, "terraform_plan")
         return log_path
 
+    @staticmethod
+    def _sync_inventory_hook() -> None:
+        """Automatically regenerates Ansible hosts.ini after successful Terraform deployment."""
+        import subprocess
+        import sys
+        script_path = settings.SCRIPTS_DIR / "generate-inventory.py"
+        if script_path.exists():
+            subprocess.run([sys.executable, str(script_path)], check=True)
+
     @classmethod
     def apply(cls, confirmation: bool = False) -> Tuple[int, str, Path]:
         """
@@ -123,7 +132,12 @@ class TerraformService:
             raise SecurityValidationError("Explicit confirmation is required to deploy infrastructure.")
 
         cmd = ["terraform", "apply", "-auto-approve", "-no-color"]
-        return OperationsManager.run_command(cmd, settings.TERRAFORM_DIR, "terraform_apply")
+        return OperationsManager.run_command(
+            cmd,
+            settings.TERRAFORM_DIR,
+            "terraform_apply",
+            on_success=cls._sync_inventory_hook
+        )
 
     @classmethod
     def apply_async(cls, confirmation: bool = False) -> Path:
@@ -134,7 +148,12 @@ class TerraformService:
             raise SecurityValidationError("Explicit confirmation is required to deploy infrastructure.")
 
         cmd = ["terraform", "apply", "-auto-approve", "-no-color"]
-        _, log_path = OperationsManager.run_command_async(cmd, settings.TERRAFORM_DIR, "terraform_apply")
+        _, log_path = OperationsManager.run_command_async(
+            cmd,
+            settings.TERRAFORM_DIR,
+            "terraform_apply",
+            on_success=cls._sync_inventory_hook
+        )
         return log_path
 
     @classmethod

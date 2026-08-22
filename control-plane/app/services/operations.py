@@ -8,7 +8,7 @@ import json
 import subprocess
 import threading
 from pathlib import Path
-from typing import List, Optional, Tuple, Generator
+from typing import List, Optional, Tuple, Generator, Callable
 from datetime import datetime
 
 from app.config import settings
@@ -102,7 +102,8 @@ class OperationsManager:
         cmd: List[str],
         cwd: Path,
         operation_name: str,
-        env: Optional[dict] = None
+        env: Optional[dict] = None,
+        on_success: Optional[Callable[[], None]] = None
     ) -> Tuple[int, str, Path]:
         """
         Executes a safe allowlisted command array, logging output to disk.
@@ -163,6 +164,15 @@ class OperationsManager:
                 process.wait()
                 exit_code = process.returncode
 
+                if exit_code == 0 and on_success:
+                    try:
+                        on_success()
+                        f.write("\n[INFO] Post-execution hook executed successfully.\n")
+                        f.flush()
+                    except Exception as hook_err:
+                        f.write(f"\n[WARNING] Post-execution hook error: {hook_err}\n")
+                        f.flush()
+
                 duration = time.time() - start_time
                 footer = (
                     f"\n=================================================================\n"
@@ -185,7 +195,8 @@ class OperationsManager:
         cmd: List[str],
         cwd: Path,
         operation_name: str,
-        env: Optional[dict] = None
+        env: Optional[dict] = None,
+        on_success: Optional[Callable[[], None]] = None
     ) -> Tuple[str, Path]:
         """
         Launches an allowlisted command in a background thread, writing output to disk in real-time.
@@ -243,6 +254,15 @@ class OperationsManager:
 
                     process.wait()
                     exit_code = process.returncode
+
+                    if exit_code == 0 and on_success:
+                        try:
+                            on_success()
+                            f.write("\n[INFO] Post-execution hook executed successfully.\n")
+                            f.flush()
+                        except Exception as hook_err:
+                            f.write(f"\n[WARNING] Post-execution hook error: {hook_err}\n")
+                            f.flush()
 
                     duration = time.time() - start_time
                     footer = (
