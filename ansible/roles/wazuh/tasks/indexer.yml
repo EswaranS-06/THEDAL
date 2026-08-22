@@ -68,6 +68,25 @@
     timeout: 60
     state: started
 
+- name: Synchronize Wazuh Indexer internal users with centralized credentials
+  ansible.builtin.shell: |
+    export JAVA_HOME=/usr/share/wazuh-indexer/jdk
+    NEW_HASH=$(/usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p '{{ wazuh_admin_password }}')
+    python3 -c "
+    import yaml
+    filepath = '/etc/wazuh-indexer/opensearch-security/internal_users.yml'
+    with open(filepath, 'r') as f:
+        users = yaml.safe_load(f)
+    if 'admin' in users:
+        users['admin']['hash'] = '$NEW_HASH'
+    if 'kibanaserver' in users:
+        users['kibanaserver']['hash'] = '$NEW_HASH'
+    with open(filepath, 'w') as f:
+        yaml.dump(users, f, sort_keys=False)
+    "
+  no_log: true
+  changed_when: true
+
 - name: Initialize Wazuh Indexer Security cluster index
   ansible.builtin.shell: |
     export JAVA_HOME=/usr/share/wazuh-indexer/jdk

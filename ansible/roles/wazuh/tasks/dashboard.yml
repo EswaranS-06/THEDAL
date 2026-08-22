@@ -73,6 +73,12 @@
     setcap 'cap_net_bind_service=+ep' /usr/share/wazuh-dashboard/node/bin/node
   changed_when: false
 
+- name: Clear legacy keystore credential overrides if present
+  ansible.builtin.shell: |
+    /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore remove opensearch.username --allow-root || true
+    /usr/share/wazuh-dashboard/bin/opensearch-dashboards-keystore remove opensearch.password --allow-root || true
+  changed_when: false
+
 - name: Ensure Wazuh Dashboard service is enabled and started
   ansible.builtin.service:
     name: wazuh-dashboard
