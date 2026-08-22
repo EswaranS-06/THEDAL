@@ -280,6 +280,36 @@ export interface AWSProfileOperationResponse {
   message?: string;
 }
 
+export interface UserProfileStatus {
+  setup_complete: boolean;
+  display_name: string;
+  username: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface UserProfileDetails {
+  setup_complete: boolean;
+  display_name: string;
+  username: string;
+  password?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface InitialSetupInput {
+  display_name: string;
+  username: string;
+  password: string;
+}
+
+export interface ProfileUpdateInput {
+  display_name?: string;
+  username?: string;
+  password?: string;
+  scope?: "profile_only" | "future_deployments" | "rotate_existing";
+}
+
 export interface AutoStopStatus {
   enabled: boolean;
   grace_period_minutes: number;

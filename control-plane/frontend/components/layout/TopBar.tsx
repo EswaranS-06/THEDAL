@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   RefreshCw,
@@ -15,7 +15,8 @@ import {
   Activity,
   Server,
 } from "lucide-react";
-import { SystemStatus } from "../../lib/types/api";
+import { SystemStatus, UserProfileStatus } from "../../lib/types/api";
+import { profileApi } from "../../lib/api/profile";
 
 interface TopBarProps {
   onRefresh?: () => void;
@@ -37,17 +38,27 @@ export const TopBar: React.FC<TopBarProps> = ({
   const pathname = usePathname();
   const router = useRouter();
   const [runtimeMode, setRuntimeMode] = useState<string>("Native Linux");
+  const [profile, setProfile] = useState<UserProfileStatus | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetch("/api/runtime/status")
       .then((res) => res.json())
       .then((data) => {
         if (data?.display_name) setRuntimeMode(data.display_name);
       })
       .catch(() => {});
+
+    profileApi
+      .getStatus()
+      .then((p) => {
+        setProfile(p);
+      })
+      .catch(() => {});
   }, []);
 
   const isHealthy = status === "HEALTHY" || status === "PASS" || status === "OPERATIONAL";
+  const displayName = profile?.display_name || "Analyst";
+  const avatarLetter = (displayName.charAt(0) || "A").toUpperCase();
 
   return (
     <header className="h-12 bg-surface border-b border-border-subtle flex items-center justify-between px-4 z-20 flex-shrink-0 select-none">
@@ -143,18 +154,22 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <div className="h-4 w-px bg-border-subtle hidden sm:block" />
 
-        {/* Analyst Profile Pill */}
-        <div className="flex items-center gap-2 px-2 py-1 rounded bg-panel border border-border-subtle text-[11px]">
+        {/* Operator Profile Pill (Clickable -> Settings) */}
+        <button
+          onClick={() => router.push("/settings")}
+          className="flex items-center gap-2 px-2 py-1 rounded bg-panel hover:bg-panel-hover border border-border-subtle text-[11px] transition-colors cursor-pointer text-left"
+          title="Manage Operator Profile & Central Password"
+        >
           <div className="w-4 h-4 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[9px]">
-            R
+            {avatarLetter}
           </div>
           <span className="font-medium text-text-primary hidden sm:inline">
-            Analyst Rex
+            {displayName}
           </span>
           <span className="text-[9px] font-mono text-primary px-1 py-0.2 rounded bg-primary/10 border border-primary/20">
-            Lvl 1
+            Operator
           </span>
-        </div>
+        </button>
       </div>
     </header>
   );

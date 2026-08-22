@@ -1,10 +1,12 @@
 "use client";
 
 import React, { ReactNode, useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { ToastProvider } from "../ui/Toast";
 import { operationsApi } from "../../lib/api/operations";
+import { profileApi } from "../../lib/api/profile";
 import { SystemStatus } from "../../lib/types/api";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
@@ -13,10 +15,31 @@ interface AppShellProps {
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
+  const pathname = usePathname();
+  const router = useRouter();
+
   const [systemStatus, setSystemStatus] = useState<SystemStatus | undefined>(undefined);
   const [isOffline, setIsOffline] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSetupChecked, setIsSetupChecked] = useState(false);
+
+  // Check setup state once on mount
+  useEffect(() => {
+    profileApi
+      .getStatus()
+      .then((status) => {
+        if (!status.setup_complete && pathname !== "/setup") {
+          router.replace("/setup");
+        } else if (status.setup_complete && pathname === "/setup") {
+          router.replace("/");
+        }
+        setIsSetupChecked(true);
+      })
+      .catch(() => {
+        setIsSetupChecked(true);
+      });
+  }, [pathname, router]);
 
   const fetchStatus = async () => {
     setIsRefreshing(true);
@@ -38,6 +61,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     const interval = setInterval(fetchStatus, 15000); // 15s gentle polling
     return () => clearInterval(interval);
   }, []);
+
+  // If on the setup wizard page, render full screen without app shell chrome
+  if (pathname === "/setup") {
+    return (
+      <ToastProvider>
+        {children}
+      </ToastProvider>
+    );
+  }
 
   return (
     <ToastProvider>

@@ -38,6 +38,7 @@ import { CardSkeleton } from "../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { useToast } from "../../components/ui/Toast";
 import { AWSProfilesManager } from "../../components/settings/AWSProfilesManager";
+import { UserProfileCard } from "../../components/settings/UserProfileCard";
 
 export default function SettingsPage() {
   const { success, error, info } = useToast();
@@ -245,7 +246,10 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 0. RUNTIME MODE & OPERATOR TOOLCHAIN STATUS */}
+      {/* 0. OPERATOR PROFILE & CENTRAL CREDENTIAL STORE */}
+      <UserProfileCard onProfileUpdated={loadSettings} />
+
+      {/* 1. RUNTIME MODE & OPERATOR TOOLCHAIN STATUS */}
       <div className="p-4 rounded-md bg-panel border border-border-subtle space-y-3">
         <div className="flex items-center justify-between border-b border-border-subtle pb-3">
           <div className="flex items-center gap-2">

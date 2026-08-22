@@ -30,6 +30,7 @@ from app.services.management_ip import ManagementIPService
 from app.services.runtime import RuntimeService
 from app.services.simulations import SimulationService
 from app.services.wazuh_credentials import WazuhCredentialService
+from app.services.user_profile import UserProfileService
 
 
 app = FastAPI(
@@ -70,6 +71,19 @@ class AWSProfileUpdate(BaseModel):
 class AutoStopConfig(BaseModel):
     enabled: bool
     grace_period_minutes: int = 15
+
+
+class InitialSetupRequest(BaseModel):
+    display_name: str
+    username: str
+    password: str
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    scope: str = "future_deployments"
 
 
 # ==============================================================================
@@ -924,5 +938,58 @@ async def api_wazuh_rotate_credentials():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Wazuh credential rotation failed: {str(e)}"
+        )
+
+
+# ==============================================================================
+# 7. Operator Profile, First-Run Wizard & Central Credential Endpoints
+# ==============================================================================
+
+@app.get("/api/profile/status")
+async def api_profile_status():
+    """Returns non-sensitive setup state and display name for UI layout and route guards."""
+    return UserProfileService.get_public_profile()
+
+
+@app.get("/api/profile/details")
+async def api_profile_details():
+    """Returns profile details with password for local educational lab viewing in Settings."""
+    return UserProfileService.get_profile_details()
+
+
+@app.post("/api/profile/setup")
+async def api_profile_setup(req: InitialSetupRequest):
+    """Executes the one-time initial setup wizard."""
+    try:
+        return UserProfileService.setup_initial_profile(
+            display_name=req.display_name,
+            username=req.username,
+            password=req.password
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Initial setup failed: {str(e)}"
+        )
+
+
+@app.post("/api/profile/update")
+async def api_profile_update(req: ProfileUpdateRequest):
+    """Updates profile credentials with specified synchronization scope."""
+    try:
+        return UserProfileService.update_profile(
+            display_name=req.display_name,
+            username=req.username,
+            password=req.password,
+            scope=req.scope
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Profile update failed: {str(e)}"
         )
 
