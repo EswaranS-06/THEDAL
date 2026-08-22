@@ -46,13 +46,7 @@ export const SimulationRunnerDialog: React.FC<SimulationRunnerDialogProps> = ({
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<SimulationRunResult | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadCatalog();
-    }
-  }, [isOpen]);
-
-  const loadCatalog = async () => {
+  const loadCatalog = React.useCallback(async () => {
     try {
       setLoading(true);
       const cat = await simulationsApi.getCatalog();
@@ -77,7 +71,13 @@ export const SimulationRunnerDialog: React.FC<SimulationRunnerDialogProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [defaultTechnique, error]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadCatalog();
+    }
+  }, [isOpen, loadCatalog]);
 
   const handleRun = async () => {
     if (!selectedItem) return;

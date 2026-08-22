@@ -44,7 +44,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
   const [scope, setScope] = useState<"profile_only" | "future_deployments" | "rotate_existing">("future_deployments");
   const [isSaving, setIsSaving] = useState(false);
 
-  const loadProfile = async () => {
+  const loadProfile = React.useCallback(async () => {
     try {
       setLoading(true);
       const res = await profileApi.getDetails();
@@ -54,11 +54,11 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [error]);
 
   useEffect(() => {
     loadProfile();
-  }, []);
+  }, [loadProfile]);
 
   const handleCopyPassword = () => {
     if (!profile?.password) return;
