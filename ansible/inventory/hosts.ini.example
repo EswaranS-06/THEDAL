@@ -1,31 +1,31 @@
 # ==============================================================================
-# SOCForge — Example Ansible Inventory Template
+# THEDAL — Example Ansible Inventory Template
 # ==============================================================================
 # Note: Do not edit `hosts.ini` directly. Generate it dynamically via:
 #   python3 scripts/generate-inventory.py
 # ==============================================================================
 
-[bastion]
-bastion ansible_host=203.0.113.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
+[bastion_nodes]
+bastion ansible_host=203.0.113.10 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/thedal_key
 
 [internal_linux]
-wazuh ansible_host=10.10.10.100 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-web ansible_host=10.10.30.50 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
-attack ansible_host=10.10.20.25 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/socforge_key
+wazuh ansible_host=10.10.10.100 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/thedal_key
+web ansible_host=10.10.30.50 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/thedal_key
+attack ansible_host=10.10.20.25 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/thedal_key
 
 [internal_linux:vars]
 ansible_ssh_common_args='-o ProxyJump=ubuntu@203.0.113.10 -o StrictHostKeyChecking=no'
 
-[windows]
+[windows_nodes]
 windows ansible_host=10.10.10.200 ansible_user=Administrator ansible_connection=winrm ansible_winrm_server_cert_validation=ignore
 
 [linux:children]
-bastion
+bastion_nodes
 internal_linux
 
 [soc_stack:children]
 internal_linux
-windows
+windows_nodes
 
 [all:vars]
 bastion_public_ip=203.0.113.10
