@@ -157,6 +157,11 @@ output "wazuh_private_ip" {
   value       = aws_instance.wazuh.private_ip
 }
 
+output "wazuh_public_ip" {
+  description = "Public IPv4 address for Wazuh SIEM Server"
+  value       = aws_instance.wazuh.public_ip
+}
+
 # Windows Endpoint
 output "windows_instance_id" {
   description = "EC2 Instance ID for Windows Employee Endpoint"
@@ -177,6 +182,11 @@ output "web_instance_id" {
 output "web_private_ip" {
   description = "Private IPv4 address for Linux Web Target Server"
   value       = aws_instance.web.private_ip
+}
+
+output "web_public_ip" {
+  description = "Public IPv4 address for Linux Web Target Server"
+  value       = aws_instance.web.public_ip
 }
 
 # Attack Node
@@ -209,7 +219,7 @@ output "ansible_inventory_hosts" {
       os_family  = "linux"
       role       = "siem"
       private_ip = aws_instance.wazuh.private_ip
-      public_ip  = ""
+      public_ip  = aws_instance.wazuh.public_ip
       user       = "ubuntu"
     }
     web = {
@@ -217,7 +227,7 @@ output "ansible_inventory_hosts" {
       os_family  = "linux"
       role       = "web-target"
       private_ip = aws_instance.web.private_ip
-      public_ip  = ""
+      public_ip  = aws_instance.web.public_ip
       user       = "ubuntu"
     }
     attack = {

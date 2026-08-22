@@ -41,18 +41,18 @@ resource "aws_subnet" "management" {
   )
 }
 
-# SOC / SIEM Subnet (Private — Wazuh Manager, Indexer, Dashboard)
+# SOC / SIEM Subnet (Public Routing — Wazuh Manager, Indexer, Dashboard)
 resource "aws_subnet" "soc" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.soc_subnet_cidr
   availability_zone       = local.selected_az
-  map_public_ip_on_launch = false
+  map_public_ip_on_launch = true
 
   tags = merge(
     local.networking_tags,
     {
       Name = "${local.name_prefix}-soc-subnet"
-      Tier = "private"
+      Tier = "public"
     }
   )
 }
@@ -73,18 +73,18 @@ resource "aws_subnet" "attack" {
   )
 }
 
-# Target / Web Subnet (Private — Nginx, DVWA, OWASP Juice Shop)
+# Target / Web Subnet (Public Routing — Nginx, DVWA, OWASP Juice Shop)
 resource "aws_subnet" "web" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.web_subnet_cidr
   availability_zone       = local.selected_az
-  map_public_ip_on_launch = false
+  map_public_ip_on_launch = true
 
   tags = merge(
     local.networking_tags,
     {
       Name = "${local.name_prefix}-web-subnet"
-      Tier = "private"
+      Tier = "public"
     }
   )
 }
@@ -150,10 +150,10 @@ resource "aws_route_table_association" "management" {
   route_table_id = aws_route_table.public.id
 }
 
-# SOC -> Private Route Table
+# SOC -> Public Route Table
 resource "aws_route_table_association" "soc" {
   subnet_id      = aws_subnet.soc.id
-  route_table_id = aws_route_table.private.id
+  route_table_id = aws_route_table.public.id
 }
 
 # Attack -> Private Route Table
@@ -162,8 +162,8 @@ resource "aws_route_table_association" "attack" {
   route_table_id = aws_route_table.private.id
 }
 
-# Web -> Private Route Table
+# Web -> Public Route Table
 resource "aws_route_table_association" "web" {
   subnet_id      = aws_subnet.web.id
-  route_table_id = aws_route_table.private.id
+  route_table_id = aws_route_table.public.id
 }

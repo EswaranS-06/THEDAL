@@ -105,7 +105,7 @@ resource "aws_instance" "wazuh" {
   vpc_security_group_ids      = [aws_security_group.soc.id]
   key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
-  associate_public_ip_address = false
+  associate_public_ip_address = true
 
   root_block_device {
     volume_size           = var.wazuh_root_volume_size
@@ -188,7 +188,7 @@ resource "aws_instance" "web" {
   vpc_security_group_ids      = [aws_security_group.web.id]
   key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
-  associate_public_ip_address = false
+  associate_public_ip_address = true
 
   root_block_device {
     volume_size           = 20

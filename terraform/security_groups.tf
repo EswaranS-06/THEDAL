@@ -158,6 +158,17 @@ resource "aws_security_group_rule" "soc_ingress_wazuh_api_mgmt" {
   description              = "Allow Wazuh API access from management bastion"
 }
 
+# Ingress: Wazuh REST API (TCP 55000) from Authorized Admin CIDR
+resource "aws_security_group_rule" "soc_ingress_wazuh_api_admin" {
+  type              = "ingress"
+  from_port         = 55000
+  to_port           = 55000
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.soc.id
+  description       = "Allow Wazuh API access from authorized admin CIDR"
+}
+
 # Ingress: Wazuh Dashboard Web UI (HTTPS 443) from Management Bastion
 resource "aws_security_group_rule" "soc_ingress_wazuh_dashboard_mgmt" {
   type                     = "ingress"
@@ -167,6 +178,50 @@ resource "aws_security_group_rule" "soc_ingress_wazuh_dashboard_mgmt" {
   source_security_group_id = aws_security_group.management.id
   security_group_id        = aws_security_group.soc.id
   description              = "Allow Wazuh Dashboard web access from management bastion"
+}
+
+# Ingress: Wazuh Dashboard Web UI (HTTPS 443) from Authorized Admin CIDR
+resource "aws_security_group_rule" "soc_ingress_wazuh_dashboard_admin" {
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.soc.id
+  description       = "Allow direct Wazuh Dashboard HTTPS access from authorized admin CIDR"
+}
+
+# Ingress: Wazuh Indexer / OpenSearch REST API (TCP 9200) from Authorized Admin CIDR
+resource "aws_security_group_rule" "soc_ingress_wazuh_indexer_admin" {
+  type              = "ingress"
+  from_port         = 9200
+  to_port           = 9200
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.soc.id
+  description       = "Allow direct Wazuh Indexer REST API access from authorized admin CIDR"
+}
+
+# Ingress: Wazuh Agent Events (TCP 1514) from Authorized Admin CIDR (External Agents)
+resource "aws_security_group_rule" "soc_ingress_wazuh_events_admin" {
+  type              = "ingress"
+  from_port         = 1514
+  to_port           = 1514
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.soc.id
+  description       = "Allow Wazuh agent telemetry events from authorized admin CIDR"
+}
+
+# Ingress: Wazuh Agent Registration (TCP 1515) from Authorized Admin CIDR (External Agents)
+resource "aws_security_group_rule" "soc_ingress_wazuh_reg_admin" {
+  type              = "ingress"
+  from_port         = 1515
+  to_port           = 1515
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.soc.id
+  description       = "Allow Wazuh agent registration from authorized admin CIDR"
 }
 
 
@@ -366,6 +421,39 @@ resource "aws_security_group_rule" "web_ingress_juiceshop_mgmt" {
   source_security_group_id = aws_security_group.management.id
   security_group_id        = aws_security_group.web.id
   description              = "Allow OWASP Juice Shop validation from management bastion"
+}
+
+# Ingress: HTTP (TCP 80) from Authorized Admin CIDR
+resource "aws_security_group_rule" "web_ingress_http_admin" {
+  type              = "ingress"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.web.id
+  description       = "Allow HTTP web access from authorized admin CIDR"
+}
+
+# Ingress: Deliberately Vulnerable App / DVWA (TCP 8000) from Authorized Admin CIDR
+resource "aws_security_group_rule" "web_ingress_vulnapp_admin" {
+  type              = "ingress"
+  from_port         = 8000
+  to_port           = 8000
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.web.id
+  description       = "Allow DVWA web target access from authorized admin CIDR"
+}
+
+# Ingress: OWASP Juice Shop (TCP 3000) from Authorized Admin CIDR
+resource "aws_security_group_rule" "web_ingress_juiceshop_admin" {
+  type              = "ingress"
+  from_port         = 3000
+  to_port           = 3000
+  protocol          = "tcp"
+  cidr_blocks       = [var.admin_cidr]
+  security_group_id = aws_security_group.web.id
+  description       = "Allow OWASP Juice Shop web target access from authorized admin CIDR"
 }
 
 # Egress: All outbound for updates, Docker image pulls, and Wazuh telemetry
