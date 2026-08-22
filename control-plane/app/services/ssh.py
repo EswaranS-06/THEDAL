@@ -122,7 +122,10 @@ class SSHService:
         cmd = [
             "ssh",
             "-i", str(key_path),
+            "-o", "BatchMode=yes",
             "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=5",
             "-f", "-N",
             "-L", f"0.0.0.0:8443:{wazuh_ip}:443",

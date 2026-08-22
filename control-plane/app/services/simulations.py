@@ -268,13 +268,21 @@ class SimulationService:
 
         # Build controlled SSH execution command
         # Wrapper script executes in-place without allowing arbitrary argument injection
+        proxy_cmd = (
+            f"ssh -i {key_path} -o BatchMode=yes -o StrictHostKeyChecking=no "
+            f"-o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 "
+            f"-W %h:%p ubuntu@{bastion_ip}"
+        )
+
         ssh_cmd = [
             "ssh",
             "-i", str(key_path),
+            "-o", "BatchMode=yes",
             "-o", "StrictHostKeyChecking=no",
             "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "LogLevel=ERROR",
             "-o", "ConnectTimeout=10",
-            "-o", f"ProxyJump=ubuntu@{bastion_ip}",
+            "-o", f"ProxyCommand={proxy_cmd}",
             f"ubuntu@{attack_ip}",
             remote_cmd
         ]

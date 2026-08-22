@@ -21,7 +21,7 @@ class HealthService:
     """
 
     @classmethod
-    def run_all_checks(cls) -> HealthCheckSummary:
+    def run_all_checks(cls, deep_check: bool = False) -> HealthCheckSummary:
         checks: List[HealthCheckItem] = []
 
         # 1. Check SSH Key
@@ -84,42 +84,57 @@ class HealthService:
 
         # 6. Check Wazuh SIEM Credentials & Service Sync
         wazuh_node = next((i for i in instances if "wazuh" in i.name.lower() or "siem" in i.name.lower()), None)
+        secrets_exist = WazuhCredentialService.SECRETS_YML_PATH.exists()
+
         if wazuh_node and wazuh_node.state == "running":
-            try:
-                wazuh_diag = WazuhCredentialService.get_wazuh_detailed_health()
-                comps = wazuh_diag.get("components", {})
+            if deep_check:
+                try:
+                    wazuh_diag = WazuhCredentialService.get_wazuh_detailed_health()
+                    comps = wazuh_diag.get("components", {})
 
-                # Wazuh Manager
-                mgr_stat = comps.get("wazuh_manager", {}).get("status", "UNKNOWN")
-                checks.append(HealthCheckItem(
-                    component="Wazuh Manager Service",
-                    status="PASS" if mgr_stat == "HEALTHY" else "FAIL" if mgr_stat == "OFFLINE" else "WARNING",
-                    message=comps.get("wazuh_manager", {}).get("message", "Status checked")
-                ))
+                    # Wazuh Manager
+                    mgr_stat = comps.get("wazuh_manager", {}).get("status", "UNKNOWN")
+                    checks.append(HealthCheckItem(
+                        component="Wazuh Manager Service",
+                        status="PASS" if mgr_stat == "HEALTHY" else "FAIL" if mgr_stat == "OFFLINE" else "WARNING",
+                        message=comps.get("wazuh_manager", {}).get("message", "Status checked")
+                    ))
 
-                # Wazuh Dashboard
-                dash_stat = comps.get("wazuh_dashboard", {}).get("status", "UNKNOWN")
-                checks.append(HealthCheckItem(
-                    component="Wazuh Dashboard Service",
-                    status="PASS" if dash_stat == "HEALTHY" else "FAIL" if dash_stat == "OFFLINE" else "WARNING",
-                    message=comps.get("wazuh_dashboard", {}).get("message", "Status checked")
-                ))
+                    # Wazuh Dashboard
+                    dash_stat = comps.get("wazuh_dashboard", {}).get("status", "UNKNOWN")
+                    checks.append(HealthCheckItem(
+                        component="Wazuh Dashboard Service",
+                        status="PASS" if dash_stat == "HEALTHY" else "FAIL" if dash_stat == "OFFLINE" else "WARNING",
+                        message=comps.get("wazuh_dashboard", {}).get("message", "Status checked")
+                    ))
 
-                # Wazuh API Auth & Dashboard Sync
-                auth_stat = comps.get("api_authentication", {}).get("status", "UNKNOWN")
-                sync_stat = comps.get("dashboard_api_sync", {}).get("status", "UNKNOWN")
+                    # Wazuh API Auth & Dashboard Sync
+                    auth_stat = comps.get("api_authentication", {}).get("status", "UNKNOWN")
+                    sync_stat = comps.get("dashboard_api_sync", {}).get("status", "UNKNOWN")
 
+                    checks.append(HealthCheckItem(
+                        component="Wazuh API & Dashboard Sync",
+                        status="PASS" if auth_stat == "VERIFIED" and sync_stat == "VERIFIED" else "FAIL" if auth_stat == "AUTHENTICATION_FAILED" or sync_stat == "MISMATCH" else "WARNING",
+                        message="Credentials verified & synchronized" if auth_stat == "VERIFIED" and sync_stat == "VERIFIED" else "Credential mismatch detected (401 Unauthorized)" if auth_stat == "AUTHENTICATION_FAILED" or sync_stat == "MISMATCH" else "Wazuh API check pending"
+                    ))
+                except Exception as e:
+                    checks.append(HealthCheckItem(
+                        component="Wazuh SIEM Health",
+                        status="WARNING",
+                        message=f"Could not complete Wazuh health probe: {str(e)}"
+                    ))
+            else:
                 checks.append(HealthCheckItem(
-                    component="Wazuh API & Dashboard Sync",
-                    status="PASS" if auth_stat == "VERIFIED" and sync_stat == "VERIFIED" else "FAIL" if auth_stat == "AUTHENTICATION_FAILED" or sync_stat == "MISMATCH" else "WARNING",
-                    message="Credentials verified & synchronized" if auth_stat == "VERIFIED" and sync_stat == "VERIFIED" else "Credential mismatch detected (401 Unauthorized)" if auth_stat == "AUTHENTICATION_FAILED" or sync_stat == "MISMATCH" else "Wazuh API check pending"
+                    component="Wazuh SIEM Stack",
+                    status="PASS" if secrets_exist else "WARNING",
+                    message="Credentials configured & Wazuh instance running" if secrets_exist else "Secrets file missing"
                 ))
-            except Exception as e:
-                checks.append(HealthCheckItem(
-                    component="Wazuh SIEM Health",
-                    status="WARNING",
-                    message=f"Could not complete Wazuh health probe: {str(e)}"
-                ))
+        elif wazuh_node:
+            checks.append(HealthCheckItem(
+                component="Wazuh SIEM Stack",
+                status="WARNING",
+                message=f"Wazuh EC2 instance is {wazuh_node.state.upper()}"
+            ))
 
         # Calculate overall status
         statuses = [c.status for c in checks]

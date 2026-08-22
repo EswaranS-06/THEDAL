@@ -273,7 +273,7 @@ async def page_settings(request: Request):
 async def api_status():
     aws_status = AWSService.get_connection_status()
     tf_status = TerraformService.get_status()
-    health_summary = HealthService.run_all_checks()
+    health_summary = HealthService.run_all_checks(deep_check=False)
 
     return SystemStatus(
         aws_connected=aws_status["connected"],
@@ -298,18 +298,18 @@ async def api_terraform():
     return {
         "status": TerraformService.get_status(),
         "outputs": TerraformService.get_outputs(),
-        "version": TerraformService.get_version()
+        "log_path": TerraformService.get_log_path()
     }
 
 
 @app.get("/api/health", response_model=HealthCheckSummary)
-async def api_health():
-    return HealthService.run_all_checks()
+async def api_health(deep: bool = False):
+    return HealthService.run_all_checks(deep_check=deep)
 
 
 @app.post("/api/health/check")
 async def api_health_check_post():
-    summary = HealthService.run_all_checks()
+    summary = HealthService.run_all_checks(deep_check=True)
     return {"success": True, "health": summary}
 
 
