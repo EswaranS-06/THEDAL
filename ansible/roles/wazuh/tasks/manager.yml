@@ -101,13 +101,24 @@
 
 - name: Ensure Wazuh API user password matches centralized credentials
   ansible.builtin.shell: |
-    if /var/ossec/framework/python/bin/python3 /var/ossec/api/scripts/auth_user.py -u "{{ wazuh_api_username }}" -P '{{ wazuh_api_password }}' 2>/dev/null; then
-      echo "API user password updated"
-    else
-      /var/ossec/framework/python/bin/python3 /var/ossec/api/scripts/auth_user.py -a "{{ wazuh_api_username }}" '{{ wazuh_api_password }}' administrator
-      echo "API user created"
-    fi
+    /var/ossec/framework/python/bin/python3 -c '
+    import wazuh.rbac.orm as rbac_orm
+    with rbac_orm.AuthenticationManager() as auth_mgr:
+        users = auth_mgr.get_users()
+        user_map = {u["username"]: u["user_id"] for u in users if isinstance(u, dict)}
+        for target_user in ["{{ wazuh_api_username }}", "wazuh", "wazuh-wui"]:
+            if target_user in user_map:
+                auth_mgr.update_user(user_id=user_map[target_user], password="{{ wazuh_api_password }}")
+            else:
+                auth_mgr.add_user(username=target_user, password="{{ wazuh_api_password }}")
+        print("API users synchronized")
+    '
   no_log: true
   register: api_user_sync_result
-  changed_when: "'updated' in api_user_sync_result.stdout or 'created' in api_user_sync_result.stdout"
-  notify: Restart wazuh-manager
+  changed_when: "'API users synchronized' in api_user_sync_result.stdout"
+
+- name: Restart wazuh-manager to reload API authentication
+  ansible.builtin.service:
+    name: wazuh-manager
+    state: restarted
+  when: api_user_sync_result.changed
