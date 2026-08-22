@@ -6,6 +6,39 @@
 # and installs, configures, and registers the Wazuh Agent against the Wazuh Manager.
 # ==============================================================================
 
+- name: Ensure WinRM Port Forwarding Tunnel is Active
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Check if WinRM local port 5985 is listening
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: 5985
+        timeout: 2
+      register: winrm_port_check
+      ignore_errors: true
+
+    - name: Establish WinRM SSH Tunnel via Bastion if not active
+      ansible.builtin.shell: >
+        ssh -i {{ hostvars['bastion']['ansible_ssh_private_key_file'] | default('~/.ssh/thedal_key') }}
+        -o BatchMode=yes
+        -o StrictHostKeyChecking=no
+        -o UserKnownHostsFile=/dev/null
+        -o LogLevel=ERROR
+        -o ExitOnForwardFailure=yes
+        -f -N -L 127.0.0.1:5985:{{ hostvars['windows']['windows_internal_ip'] | default('10.10.10.212') }}:5985
+        {{ hostvars['bastion']['ansible_user'] | default('ubuntu') }}@{{ hostvars['bastion']['ansible_host'] | default(bastion_public_ip) }}
+      when: winrm_port_check is failed
+      ignore_errors: true
+
+    - name: Wait for WinRM local port 5985 to become available
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: 5985
+        timeout: 10
+      ignore_errors: true
+
 - name: Deploy Windows Baseline, Sysmon, and Wazuh Agent
   hosts: windows
   gather_facts: true

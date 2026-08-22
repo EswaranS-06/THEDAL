@@ -57,6 +57,11 @@ class AnsibleService:
         if playbook_key not in cls.ALLOWED_PLAYBOOKS:
             raise SecurityValidationError(f"Invalid playbook '{playbook_key}'. Allowed: {list(cls.ALLOWED_PLAYBOOKS.keys())}")
 
+        # Automatically ensure WinRM tunnel is active for Windows playbooks
+        if "windows" in playbook_key:
+            from app.services.ssh import SSHService
+            SSHService.ensure_winrm_tunnel()
+
         playbook_file = cls.ALLOWED_PLAYBOOKS[playbook_key]
         playbook_path = settings.ANSIBLE_DIR / "playbooks" / playbook_file
 
@@ -80,6 +85,11 @@ class AnsibleService:
         if playbook_key not in cls.ALLOWED_PLAYBOOKS:
             raise SecurityValidationError(f"Invalid playbook '{playbook_key}'. Allowed: {list(cls.ALLOWED_PLAYBOOKS.keys())}")
 
+        # Automatically ensure WinRM tunnel is active for Windows playbooks
+        if "windows" in playbook_key:
+            from app.services.ssh import SSHService
+            SSHService.ensure_winrm_tunnel()
+
         playbook_file = cls.ALLOWED_PLAYBOOKS[playbook_key]
         playbook_path = settings.ANSIBLE_DIR / "playbooks" / playbook_file
 
@@ -100,6 +110,10 @@ class AnsibleService:
         """Runs all provisioning stages sequentially synchronously."""
         if not confirmation:
             raise SecurityValidationError("Confirmation required for full provisioning.")
+
+        # Automatically ensure WinRM tunnel is active for full provisioning (includes Windows)
+        from app.services.ssh import SSHService
+        SSHService.ensure_winrm_tunnel()
 
         inventory_path = settings.ANSIBLE_DIR / "inventory" / "hosts.ini"
         playbooks = [
@@ -124,6 +138,10 @@ class AnsibleService:
         if not confirmation:
             raise SecurityValidationError("Confirmation required for full provisioning.")
 
+        # Automatically ensure WinRM tunnel is active for full provisioning (includes Windows)
+        from app.services.ssh import SSHService
+        SSHService.ensure_winrm_tunnel()
+
         inventory_path = settings.ANSIBLE_DIR / "inventory" / "hosts.ini"
         playbooks = [
             "bootstrap.yml",
@@ -141,3 +159,4 @@ class AnsibleService:
         cmd = ["ansible-playbook", "-i", str(inventory_path)] + playbook_paths
         _, log_path = OperationsManager.run_command_async(cmd, settings.ANSIBLE_DIR, "ansible_full_provision")
         return log_path
+
