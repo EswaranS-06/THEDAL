@@ -179,7 +179,8 @@ class NativeExecutionAdapter(ExecutionAdapter):
         ans_path = shutil.which("ansible")
         if ans_path:
             try:
-                out = subprocess.check_output([ans_path, "--version"], text=True, timeout=2)
+                env = {**os.environ, "LC_ALL": "C.UTF-8", "LANG": "C.UTF-8"}
+                out = subprocess.check_output([ans_path, "--version"], text=True, timeout=2, env=env, stderr=subprocess.DEVNULL)
                 tools["ansible"] = {"available": True, "version": out.splitlines()[0], "path": ans_path}
             except Exception:
                 tools["ansible"] = {"available": True, "version": "Unknown", "path": ans_path}

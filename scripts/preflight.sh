@@ -73,22 +73,22 @@ for tool_entry in "${REQUIRED_TOOLS[@]}"; do
     VERSION_INFO=""
     case "${binary}" in
       git)
-        VERSION_INFO=$(git --version 2>/dev/null | head -n 1)
+        VERSION_INFO=$(git --version 2>/dev/null | sed -n '1p')
         ;;
       terraform)
-        VERSION_INFO=$(terraform version 2>/dev/null | head -n 1)
+        VERSION_INFO=$(terraform version 2>/dev/null | sed -n '1p')
         ;;
       ansible)
-        VERSION_INFO=$(LC_ALL=C.UTF-8 ansible --version 2>/dev/null | head -n 1)
+        VERSION_INFO=$(LC_ALL=C.UTF-8 ansible --version 2>/dev/null | sed -n '1p')
         ;;
       aws)
-        VERSION_INFO=$(aws --version 2>/dev/null | head -n 1)
+        VERSION_INFO=$(aws --version 2>/dev/null | sed -n '1p')
         ;;
       python3)
-        VERSION_INFO=$(python3 --version 2>/dev/null | head -n 1)
+        VERSION_INFO=$(python3 --version 2>/dev/null | sed -n '1p')
         ;;
       ssh)
-        VERSION_INFO=$(ssh -V 2>&1 | head -n 1)
+        VERSION_INFO=$(ssh -V 2>&1 | sed -n '1p')
         ;;
     esac
     printf "[OK] (%s)\n" "${VERSION_INFO}"
