@@ -21,6 +21,7 @@
     client_cert: "{{ wazuh_indexer_certs_dir }}/admin.pem"
     client_key: "{{ wazuh_indexer_certs_dir }}/admin-key.pem"
     validate_certs: false
+    use_proxy: false
     status_code: [200, 201]
     timeout: 15
   register: indexer_health
@@ -33,6 +34,7 @@
     password: "{{ wazuh_api_password }}"
     force_basic_auth: true
     validate_certs: false
+    use_proxy: false
     status_code: 200
     timeout: 15
   no_log: true
@@ -53,6 +55,7 @@
     url: "https://127.0.0.1:{{ wazuh_dashboard_port }}"
     method: GET
     validate_certs: false
+    use_proxy: false
     status_code: [200, 302]
     timeout: 15
   register: dashboard_health
