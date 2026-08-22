@@ -2,6 +2,7 @@
 THEDAL Control Plane — FastAPI Application Entrypoint
 """
 
+import asyncio
 from pathlib import Path
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
@@ -316,11 +317,12 @@ async def api_health_check_post():
 @app.post("/api/terraform/plan")
 async def api_terraform_plan():
     try:
-        code, out, log_path = TerraformService.plan()
+        log_path = TerraformService.plan_async()
         return {
-            "success": code == 0,
-            "message": "Terraform plan completed.",
-            "log_file": log_path.name
+            "success": True,
+            "message": "Terraform plan started.",
+            "log_file": log_path.name,
+            "status": "RUNNING"
         }
     except (OperationLockError, SecurityValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -331,11 +333,12 @@ async def api_terraform_plan():
 @app.post("/api/terraform/apply")
 async def api_terraform_apply(req: OperationRequest):
     try:
-        code, out, log_path = TerraformService.apply(confirmation=req.confirmation)
+        log_path = TerraformService.apply_async(confirmation=req.confirmation)
         return {
-            "success": code == 0,
-            "message": "Terraform apply completed.",
-            "log_file": log_path.name
+            "success": True,
+            "message": "Terraform apply started in background.",
+            "log_file": log_path.name,
+            "status": "RUNNING"
         }
     except (OperationLockError, SecurityValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -346,14 +349,15 @@ async def api_terraform_apply(req: OperationRequest):
 @app.post("/api/terraform/destroy")
 async def api_terraform_destroy(req: OperationRequest):
     try:
-        code, out, log_path = TerraformService.destroy(
+        log_path = TerraformService.destroy_async(
             confirmation=req.confirmation,
             confirmation_phrase=req.confirmation_phrase
         )
         return {
-            "success": code == 0,
-            "message": "Terraform destroy completed.",
-            "log_file": log_path.name
+            "success": True,
+            "message": "Terraform destroy started in background.",
+            "log_file": log_path.name,
+            "status": "RUNNING"
         }
     except (OperationLockError, SecurityValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -363,7 +367,7 @@ async def api_terraform_destroy(req: OperationRequest):
 
 @app.post("/api/ec2/start")
 async def api_ec2_start():
-    result = AWSService.start_instances()
+    result = await asyncio.to_thread(AWSService.start_instances)
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Failed to start instances"))
     return result
@@ -371,7 +375,7 @@ async def api_ec2_start():
 
 @app.post("/api/ec2/stop")
 async def api_ec2_stop():
-    result = AWSService.stop_instances()
+    result = await asyncio.to_thread(AWSService.stop_instances)
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Failed to stop instances"))
     return result
@@ -380,11 +384,12 @@ async def api_ec2_stop():
 @app.post("/api/inventory/generate")
 async def api_inventory_generate():
     try:
-        code, out, log_path = AnsibleService.generate_inventory()
+        log_path = AnsibleService.generate_inventory_async()
         return {
-            "success": code == 0,
-            "message": "Ansible inventory generated.",
-            "log_file": log_path.name
+            "success": True,
+            "message": "Ansible inventory generation started.",
+            "log_file": log_path.name,
+            "status": "RUNNING"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -393,14 +398,15 @@ async def api_inventory_generate():
 @app.post("/api/ansible/playbook")
 async def api_ansible_playbook(req: OperationRequest):
     try:
-        code, out, log_path = AnsibleService.run_playbook(
+        log_path = AnsibleService.run_playbook_async(
             playbook_key=req.target or "",
             confirmation=req.confirmation
         )
         return {
-            "success": code == 0,
-            "message": f"Playbook '{req.target}' finished.",
-            "log_file": log_path.name
+            "success": True,
+            "message": f"Playbook '{req.target}' started in background.",
+            "log_file": log_path.name,
+            "status": "RUNNING"
         }
     except (OperationLockError, SecurityValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -411,11 +417,12 @@ async def api_ansible_playbook(req: OperationRequest):
 @app.post("/api/ansible/provision")
 async def api_ansible_provision(req: OperationRequest):
     try:
-        code, out, log_path = AnsibleService.run_full_provision(confirmation=req.confirmation)
+        log_path = AnsibleService.run_full_provision_async(confirmation=req.confirmation)
         return {
-            "success": code == 0,
-            "message": "Full system provisioning completed.",
-            "log_file": log_path.name
+            "success": True,
+            "message": "Full system provisioning started in background.",
+            "log_file": log_path.name,
+            "status": "RUNNING"
         }
     except (OperationLockError, SecurityValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -856,7 +863,8 @@ async def api_simulations_catalog():
 async def api_simulations_run(req: SimulationRunRequest):
     """Executes an approved adversary simulation on the Attack host."""
     try:
-        result = SimulationService.run_simulation(
+        result = await asyncio.to_thread(
+            SimulationService.run_simulation,
             simulation_type=req.simulation_type,
             identifier=req.identifier,
             confirm=req.confirmation

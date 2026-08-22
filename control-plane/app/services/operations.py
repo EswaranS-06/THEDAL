@@ -177,6 +177,95 @@ class OperationsManager:
             cls._active_log_file = None
 
     @classmethod
+    def run_command_async(
+        cls,
+        cmd: List[str],
+        cwd: Path,
+        operation_name: str,
+        env: Optional[dict] = None
+    ) -> Tuple[str, Path]:
+        """
+        Launches an allowlisted command in a background thread, writing output to disk in real-time.
+        Returns (operation_name, log_path) immediately (<15ms) to prevent HTTP socket timeouts and proxy disconnects.
+        """
+        # Validate CWD before acquiring lock
+        if not cwd.exists() or not cwd.is_dir():
+            raise SecurityValidationError(f"Invalid execution directory: {cwd}")
+
+        cls.acquire_lock(operation_name)
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"{timestamp}_{operation_name}.log"
+        log_path = settings.LOGS_DIR / log_filename
+        cls._active_log_file = log_path
+
+        def _worker():
+            start_time = time.time()
+            exit_code = -1
+            try:
+                cmd_env = os.environ.copy()
+                if env:
+                    cmd_env.update(env)
+
+                process = subprocess.Popen(
+                    cmd,
+                    cwd=str(cwd),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True,
+                    env=cmd_env
+                )
+
+                with open(log_path, "w", encoding="utf-8") as f:
+                    header = (
+                        f"=================================================================\n"
+                        f" THEDAL Operation Log: {operation_name}\n"
+                        f" Timestamp: {datetime.utcnow().isoformat()} UTC\n"
+                        f" Directory: {cwd}\n"
+                        f" Command:   {' '.join(cmd)}\n"
+                        f"=================================================================\n\n"
+                    )
+                    f.write(header)
+                    f.flush()
+
+                    if process.stdout:
+                        for line in process.stdout:
+                            sanitized_line = cls.sanitize_log_content(line)
+                            f.write(sanitized_line)
+                            f.flush()
+
+                    process.wait()
+                    exit_code = process.returncode
+
+                    duration = time.time() - start_time
+                    footer = (
+                        f"\n=================================================================\n"
+                        f" Operation Finished with Exit Code: {exit_code}\n"
+                        f" Total Duration: {duration:.2f} seconds\n"
+                        f" Status: {'SUCCESS' if exit_code == 0 else 'FAILED'}\n"
+                        f"=================================================================\n"
+                    )
+                    f.write(footer)
+                    f.flush()
+
+            except Exception as ex:
+                try:
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(f"\n[ERROR] Operation execution exception: {ex}\n")
+                        f.flush()
+                except Exception:
+                    pass
+            finally:
+                cls.release_lock()
+                cls._active_log_file = None
+
+        thread = threading.Thread(target=_worker, daemon=True, name=f"op_{operation_name}")
+        thread.start()
+
+        return operation_name, log_path
+
+    @classmethod
     def list_logs(cls) -> List[dict]:
         """Returns metadata for recent operation logs."""
         logs = []

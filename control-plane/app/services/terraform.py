@@ -103,14 +103,21 @@ class TerraformService:
 
     @classmethod
     def plan(cls) -> Tuple[int, str, Path]:
-        """Generates an execution plan."""
+        """Generates an execution plan synchronously."""
         cmd = ["terraform", "plan", "-no-color"]
         return OperationsManager.run_command(cmd, settings.TERRAFORM_DIR, "terraform_plan")
 
     @classmethod
+    def plan_async(cls) -> Path:
+        """Generates an execution plan asynchronously in a background worker."""
+        cmd = ["terraform", "plan", "-no-color"]
+        _, log_path = OperationsManager.run_command_async(cmd, settings.TERRAFORM_DIR, "terraform_plan")
+        return log_path
+
+    @classmethod
     def apply(cls, confirmation: bool = False) -> Tuple[int, str, Path]:
         """
-        Executes terraform apply with explicit confirmation guardrail.
+        Executes terraform apply synchronously with explicit confirmation guardrail.
         """
         if not confirmation:
             raise SecurityValidationError("Explicit confirmation is required to deploy infrastructure.")
@@ -119,9 +126,21 @@ class TerraformService:
         return OperationsManager.run_command(cmd, settings.TERRAFORM_DIR, "terraform_apply")
 
     @classmethod
+    def apply_async(cls, confirmation: bool = False) -> Path:
+        """
+        Executes terraform apply asynchronously in background thread with explicit confirmation.
+        """
+        if not confirmation:
+            raise SecurityValidationError("Explicit confirmation is required to deploy infrastructure.")
+
+        cmd = ["terraform", "apply", "-auto-approve", "-no-color"]
+        _, log_path = OperationsManager.run_command_async(cmd, settings.TERRAFORM_DIR, "terraform_apply")
+        return log_path
+
+    @classmethod
     def destroy(cls, confirmation: bool, confirmation_phrase: Optional[str]) -> Tuple[int, str, Path]:
         """
-        Executes terraform destroy with mandatory double-confirmation and typed phrase verification.
+        Executes terraform destroy synchronously with mandatory double-confirmation and typed phrase verification.
         """
         if not confirmation:
             raise SecurityValidationError("Explicit confirmation checkbox is required for destruction.")
@@ -136,3 +155,23 @@ class TerraformService:
 
         cmd = ["terraform", "destroy", "-auto-approve", "-no-color"]
         return OperationsManager.run_command(cmd, settings.TERRAFORM_DIR, "terraform_destroy")
+
+    @classmethod
+    def destroy_async(cls, confirmation: bool, confirmation_phrase: Optional[str]) -> Path:
+        """
+        Executes terraform destroy asynchronously in background thread with verification.
+        """
+        if not confirmation:
+            raise SecurityValidationError("Explicit confirmation checkbox is required for destruction.")
+
+        expected_phrase = settings.REQUIRE_DESTROY_CONFIRMATION_PHRASE
+        legacy_phrase = settings.LEGACY_DESTROY_CONFIRMATION_PHRASE
+        clean_phrase = (confirmation_phrase or "").strip()
+        if clean_phrase != expected_phrase and clean_phrase != legacy_phrase:
+            raise SecurityValidationError(
+                f"Destruction rejected: You must type the exact phrase '{expected_phrase}'."
+            )
+
+        cmd = ["terraform", "destroy", "-auto-approve", "-no-color"]
+        _, log_path = OperationsManager.run_command_async(cmd, settings.TERRAFORM_DIR, "terraform_destroy")
+        return log_path
