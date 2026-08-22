@@ -20,6 +20,8 @@ import { CardSkeleton } from "../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../components/ui/ErrorState";
 import { useToast } from "../../components/ui/Toast";
 
+import { copyToClipboard } from "../../lib/clipboard";
+
 export default function LogsPage() {
   const { success, error } = useToast();
 
@@ -74,12 +76,12 @@ export default function LogsPage() {
 
   const handleCopy = async () => {
     if (!logDetail?.content) return;
-    try {
-      await navigator.clipboard.writeText(logDetail.content);
+    const ok = await copyToClipboard(logDetail.content);
+    if (ok) {
       setCopied(true);
       success("Log Copied", "Log content copied to clipboard.");
       setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setCopied(false);
     }
   };

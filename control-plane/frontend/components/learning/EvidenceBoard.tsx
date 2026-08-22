@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { EvidenceItem } from "../../lib/types/api";
 import { useToast } from "../ui/Toast";
+import { copyToClipboard } from "../../lib/clipboard";
 
 interface EvidenceBoardProps {
   labId: string;
@@ -103,7 +104,7 @@ export const EvidenceBoard: React.FC<EvidenceBoardProps> = ({
     }
   };
 
-  const handleCopyBrief = () => {
+  const handleCopyBrief = async () => {
     const brief = [
       `=== SOC ANALYST INVESTIGATION BRIEF: ${labId.toUpperCase()} ===`,
       `Date: ${new Date().toUTCString()}`,
@@ -125,11 +126,12 @@ export const EvidenceBoard: React.FC<EvidenceBoardProps> = ({
       localNotes || "No analyst notes written.",
     ].join("\n");
 
-    navigator.clipboard.writeText(brief).then(() => {
+    const ok = await copyToClipboard(brief);
+    if (ok) {
       setCopiedBrief(true);
       setTimeout(() => setCopiedBrief(false), 2500);
       success("Case Brief Copied", "Incident summary copied to clipboard.");
-    });
+    }
   };
 
   return (

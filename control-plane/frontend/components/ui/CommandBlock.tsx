@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { Copy, Check, Terminal } from "lucide-react";
 import { useToast } from "./Toast";
 
+import { copyToClipboard } from "../../lib/clipboard";
+
 interface CommandBlockProps {
   command: string;
   title?: string;
@@ -21,12 +23,12 @@ export const CommandBlock: React.FC<CommandBlockProps> = ({
   const { success } = useToast();
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(command);
+    const ok = await copyToClipboard(command);
+    if (ok) {
       setCopied(true);
       success("Copied to clipboard", title || "Command ready to execute in terminal");
       setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setCopied(false);
     }
   };

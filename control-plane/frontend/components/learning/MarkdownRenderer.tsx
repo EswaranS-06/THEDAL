@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef } from "react";
 
+import { copyToClipboard } from "../../lib/clipboard";
+
 interface MarkdownRendererProps {
   contentHtml?: string;
   rawMarkdown?: string;
@@ -28,14 +30,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       button.className =
         "copy-code-btn px-2 py-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors absolute top-2 right-2";
       button.innerText = "Copy";
-      button.onclick = () => {
+      button.onclick = async () => {
         const codeText = pre.querySelector("code")?.innerText || pre.innerText;
-        navigator.clipboard.writeText(codeText).then(() => {
+        const ok = await copyToClipboard(codeText);
+        if (ok) {
           button.innerText = "Copied!";
           setTimeout(() => {
             button.innerText = "Copy";
           }, 2000);
-        });
+        }
       };
       pre.style.position = "relative";
       pre.appendChild(button);

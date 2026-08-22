@@ -28,6 +28,7 @@ import {
 import { LabWorkspaceData, LabPhase, LabQuestion } from "../../lib/types/api";
 import { StatusBadge } from "../ui/StatusBadge";
 import { CommandBlock } from "../ui/CommandBlock";
+import { copyToClipboard } from "../../lib/clipboard";
 import { useToast } from "../ui/Toast";
 
 interface InvestigationWorkspaceProps {
@@ -104,12 +105,13 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
     }
   };
 
-  const handleCopyQueryText = (queryText: string) => {
-    navigator.clipboard.writeText(queryText).then(() => {
+  const handleCopyQueryText = async (queryText: string) => {
+    const ok = await copyToClipboard(queryText);
+    if (ok) {
       setCopiedQuery(queryText);
       setTimeout(() => setCopiedQuery(null), 2000);
       success("Query Copied", "OpenSearch query copied to clipboard.");
-    });
+    }
   };
 
   const allPreRevealDone = [

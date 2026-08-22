@@ -293,19 +293,61 @@ class OperationsManager:
 
     @classmethod
     def list_logs(cls) -> List[dict]:
-        """Returns metadata for recent operation logs."""
+        """Returns metadata for recent operation logs with status, action, and timestamp."""
         logs = []
         if not settings.LOGS_DIR.exists():
             return logs
+
+        active_log = cls._active_log_file
+        active_op = cls.get_active_operation()
 
         for file in sorted(settings.LOGS_DIR.glob("*.log"), reverse=True):
             try:
                 stat = file.stat()
                 parts = file.stem.split("_", 2)
-                op_name = parts[2] if len(parts) >= 3 else file.stem
+                # Formatted timestamp from filename e.g. 20260822_083959 -> 2026-08-22 08:39:59 UTC
+                ts_str = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC")
+                if len(parts) >= 3:
+                    date_part, time_part, op_name = parts[0], parts[1], parts[2]
+                    try:
+                        dt = datetime.strptime(f"{date_part}_{time_part}", "%Y%m%d_%H%M%S")
+                        ts_str = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+                    except Exception:
+                        pass
+                else:
+                    op_name = file.stem
+
+                # Determine operation status
+                status = "UNKNOWN"
+                if active_log and active_log.name == file.name and active_op:
+                    status = "RUNNING"
+                else:
+                    try:
+                        with open(file, "rb") as f:
+                            if stat.st_size > 2048:
+                                f.seek(-2048, os.SEEK_END)
+                            tail = f.read().decode("utf-8", errors="ignore")
+                            if "Status: SUCCESS" in tail or "Exit Code: 0" in tail:
+                                status = "SUCCESS"
+                            elif "Status: FAILED" in tail or "Operation execution exception:" in tail:
+                                status = "FAILURE"
+                            elif "failed=0" in tail and "unreachable=0" in tail:
+                                status = "SUCCESS"
+                            elif "failed=" in tail and not "failed=0" in tail:
+                                status = "FAILURE"
+                            elif "unreachable=" in tail and not "unreachable=0" in tail:
+                                status = "FAILURE"
+                            elif "Exit Code: " in tail:
+                                status = "FAILURE"
+                    except Exception:
+                        pass
+
                 logs.append({
                     "filename": file.name,
                     "operation": op_name,
+                    "action": op_name,
+                    "timestamp": ts_str,
+                    "status": status,
                     "size_bytes": stat.st_size,
                     "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                     "path": str(file)

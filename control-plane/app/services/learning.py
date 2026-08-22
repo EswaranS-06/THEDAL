@@ -438,7 +438,17 @@ class LearningService:
         tf_outputs = TerraformService.get_outputs()
 
         bastion_node = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip and i.public_ip != "None"), None)
-        live_bastion_ip = bastion_node.public_ip if bastion_node else tf_outputs.get("bastion_public_ip", "13.232.202.163")
+        live_bastion_ip = bastion_node.public_ip if bastion_node else tf_outputs.get("bastion_public_ip", "13.234.186.170")
+        
+        attack_node = next((i for i in instances if "attack" in i.name.lower() and i.private_ip and i.private_ip != "None"), None)
+        live_attack_ip = attack_node.private_ip if attack_node else tf_outputs.get("attack_private_ip", "10.10.20.64")
+
+        web_node = next((i for i in instances if "web" in i.name.lower() and i.private_ip and i.private_ip != "None"), None)
+        live_web_ip = web_node.private_ip if web_node else tf_outputs.get("web_private_ip", "10.10.30.96")
+
+        windows_node = next((i for i in instances if "windows" in i.name.lower() and i.private_ip and i.private_ip != "None"), None)
+        live_windows_ip = windows_node.private_ip if windows_node else tf_outputs.get("windows_private_ip", "10.10.10.212")
+
         key_path = str(settings.SSH_KEY_PATH)
 
         required_hosts_list = lab_meta.get("required_hosts", ["wazuh", "bastion"])
@@ -467,7 +477,16 @@ class LearningService:
         raw_markdown = cls.interpolate_live_telemetry(raw_markdown)
 
         # Build progressive phases tailored for this specific lab
-        phases = cls._build_lab_phases(lab_id, lab_meta, raw_markdown, live_bastion_ip, key_path)
+        phases = cls._build_lab_phases(
+            lab_id=lab_id,
+            meta=lab_meta,
+            raw_md=raw_markdown,
+            bastion_ip=live_bastion_ip,
+            attack_ip=live_attack_ip,
+            web_ip=live_web_ip,
+            windows_ip=live_windows_ip,
+            key_path=key_path
+        )
 
         try:
             saved_checklist = json.loads(prog.get("checklist", "[]"))
@@ -512,7 +531,17 @@ class LearningService:
         return cls.get_workspace(lab_id)
 
     @classmethod
-    def _build_lab_phases(cls, lab_id: str, meta: Dict[str, Any], raw_md: str, bastion_ip: str, key_path: str) -> List[Dict[str, Any]]:
+    def _build_lab_phases(
+        cls,
+        lab_id: str,
+        meta: Dict[str, Any],
+        raw_md: str,
+        bastion_ip: str,
+        attack_ip: str,
+        web_ip: str,
+        windows_ip: str,
+        key_path: str
+    ) -> List[Dict[str, Any]]:
         """Builds standardized, structured 6-phase progressive investigation steps."""
         title = meta.get("title", "SOC Investigation")
         mitre = meta.get("mitre", "T1059")
@@ -524,9 +553,9 @@ class LearningService:
         lab_specs = {
             "03-powershell-investigation": {
                 "mission": "Investigate a suspicious PowerShell process execution flagged on the Windows endpoint. Extract the in-memory ScriptBlock telemetry, assess execution policy bypass flags, and determine whether the execution represents benign administration or adversary simulation.",
-                "attack_host": "THEDAL-Attack (10.10.20.114)",
-                "target_host": "THEDAL-Windows (10.10.10.254)",
-                "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.114 '/usr/local/bin/run-atomic-test --technique T1059.001 --confirm'",
+                "attack_host": f"THEDAL-Attack ({attack_ip})",
+                "target_host": f"THEDAL-Windows ({windows_ip})",
+                "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-atomic-test --technique T1059.001 --confirm'",
                 "query": 'data.win.system.eventID: "4104"',
                 "query_field": "data.win.eventdata.scriptBlockText",
                 "cross_query": 'data.win.eventdata.image: *powershell.exe',
@@ -579,14 +608,81 @@ class LearningService:
                 ],
                 "expected_verdict": "Suspicious / Test Simulation",
                 "expected_findings": "The telemetry demonstrates an automated PowerShell execution carrying '-ExecutionPolicy Bypass' that executes discovery logic. Event ID 4104 captures the raw ScriptBlock text in memory, confirming adversary technique T1059.001."
+            },
+            "05-dvwa-sqli": {
+                "mission": "Investigate SQL Injection attack activity against the DVWA web target. Locate the Nginx access log records containing SQL injection syntax in the URI, identify the payload structure, and assess if the database was breached.",
+                "attack_host": f"THEDAL-Attack ({attack_ip})",
+                "target_host": f"THEDAL-Web ({web_ip}:8000)",
+                "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-web-test --scenario DVWA-03 --confirm'",
+                "query": 'data.request: "*OR*1=1*" OR data.status: "200"',
+                "query_field": "data.request",
+                "cross_query": 'data.srcip: *',
+                "cross_index": "socforge-nginx-access-*",
+                "hint_1": "In OpenSearch Dashboards, look for HTTP GET requests to /vulnerabilities/sqli/ containing quote and boolean characters (%27 OR 1=1).",
+                "hint_2": "Check whether the HTTP response code returned by Nginx is 200 OK or 302 redirect.",
+                "thinking_prompts": [
+                    "What IP address originated the web request?",
+                    "What exact SQL injection payload was submitted in the query string?",
+                    "Does a 200 OK or 302 response prove the exploit succeeded on the backend database?"
+                ],
+                "expected_verdict": "True Positive / Simulation",
+                "expected_findings": "Nginx access logs capture HTTP GET requests containing SQL syntax tokens against the DVWA /vulnerabilities/sqli endpoint."
+            },
+            "06-dvwa-command-injection": {
+                "mission": "Investigate OS Command Injection executed against DVWA. Cross-correlate Nginx web requests with Linux auditd process creation events (execve) to confirm remote shell command execution.",
+                "attack_host": f"THEDAL-Attack ({attack_ip})",
+                "target_host": f"THEDAL-Web ({web_ip}:8000)",
+                "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-web-test --scenario DVWA-04 --confirm'",
+                "query": 'data.audit.type: "EXECVE" AND (data.audit.a0: "cat" OR data.audit.a1: "/etc/passwd")',
+                "query_field": "data.audit.a0 / data.audit.a1",
+                "cross_query": 'data.request: "*;*" OR data.request: "*|*"',
+                "cross_index": "socforge-auditd-*",
+                "hint_1": "Query the Auditd index pattern (socforge-auditd-*) for EXECVE events where www-data spawned system binaries.",
+                "hint_2": "Correlate with Nginx access logs around the same second to identify the originating HTTP POST request.",
+                "thinking_prompts": [
+                    "What process spawned the 'cat' or 'id' command? Was the parent process php-fpm or nginx?",
+                    "What user context did the executed command run under (www-data)?",
+                    "How does Linux auditd prove that the command actually executed on the operating system?"
+                ],
+                "expected_verdict": "True Positive / Exploit Execution",
+                "expected_findings": "Correlated Nginx POST requests with Auditd EXECVE logs showing www-data executing system commands."
+            },
+            "08-juice-shop-api": {
+                "mission": "Investigate REST API authentication bypass attempts against OWASP Juice Shop running in Docker. Analyze containerized application logs to uncover SQLi login bypass attempts.",
+                "attack_host": f"THEDAL-Attack ({attack_ip})",
+                "target_host": f"THEDAL-Web ({web_ip}:3000)",
+                "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-web-test --scenario JS-05 --confirm'",
+                "query": 'data.log: "*rest/user/login*" OR data.log: "*admin*"',
+                "query_field": "data.log",
+                "cross_query": 'data.container.name: "*juice-shop*"',
+                "cross_index": "socforge-juice-shop-*",
+                "hint_1": "Query socforge-juice-shop-* for authentication requests to /rest/user/login.",
+                "hint_2": "Inspect JSON payload fields for SQL injection strings such as ' OR 1=1--.",
+                "thinking_prompts": [
+                    "What endpoint was targeted in the REST API?",
+                    "What authentication payload was submitted in the JSON body?",
+                    "How do Docker container logs differ from traditional host syslog?"
+                ],
+                "expected_verdict": "True Positive / Authentication Bypass",
+                "expected_findings": "Juice Shop JSON logs show an authentication bypass attempt against /rest/user/login using SQL injection syntax."
             }
         }
 
+        # Build fallback attack command based on technique type
+        if mitre.startswith("T"):
+            default_attack_cmd = f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-atomic-test --technique {mitre} --confirm'"
+        elif "DVWA" in lab_id.upper():
+            default_attack_cmd = f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-web-test --scenario DVWA-03 --confirm'"
+        elif "JUICE" in lab_id.upper():
+            default_attack_cmd = f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-web-test --scenario JS-05 --confirm'"
+        else:
+            default_attack_cmd = f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip} '/usr/local/bin/run-web-test --baseline --confirm'"
+
         spec = lab_specs.get(lab_id, {
             "mission": f"Investigate {title} using dedicated telemetry sources ({source}). Cross-reference security events in OpenSearch index '{target_index}', analyze artifacts, and deliver an evidence-backed analyst verdict.",
-            "attack_host": "THEDAL-Attack (10.10.20.114)",
-            "target_host": "THEDAL-Target Node",
-            "attack_cmd": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.114",
+            "attack_host": f"THEDAL-Attack ({attack_ip})",
+            "target_host": f"THEDAL-Target Node",
+            "attack_cmd": default_attack_cmd,
             "query": f'rule.mitre.id: "{mitre}" OR data.win.system.eventID: "*"',
             "query_field": "full_log / data.win.eventdata",
             "cross_query": f'data.win.eventdata.image: * OR rule.id: *',

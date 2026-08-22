@@ -20,6 +20,7 @@ import {
 import { profileApi } from "../../lib/api/profile";
 import { UserProfileDetails } from "../../lib/types/api";
 import { useToast } from "../ui/Toast";
+import { copyToClipboard } from "../../lib/clipboard";
 
 interface UserProfileCardProps {
   onProfileUpdated?: () => void;
@@ -60,12 +61,14 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
     loadProfile();
   }, [loadProfile]);
 
-  const handleCopyPassword = () => {
+  const handleCopyPassword = async () => {
     if (!profile?.password) return;
-    navigator.clipboard.writeText(profile.password);
-    setCopied(true);
-    info("Password Copied", "Central password copied to clipboard.");
-    setTimeout(() => setCopied(false), 2000);
+    const ok = await copyToClipboard(profile.password);
+    if (ok) {
+      setCopied(true);
+      info("Password Copied", "Central password copied to clipboard.");
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleStartEdit = () => {

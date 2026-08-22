@@ -36,7 +36,7 @@ class SimulationService:
             "description": "Executes systeminfo, net config workstation, and environment queries.",
             "expected_index": "socforge-sysmon-*",
             "expected_events": ["EventID 1 (Process Creation)", "EventID 4104 (ScriptBlock)"],
-            "remote_cmd": "/usr/local/bin/run-atomic-test T1082",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1082 --confirm",
         },
         "T1059.001": {
             "technique": "T1059.001",
@@ -47,7 +47,7 @@ class SimulationService:
             "description": "Simulates encoded command execution and bypass flags via PowerShell.",
             "expected_index": "socforge-powershell-*",
             "expected_events": ["EventID 4104 (ScriptBlock Logging)", "EventID 1 (Sysmon)"],
-            "remote_cmd": "/usr/local/bin/run-atomic-test T1059.001",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1059.001 --confirm",
         },
         "T1053.005": {
             "technique": "T1053.005",
@@ -58,7 +58,7 @@ class SimulationService:
             "description": "Registers a persistence task using schtasks.exe.",
             "expected_index": "socforge-sysmon-*",
             "expected_events": ["EventID 1 (Process Create: schtasks.exe)", "EventID 106 (Task Scheduled)"],
-            "remote_cmd": "/usr/local/bin/run-atomic-test T1053.005",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1053.005 --confirm",
         },
         "T1003.001": {
             "technique": "T1003.001",
@@ -69,7 +69,7 @@ class SimulationService:
             "description": "Simulates LSASS process access telemetry (EventID 10) without extracting live credentials.",
             "expected_index": "socforge-sysmon-*",
             "expected_events": ["EventID 10 (ProcessAccess to lsass.exe)"],
-            "remote_cmd": "/usr/local/bin/run-atomic-test T1003.001",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1003.001 --confirm",
         },
         "T1110.001": {
             "technique": "T1110.001",
@@ -80,7 +80,7 @@ class SimulationService:
             "description": "Generates multiple failed authentication attempts against SMB / WinRM.",
             "expected_index": "socforge-sysmon-*",
             "expected_events": ["EventID 4625 (Failed Logon)"],
-            "remote_cmd": "/usr/local/bin/run-atomic-test T1110.001",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1110.001 --confirm",
         },
         "T1562.001": {
             "technique": "T1562.001",
@@ -91,7 +91,7 @@ class SimulationService:
             "description": "Simulates wevtutil.exe cl event log manipulation.",
             "expected_index": "socforge-sysmon-*",
             "expected_events": ["EventID 1102 (The audit log was cleared)"],
-            "remote_cmd": "/usr/local/bin/run-atomic-test T1562.001",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1562.001 --confirm",
         },
         "T1046": {
             "technique": "T1046",
@@ -102,51 +102,91 @@ class SimulationService:
             "description": "Executes SYN port scan from Attack host to Web Target.",
             "expected_index": "socforge-auditd-*",
             "expected_events": ["Auditd Socket Connection", "Nginx Connection Logs"],
-            "remote_cmd": "/usr/local/bin/run-atomic-test T1046",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1046 --confirm",
         },
     }
 
     # Static allowlist of approved Web Application Attack Scenarios
     ALLOWED_WEB_SCENARIOS = {
-        "DVWA-SQLI": {
-            "scenario": "DVWA-SQLI",
+        "DVWA-03": {
+            "scenario": "DVWA-03",
             "name": "DVWA SQL Injection (Error-Based & Boolean)",
-            "target": "Linux Web Target (10.10.30.148:80)",
+            "target": "Linux Web Target (Port 8000)",
             "target_host": "web",
             "description": "Dispatches SQL injection payloads against DVWA /vulnerabilities/sqli/ endpoint.",
             "expected_index": "socforge-nginx-access-*",
-            "expected_events": ["Nginx HTTP 200 GET with SQL syntax payloads"],
-            "remote_cmd": "/usr/local/bin/run-web-test DVWA-SQLI",
+            "expected_events": ["Nginx HTTP GET with SQL syntax payloads"],
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario DVWA-03 --confirm",
         },
-        "DVWA-XSS": {
-            "scenario": "DVWA-XSS",
-            "name": "DVWA Reflected & Stored Cross-Site Scripting",
-            "target": "Linux Web Target (10.10.30.148:80)",
+        "DVWA-SQLI": {
+            "scenario": "DVWA-03",
+            "name": "DVWA SQL Injection (Error-Based & Boolean)",
+            "target": "Linux Web Target (Port 8000)",
             "target_host": "web",
-            "description": "Sends script injection probes against DVWA /vulnerabilities/xss_r/ endpoint.",
+            "description": "Dispatches SQL injection payloads against DVWA /vulnerabilities/sqli/ endpoint.",
             "expected_index": "socforge-nginx-access-*",
-            "expected_events": ["Nginx URI parameters containing script tags"],
-            "remote_cmd": "/usr/local/bin/run-web-test DVWA-XSS",
+            "expected_events": ["Nginx HTTP GET with SQL syntax payloads"],
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario DVWA-03 --confirm",
         },
-        "DVWA-COMMAND-INJECTION": {
-            "scenario": "DVWA-COMMAND-INJECTION",
+        "DVWA-04": {
+            "scenario": "DVWA-04",
             "name": "DVWA Remote OS Command Injection",
-            "target": "Linux Web Target (10.10.30.148:80)",
+            "target": "Linux Web Target (Port 8000)",
             "target_host": "web",
             "description": "Tests semicolon and pipe OS command chaining against DVWA ping utility.",
             "expected_index": "socforge-auditd-*",
             "expected_events": ["Auditd execve /bin/cat /etc/passwd", "Nginx access log"],
-            "remote_cmd": "/usr/local/bin/run-web-test DVWA-COMMAND-INJECTION",
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario DVWA-04 --confirm",
         },
-        "JUICESHOP-AUTH": {
-            "scenario": "JUICESHOP-AUTH",
+        "DVWA-COMMAND-INJECTION": {
+            "scenario": "DVWA-04",
+            "name": "DVWA Remote OS Command Injection",
+            "target": "Linux Web Target (Port 8000)",
+            "target_host": "web",
+            "description": "Tests semicolon and pipe OS command chaining against DVWA ping utility.",
+            "expected_index": "socforge-auditd-*",
+            "expected_events": ["Auditd execve /bin/cat /etc/passwd", "Nginx access log"],
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario DVWA-04 --confirm",
+        },
+        "DVWA-05": {
+            "scenario": "DVWA-05",
+            "name": "DVWA Local File Inclusion (LFI)",
+            "target": "Linux Web Target (Port 8000)",
+            "target_host": "web",
+            "description": "Sends path traversal probes against DVWA /vulnerabilities/fi/ endpoint.",
+            "expected_index": "socforge-nginx-access-*",
+            "expected_events": ["Nginx URI parameters containing ../../etc/passwd"],
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario DVWA-05 --confirm",
+        },
+        "DVWA-XSS": {
+            "scenario": "DVWA-05",
+            "name": "DVWA Local File Inclusion (LFI)",
+            "target": "Linux Web Target (Port 8000)",
+            "target_host": "web",
+            "description": "Sends script injection probes against DVWA endpoint.",
+            "expected_index": "socforge-nginx-access-*",
+            "expected_events": ["Nginx URI parameters containing script tags"],
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario DVWA-05 --confirm",
+        },
+        "JS-05": {
+            "scenario": "JS-05",
             "name": "OWASP Juice Shop SQLi Authentication Bypass",
-            "target": "Linux Web Target (10.10.30.148:3000)",
+            "target": "Linux Web Target (Port 3000)",
             "target_host": "web",
             "description": "Sends ' OR 1=1-- payload to Juice Shop /rest/user/login endpoint.",
             "expected_index": "socforge-juice-shop-*",
             "expected_events": ["Juice Shop POST /rest/user/login bypass event"],
-            "remote_cmd": "/usr/local/bin/run-web-test JUICESHOP-AUTH",
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario JS-05 --confirm",
+        },
+        "JUICESHOP-AUTH": {
+            "scenario": "JS-05",
+            "name": "OWASP Juice Shop SQLi Authentication Bypass",
+            "target": "Linux Web Target (Port 3000)",
+            "target_host": "web",
+            "description": "Sends ' OR 1=1-- payload to Juice Shop /rest/user/login endpoint.",
+            "expected_index": "socforge-juice-shop-*",
+            "expected_events": ["Juice Shop POST /rest/user/login bypass event"],
+            "remote_cmd": "/usr/local/bin/run-web-test --scenario JS-05 --confirm",
         },
     }
 
@@ -158,7 +198,7 @@ class SimulationService:
             "target": "Linux Web Target (10.10.30.148)",
             "description": "Generates benign sudo commands and standard user authentication logs.",
             "expected_index": "socforge-linux-auth-*",
-            "remote_cmd": "/usr/local/bin/run-baseline-test AUTH",
+            "remote_cmd": "/usr/local/bin/run-web-test --baseline --confirm",
         },
         "BASELINE-WEB": {
             "event_type": "BASELINE-WEB",
@@ -166,7 +206,7 @@ class SimulationService:
             "target": "Linux Web Target (10.10.30.148)",
             "description": "Fetches standard CSS/JS static assets to populate legitimate baseline traffic.",
             "expected_index": "socforge-nginx-access-*",
-            "remote_cmd": "/usr/local/bin/run-baseline-test WEB",
+            "remote_cmd": "/usr/local/bin/run-web-test --baseline --confirm",
         },
         "BASELINE-WIN": {
             "event_type": "BASELINE-WIN",
@@ -174,7 +214,7 @@ class SimulationService:
             "target": "Windows Endpoint (10.10.10.254)",
             "description": "Queries Windows services via Get-Service without anomalous flags.",
             "expected_index": "socforge-sysmon-*",
-            "remote_cmd": "/usr/local/bin/run-baseline-test WIN",
+            "remote_cmd": "/usr/local/bin/run-atomic-test --technique T1082 --confirm",
         },
     }
 

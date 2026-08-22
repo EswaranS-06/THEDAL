@@ -26,8 +26,10 @@ powershell_modules_path: "/usr/local/share/powershell/Modules"
 # Safety Boundary & Target Controls
 atomic_execute: false # Default: Simulation execution is DISABLED
 atomic_target_name: "SOCForge-windows"
-atomic_target_host: "{{ windows_private_ip | default('10.10.10.254') }}"
+atomic_target_host: "{{ hostvars['windows']['ansible_host'] | default('10.10.10.212') }}"
 atomic_target_allowed_hosts:
+  - "{{ hostvars['windows']['ansible_host'] | default('10.10.10.212') }}"
+  - "10.10.10.212"
   - "10.10.10.254"
   - "10.10.10.200"
   - "127.0.0.1"
