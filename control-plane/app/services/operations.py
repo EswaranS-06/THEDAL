@@ -122,8 +122,11 @@ class OperationsManager:
             if not cwd.exists() or not cwd.is_dir():
                 raise SecurityValidationError(f"Invalid execution directory: {cwd}")
 
-            # Merge environment if provided
+            # Merge environment if provided, enforcing standard UTF-8 locale and Ansible config
             cmd_env = os.environ.copy()
+            cmd_env["LC_ALL"] = "C.UTF-8"
+            cmd_env["LANG"] = "C.UTF-8"
+            cmd_env.setdefault("ANSIBLE_CONFIG", str(settings.ANSIBLE_DIR / "ansible.cfg"))
             if env:
                 cmd_env.update(env)
 
@@ -203,6 +206,9 @@ class OperationsManager:
             exit_code = -1
             try:
                 cmd_env = os.environ.copy()
+                cmd_env["LC_ALL"] = "C.UTF-8"
+                cmd_env["LANG"] = "C.UTF-8"
+                cmd_env.setdefault("ANSIBLE_CONFIG", str(settings.ANSIBLE_DIR / "ansible.cfg"))
                 if env:
                     cmd_env.update(env)
 
