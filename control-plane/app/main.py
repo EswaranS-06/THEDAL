@@ -1001,3 +1001,188 @@ async def api_profile_update(req: ProfileUpdateRequest):
             detail=f"Profile update failed: {str(e)}"
         )
 
+
+# ==============================================================================
+# 8. Multi-Session Web Terminal & Command Execution Endpoints
+# ==============================================================================
+
+from fastapi import WebSocket, WebSocketDisconnect
+from app.services.terminal import TerminalManager, logger as terminal_logger
+
+
+class TerminalExecuteRequest(BaseModel):
+    command: str
+    cwd: Optional[str] = None
+    timeout: Optional[int] = 120
+
+
+class TerminalCreateSessionRequest(BaseModel):
+    session_id: Optional[str] = None
+    title: Optional[str] = None
+    cols: Optional[int] = 80
+    rows: Optional[int] = 24
+
+
+@app.websocket("/api/ws/terminal/{session_id}")
+async def websocket_terminal_endpoint(websocket: WebSocket, session_id: str):
+    """Interactive bidirectional WebSocket PTY shell stream."""
+    await websocket.accept()
+    session = TerminalManager.create_session(session_id=session_id)
+
+    async def read_from_pty():
+        try:
+            while session.alive:
+                data = session.read(4096)
+                if data:
+                    await websocket.send_bytes(data)
+                await asyncio.sleep(0.015)
+        except Exception:
+            pass
+
+    read_task = asyncio.create_task(read_from_pty())
+
+    try:
+        while True:
+            msg = await websocket.receive()
+            if "text" in msg and msg["text"]:
+                text_data = msg["text"]
+                # Check for control packets (e.g. JSON resize)
+                if text_data.startswith("{") and "resize" in text_data:
+                    try:
+                        import json
+                        payload = json.loads(text_data)
+                        if payload.get("type") == "resize":
+                            session.resize(payload.get("cols", 80), payload.get("rows", 24))
+                            continue
+                    except Exception:
+                        pass
+                session.write(text_data.encode("utf-8", errors="replace"))
+            elif "bytes" in msg and msg["bytes"]:
+                session.write(msg["bytes"])
+    except WebSocketDisconnect:
+        terminal_logger.info(f"Client disconnected from terminal session {session_id}")
+    except Exception as e:
+        terminal_logger.warning(f"Terminal WS exception: {e}")
+    finally:
+        read_task.cancel()
+
+
+@app.post("/api/terminal/session/create")
+async def api_terminal_create_session(req: TerminalCreateSessionRequest):
+    """Creates a new PTY shell session."""
+    session = TerminalManager.create_session(
+        session_id=req.session_id,
+        title=req.title,
+        cols=req.cols or 80,
+        rows=req.rows or 24
+    )
+    return {
+        "session_id": session.session_id,
+        "title": session.title,
+        "cols": session.cols,
+        "rows": session.rows,
+        "created_at": session.created_at,
+        "alive": session.alive,
+    }
+
+
+@app.get("/api/terminal/sessions")
+async def api_terminal_list_sessions():
+    """Lists all active terminal sessions."""
+    return {"sessions": TerminalManager.list_sessions()}
+
+
+@app.delete("/api/terminal/session/{session_id}")
+async def api_terminal_close_session(session_id: str):
+    """Terminates a specific terminal session."""
+    closed = TerminalManager.close_session(session_id)
+    return {"session_id": session_id, "closed": closed}
+
+
+@app.post("/api/terminal/execute")
+async def api_terminal_execute(req: TerminalExecuteRequest):
+    """Executes a command synchronously in the project root directory and returns output."""
+    if not req.command or not req.command.strip():
+        raise HTTPException(status_code=400, detail="Command cannot be empty.")
+    return TerminalManager.execute_command_sync(
+        command=req.command.strip(),
+        timeout=req.timeout or 120,
+        cwd=req.cwd
+    )
+
+
+@app.get("/api/terminal/snippets")
+async def api_terminal_snippets():
+    """Returns dynamic command shortcuts with live Bastion and private IPs."""
+    instances = AWSService.get_instances()
+    bastion = next((i for i in instances if "bastion" in i.name.lower() and i.public_ip and i.public_ip != "None"), None)
+    bastion_ip = bastion.public_ip if bastion else "<BASTION_PUBLIC_IP>"
+    key_path = str(settings.SSH_KEY_PATH)
+
+    return {
+        "bastion_ip": bastion_ip,
+        "snippets": [
+            {
+                "category": "Direct SSH Access",
+                "title": "SSH to Bastion Jumpbox",
+                "command": f"ssh -i {key_path} ubuntu@{bastion_ip}",
+                "description": "Direct SSH shell into the public Bastion jumpbox"
+            },
+            {
+                "category": "Direct SSH Access",
+                "title": "SSH to Wazuh SIEM Core",
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.10.10",
+                "description": "ProxyJump SSH into the Wazuh SIEM and OpenSearch manager host"
+            },
+            {
+                "category": "Direct SSH Access",
+                "title": "SSH to Linux Attack Host",
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.10",
+                "description": "ProxyJump SSH into the Atomic Red Team attack simulation node"
+            },
+            {
+                "category": "Direct SSH Access",
+                "title": "SSH to Linux Web Target",
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.30.10",
+                "description": "ProxyJump SSH into the DVWA & Juice Shop container target host"
+            },
+            {
+                "category": "Tunnels & Port Forwarding",
+                "title": "WinRM Tunnel to Windows Endpoint",
+                "command": f"ssh -i {key_path} -N -L 5985:10.10.10.20:5985 ubuntu@{bastion_ip}",
+                "description": "Forwards localhost:5985 to Windows Server 2022 endpoint"
+            },
+            {
+                "category": "Tunnels & Port Forwarding",
+                "title": "Wazuh Dashboard HTTPS Tunnel",
+                "command": f"ssh -i {key_path} -N -L 8443:10.10.10.10:443 ubuntu@{bastion_ip}",
+                "description": "Forwards localhost:8443 to OpenSearch Dashboards UI"
+            },
+            {
+                "category": "Adversary Emulation",
+                "title": "Trigger T1059.001 PowerShell Attack",
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.10 '/usr/local/bin/run-atomic-test --technique T1059.001 --confirm'",
+                "description": "Executes encoded PowerShell ScriptBlock emulation payload"
+            },
+            {
+                "category": "Adversary Emulation",
+                "title": "Trigger DVWA SQL Injection",
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.10 '/usr/local/bin/run-web-test --scenario DVWA-03 --confirm'",
+                "description": "Dispatches SQLi payloads against DVWA target"
+            },
+            {
+                "category": "Infrastructure Operations",
+                "title": "Ansible Ping All Nodes",
+                "command": "ansible all -i ansible/inventory/hosts.ini -m ping",
+                "description": "Verifies end-to-end connectivity across all 5 inventory hosts"
+            },
+            {
+                "category": "Infrastructure Operations",
+                "title": "View Terraform Outputs",
+                "command": "terraform -chdir=terraform output",
+                "description": "Inspects live AWS resource outputs and allocated IPs"
+            }
+        ]
+    }
+
+

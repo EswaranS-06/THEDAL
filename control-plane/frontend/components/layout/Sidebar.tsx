@@ -36,8 +36,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ systemStatus }) => {
       label: "OPERATIONS",
       items: [
         { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+        { href: "/terminal", label: "Web Terminal", icon: Terminal },
         { href: "/infrastructure", label: "AWS Resources", icon: Server },
-        { href: "/operations", label: "Operations", icon: Terminal },
+        { href: "/operations", label: "Operations", icon: ScrollText },
         { href: "/logs", label: "Logs", icon: ScrollText },
       ],
     },
