@@ -1,17 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Download,
   Terminal,
   CheckCircle,
-  Cpu,
-  Layers,
-  Sparkles,
   Server,
-  ArrowRight,
-  Shield,
-  HelpCircle,
-  Copy,
-  Check
+  Download,
 } from 'lucide-react';
 import { CodeBlock } from './ui/CodeBlock';
 
@@ -48,7 +40,7 @@ cd THEDAL
     {
       step: '02',
       cmd: 'make deploy',
-      desc: 'Executes `terraform apply` to provision VPC, private subnets, security groups, and 5 EC2 instances with static IPs.',
+      desc: 'Executes `terraform apply` to provision VPC, private subnets, and 5 EC2 instances with static IPs.',
     },
     {
       step: '03',
@@ -68,130 +60,129 @@ cd THEDAL
   ];
 
   return (
-    <section id="install" className="py-20 lg:py-28 bg-[#040816] relative border-t border-slate-900">
+    <section id="install" className="py-20 lg:py-28 bg-[#08090b] relative border-t border-white/[0.06]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-bold">
-            <Download className="w-3.5 h-3.5" />
-            <span>DEPLOYMENT & SETUP GUIDE</span>
+        <div className="max-w-3xl space-y-3">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#12151a] border border-white/[0.08] text-[11px] font-mono tracking-wide-eyebrow text-[#8E959F] uppercase">
+            <span>Deployment Guide</span>
           </div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold font-display text-white tracking-tight">
-            Deploy Your Cyber Range in <span className="text-gradient-cyan">3 Simple Steps</span>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight-title text-[#F5F7FA]">
+            Deploy Your Cyber Range in 3 Simple Steps
           </h2>
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+          <p className="text-sm sm:text-base text-[#8E959F] leading-relaxed">
             Choose between direct native execution or a zero-configuration containerized browser deployment.
           </p>
         </div>
 
         {/* Mode Selector Tabs */}
-        <div className="mt-12 flex justify-center">
-          <div className="p-1.5 rounded-2xl bg-slate-950 border border-slate-800 flex gap-2">
+        <div className="mt-8 flex">
+          <div className="p-1 rounded-lg bg-[#0d0f12] border border-white/[0.08] flex gap-1">
             <button
               onClick={() => setInstallMode('native')}
-              className={`px-5 py-2.5 rounded-xl font-mono text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-md font-mono text-xs transition-all flex items-center gap-1.5 ${
                 installMode === 'native'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-[0_0_20px_rgba(0,242,254,0.35)]'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#181b21] text-[#F5F7FA] border border-white/[0.08] shadow-sm'
+                  : 'text-[#8E959F] hover:text-[#F5F7FA]'
               }`}
             >
-              <Terminal className="w-4 h-4" />
-              <span>Option A: Native Linux / VM (Full CLI)</span>
+              <Terminal className="w-3.5 h-3.5" />
+              <span>Native CLI (Linux / WSL2 / macOS)</span>
             </button>
             <button
               onClick={() => setInstallMode('docker')}
-              className={`px-5 py-2.5 rounded-xl font-mono text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-md font-mono text-xs transition-all flex items-center gap-1.5 ${
                 installMode === 'docker'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black shadow-[0_0_20px_rgba(0,242,254,0.35)]'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#181b21] text-[#F5F7FA] border border-white/[0.08] shadow-sm'
+                  : 'text-[#8E959F] hover:text-[#F5F7FA]'
               }`}
             >
-              <Server className="w-4 h-4" />
-              <span>Option B: Docker Container (Browser-First)</span>
+              <Server className="w-3.5 h-3.5" />
+              <span>Docker Container (Zero Tooling)</span>
             </button>
           </div>
         </div>
 
-        {/* Installation Instructions Box */}
-        <div className="mt-8 max-w-4xl mx-auto">
-          <div className="p-6 sm:p-8 rounded-2xl bg-[#060e1d] border border-cyan-500/30 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        {/* Installation Instructions Card */}
+        <div className="mt-4">
+          <div className="p-5 sm:p-6 rounded-xl bg-[#0d0f12] border border-white/[0.08] space-y-4">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
               <div>
-                <h3 className="text-base sm:text-lg font-bold font-mono text-white flex items-center gap-2">
-                  <span>{installMode === 'native' ? 'Native Installation (Linux, WSL2, macOS)' : 'Docker Containerized Deployment'}</span>
+                <h3 className="text-sm sm:text-base font-semibold font-mono text-[#F5F7FA]">
+                  {installMode === 'native' ? 'Native Installation (Linux / macOS)' : 'Docker Containerized Deployment'}
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[#8E959F] mt-0.5">
                   {installMode === 'native'
-                    ? 'Recommended for engineers who want hands-on CLI access to Terraform & Ansible'
-                    : 'Recommended for Windows/macOS users who want zero local Python/Terraform tooling'}
+                    ? 'Recommended for engineers who want direct CLI access to Terraform & Ansible'
+                    : 'Recommended for users who want zero local Python/Terraform tooling required'}
                 </p>
               </div>
-              <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2.5 py-1 rounded border border-cyan-800">
-                1-Command Install
+              <span className="text-[10px] font-mono text-[#4F8CFF] px-2 py-0.5 rounded bg-[#12151a] border border-white/[0.06]">
+                1-Command Setup
               </span>
             </div>
 
             <CodeBlock
               code={installMode === 'native' ? nativeCommands : dockerCommands}
               language="bash"
-              title="Terminal Installation Commands"
+              title="Terminal Commands"
               showLineNumbers
             />
 
             {/* Prerequisites Checklist */}
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3">
-              <div className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Prerequisites Checklist:</span>
+            <div className="p-3.5 rounded-lg bg-[#08090b] border border-white/[0.06] space-y-2">
+              <div className="text-xs font-mono font-semibold text-[#8E959F] uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-[#4ADE80]" />
+                <span>Prerequisites Checklist</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300 font-mono">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[#8E959F] font-mono">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <CheckCircle className="w-3 h-3 text-[#4F8CFF] shrink-0" />
                   <span>AWS Account (EC2 / VPC / IAM permissions)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <CheckCircle className="w-3 h-3 text-[#4F8CFF] shrink-0" />
                   <span>SSH Key Pair (`~/.ssh/thedal_key`)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <CheckCircle className="w-3 h-3 text-[#4F8CFF] shrink-0" />
                   <span>Configured AWS CLI (`aws configure`)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span>Node.js v18+ / Python 3.11+ (Native mode only)</span>
+                  <CheckCircle className="w-3 h-3 text-[#4F8CFF] shrink-0" />
+                  <span>Python 3.11+ / Node.js 18+ (Native mode only)</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Lifecycle Makefile Workflow */}
-        <div className="mt-14 max-w-5xl mx-auto">
-          <div className="text-center mb-6">
-            <h3 className="text-lg font-bold font-mono text-white">
+        {/* Makefile Lifecycle */}
+        <div className="mt-12">
+          <div className="mb-4">
+            <h3 className="text-sm sm:text-base font-semibold font-mono text-[#F5F7FA]">
               End-to-End Orchestration Lifecycle
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-[#8E959F] mt-0.5">
               Under the hood, THEDAL automates the entire multi-tier cloud deployment workflow:
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            {makefileSteps.map((s, idx) => (
+            {makefileSteps.map((s) => (
               <div
                 key={s.step}
-                className="p-4 rounded-xl bg-[#060e1d] border border-slate-800 space-y-2 font-mono text-xs flex flex-col justify-between"
+                className="p-4 rounded-lg bg-[#0d0f12] border border-white/[0.08] space-y-2 font-mono text-xs flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between text-cyan-400 font-bold">
-                    <span>STEP {s.step}</span>
-                    <span className="text-[9px] text-slate-500">make</span>
+                  <div className="flex items-center justify-between text-[#8E959F]">
+                    <span className="text-[11px] font-semibold text-[#4F8CFF]">STEP {s.step}</span>
+                    <span className="text-[10px] text-[#525866]">make</span>
                   </div>
-                  <code className="text-emerald-400 font-bold block mt-1.5 text-[11px] bg-slate-950 p-1.5 rounded border border-slate-800">
+                  <code className="text-[#F5F7FA] font-medium block mt-1.5 text-[11px] bg-[#08090b] p-1.5 rounded border border-white/[0.06]">
                     {s.cmd}
                   </code>
-                  <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                  <p className="text-[11px] text-[#8E959F] mt-2 leading-relaxed font-sans">
                     {s.desc}
                   </p>
                 </div>

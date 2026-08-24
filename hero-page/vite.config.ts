@@ -12,11 +12,15 @@ export default defineConfig({
     minify: 'esbuild',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-three': ['three', '@react-three/fiber', '@react-three/drei'],
-          'vendor-animation': ['framer-motion', 'lenis', 'gsap'],
-          'vendor-icons': ['lucide-react'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('react')) {
+              return 'vendor-react';
+            }
+          }
         },
       },
     },

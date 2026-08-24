@@ -1,0 +1,35 @@
+/* THEDAL Design System Tokens — Minimal Brutalist Editorial & Infrastructure */
+:root {
+  /* Surface Layers */
+  --bg-base: #08090b;
+  --bg-surface: #0d0f12;
+  --bg-elevated: #12151a;
+  --bg-subtle: #181b21;
+  --bg-overlay: rgba(8, 9, 11, 0.85);
+
+  /* Hairline Borders */
+  --border-hairline: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
+  --border-accent: rgba(79, 140, 255, 0.35);
+
+  /* Typography */
+  --text-primary: #f5f7fa;
+  --text-secondary: #8e959f;
+  --text-tertiary: #525866;
+  --text-muted: #3b404a;
+
+  /* Brand Electric Blue */
+  --accent-blue: #4f8cff;
+  --accent-blue-hover: #6ea0ff;
+  --accent-blue-subtle: rgba(79, 140, 255, 0.1);
+  --accent-ice: #6ed6ff;
+
+  /* Semantic Status States (Restrained) */
+  --system-success: #4ade80;
+  --system-success-subtle: rgba(74, 222, 128, 0.1);
+  --system-warning: #fbbf24;
+  --system-warning-subtle: rgba(251, 191, 36, 0.1);
+  --system-critical: #ff5a5f;
+  --system-critical-subtle: rgba(255, 90, 95, 0.1);
+}

@@ -1,14 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-  <defs>
-    <linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f2fe" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#10b981" />
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="20" fill="#030712" />
-  <path d="M50 15 L80 28 V52 C80 70 50 85 50 85 C50 85 20 70 20 52 V28 Z" stroke="url(#cyberGrad)" stroke-width="4" fill="#081120" />
-  <circle cx="50" cy="50" r="16" stroke="#00f2fe" stroke-width="2" stroke-dasharray="4 2" />
-  <circle cx="50" cy="50" r="8" fill="#10b981" />
-  <line x1="50" y1="50" x2="62" y2="40" stroke="#00f2fe" stroke-width="2" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" fill="none">
+  <rect x="0.5" y="0.5" width="27" height="27" rx="6" fill="#12151a" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+  <g transform="translate(6, 6) scale(0.66667)">
+    <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" stroke="#4F8CFF" stroke-width="2.2" fill="none" stroke-linejoin="round" />
+    <path d="M12 8v8" stroke="#4F8CFF" stroke-width="2.2" stroke-linecap="round" />
+    <path d="M8 12h8" stroke="#4F8CFF" stroke-width="2.2" stroke-linecap="round" />
+  </g>
 </svg>
