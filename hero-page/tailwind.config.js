@@ -9,7 +9,8 @@ export default {
     extend: {
       colors: {
         cyber: {
-          bg: '#030712',
+          bg: '#020617',
+          deep: '#01040a',
           card: '#081120',
           panel: '#0d182e',
           border: '#1e293b',
@@ -25,8 +26,11 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'monospace'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
         display: ['Syne', 'Inter', 'sans-serif'],
+      },
+      gridTemplateColumns: {
+        '16': 'repeat(16, minmax(0, 1fr))',
       },
       boxShadow: {
         'glow-cyan': '0 0 25px -5px rgba(0, 242, 254, 0.35)',
