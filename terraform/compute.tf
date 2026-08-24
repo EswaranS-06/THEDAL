@@ -68,6 +68,7 @@ resource "aws_instance" "bastion" {
   ami                         = local.ubuntu_ami_id
   instance_type               = var.bastion_instance_type
   subnet_id                   = aws_subnet.management.id
+  private_ip                  = var.bastion_private_ip
   vpc_security_group_ids      = [aws_security_group.management.id]
   key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
@@ -102,6 +103,7 @@ resource "aws_instance" "wazuh" {
   ami                         = local.ubuntu_ami_id
   instance_type               = var.wazuh_instance_type
   subnet_id                   = aws_subnet.soc.id
+  private_ip                  = var.wazuh_private_ip
   vpc_security_group_ids      = [aws_security_group.soc.id]
   key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
@@ -136,6 +138,7 @@ resource "aws_instance" "windows" {
   ami                         = local.windows_ami_id
   instance_type               = var.windows_instance_type
   subnet_id                   = aws_subnet.soc.id
+  private_ip                  = var.windows_private_ip
   vpc_security_group_ids      = [aws_security_group.windows.id]
   key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
@@ -185,6 +188,7 @@ resource "aws_instance" "web" {
   ami                         = local.ubuntu_ami_id
   instance_type               = var.web_instance_type
   subnet_id                   = aws_subnet.web.id
+  private_ip                  = var.web_private_ip
   vpc_security_group_ids      = [aws_security_group.web.id]
   key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
@@ -219,6 +223,7 @@ resource "aws_instance" "attack" {
   ami                         = local.ubuntu_ami_id
   instance_type               = var.attack_instance_type
   subnet_id                   = aws_subnet.attack.id
+  private_ip                  = var.attack_private_ip
   vpc_security_group_ids      = [aws_security_group.attack.id]
   key_name                    = local.ssh_key_name
   iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name

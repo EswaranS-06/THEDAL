@@ -11,12 +11,12 @@ vpc_cidr: "10.10.0.0/16"
 # Wazuh Platform Version Specification
 wazuh_version: "4.14.7"
 wazuh_major_version: "4.x"
-wazuh_server_ip: "{{ wazuh_private_ip | default('10.10.10.33') }}"
+wazuh_server_ip: "{{ wazuh_private_ip | default('10.10.10.10') }}"
 
 # Bastion Forward Proxy Configuration
 # Internal hosts route HTTP/HTTPS package downloads through Bastion on port 3128
 proxy_port: 3128
-bastion_internal_ip: "{{ bastion_private_ip | default('10.10.1.131') }}"
+bastion_internal_ip: "{{ bastion_private_ip | default('10.10.1.10') }}"
 http_proxy_url: "http://{{ bastion_internal_ip }}:{{ proxy_port }}"
 https_proxy_url: "http://{{ bastion_internal_ip }}:{{ proxy_port }}"
 no_proxy_list: "localhost,127.0.0.1,10.10.0.0/16,169.254.169.254,local.socforge"

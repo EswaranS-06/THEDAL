@@ -27,7 +27,10 @@ class SSHService:
             bastion_ip = bastion_node.public_ip
         else:
             bastion_ip = outputs.get("bastion_public_ip", "<BASTION_PUBLIC_IP>")
-        key_path = str(settings.SSH_KEY_PATH)
+        wazuh_ip = next((i.private_ip for i in instances if "wazuh" in i.name.lower() and i.private_ip), outputs.get("wazuh_private_ip", "10.10.10.10"))
+        web_ip = next((i.private_ip for i in instances if "web" in i.name.lower() and i.private_ip), outputs.get("web_private_ip", "10.10.30.10"))
+        attack_ip = next((i.private_ip for i in instances if "attack" in i.name.lower() and i.private_ip), outputs.get("attack_private_ip", "10.10.20.10"))
+        windows_ip = next((i.private_ip for i in instances if "windows" in i.name.lower() and i.private_ip), outputs.get("windows_private_ip", "10.10.10.20"))
 
         nodes = [
             {
@@ -39,38 +42,38 @@ class SSHService:
             },
             {
                 "name": "Wazuh SIEM Host",
-                "ip": "10.10.10.33",
+                "ip": wazuh_ip,
                 "user": "ubuntu",
                 "type": "ProxyJump via Bastion",
-                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.10.33"
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{wazuh_ip}"
             },
             {
                 "name": "Linux Web Target",
-                "ip": "10.10.30.148",
+                "ip": web_ip,
                 "user": "ubuntu",
                 "type": "ProxyJump via Bastion",
-                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.30.148"
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{web_ip}"
             },
             {
                 "name": "Linux Attack Host",
-                "ip": "10.10.20.114",
+                "ip": attack_ip,
                 "user": "ubuntu",
                 "type": "ProxyJump via Bastion",
-                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@10.10.20.114"
+                "command": f"ssh -i {key_path} -o ProxyJump=ubuntu@{bastion_ip} ubuntu@{attack_ip}"
             },
             {
                 "name": "Windows Endpoint",
-                "ip": "10.10.10.254",
+                "ip": windows_ip,
                 "user": "Administrator",
                 "type": "WinRM Tunnel via Bastion",
-                "command": f"ssh -i {key_path} -N -L 0.0.0.0:5985:10.10.10.254:5985 ubuntu@{bastion_ip}"
+                "command": f"ssh -i {key_path} -N -L 0.0.0.0:5985:{windows_ip}:5985 ubuntu@{bastion_ip}"
             }
         ]
 
         return {
             "key_path": key_path,
             "bastion_public_ip": bastion_ip,
-            "wazuh_tunnel_command": f"ssh -i {key_path} -N -L 0.0.0.0:8443:10.10.10.33:443 ubuntu@{bastion_ip}",
+            "wazuh_tunnel_command": f"ssh -i {key_path} -N -L 0.0.0.0:8443:{wazuh_ip}:443 ubuntu@{bastion_ip}",
             "nodes": nodes
         }
 

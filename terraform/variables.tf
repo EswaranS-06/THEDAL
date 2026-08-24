@@ -57,6 +57,39 @@ variable "web_subnet_cidr" {
 }
 
 # ------------------------------------------------------------------------------
+# Static Private IPv4 Addresses
+# ------------------------------------------------------------------------------
+variable "bastion_private_ip" {
+  type        = string
+  description = "Static internal private IPv4 address for the Management Bastion host"
+  default     = "10.10.1.10"
+}
+
+variable "wazuh_private_ip" {
+  type        = string
+  description = "Static internal private IPv4 address for the Wazuh SIEM server"
+  default     = "10.10.10.10"
+}
+
+variable "windows_private_ip" {
+  type        = string
+  description = "Static internal private IPv4 address for the Windows employee endpoint"
+  default     = "10.10.10.20"
+}
+
+variable "attack_private_ip" {
+  type        = string
+  description = "Static internal private IPv4 address for the Atomic Red Team attack simulation node"
+  default     = "10.10.20.10"
+}
+
+variable "web_private_ip" {
+  type        = string
+  description = "Static internal private IPv4 address for the Linux Web target server"
+  default     = "10.10.30.10"
+}
+
+# ------------------------------------------------------------------------------
 # Access Control & Security Variables (Phase 3)
 # ------------------------------------------------------------------------------
 variable "admin_cidr" {
