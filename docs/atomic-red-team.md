@@ -23,7 +23,7 @@ The adversary simulation host (`SOCForge-attack`) operates on the isolated Priva
                                      | Private Routing (10.10.0.0/16)
                                      v
 +-------------------------------------------------------------------+
-|               SOCForge Attack Host (10.10.20.x)                    |
+|               THEDAL Attack Host (10.10.20.10)                    |
 |                                                                   |
 |   - Operating System: Ubuntu 22.04 LTS (x86_64)                   |
 |   - PowerShell Core: pwsh (Microsoft Linux Release)               |
@@ -38,7 +38,7 @@ The adversary simulation host (`SOCForge-attack`) operates on the isolated Priva
                                      | (SMB 445 / RPC 135 / WinRM 5985)
                                      v
 +-------------------------------------------------------------------+
-|               SOCForge Windows Endpoint (10.10.10.x)               |
+|               THEDAL Windows Endpoint (10.10.10.20)               |
 |                                                                   |
 |   +--> Windows Security Event Log (Process Creation 4688 with CLI)|
 |   +--> PowerShell Operational (ScriptBlock 4104 / Module 4103)    |
@@ -51,7 +51,7 @@ The adversary simulation host (`SOCForge-attack`) operates on the isolated Priva
                                      | Encrypted TCP 1514 / TLS
                                      v
 +-------------------------------------------------------------------+
-|               SOCForge Wazuh SIEM Core (10.10.10.x)               |
+|               THEDAL Wazuh SIEM Core (10.10.10.10)                |
 |                                                                   |
 |   - Wazuh Manager (:1514/:1515) -> Decoders & Rule Matching       |
 |   - OpenSearch Indexer (:9200) -> Alert Indexing                  |

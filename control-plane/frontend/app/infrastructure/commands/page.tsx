@@ -9,10 +9,15 @@ import { CommandBlock } from "../../../components/ui/CommandBlock";
 import { CardSkeleton } from "../../../components/ui/LoadingSkeleton";
 import { ErrorState } from "../../../components/ui/ErrorState";
 
+import { simulationsApi } from "../../../lib/api/simulations";
+import { useToast } from "../../../components/ui/Toast";
+
 export default function CommandsPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [commandGroups, setCommandGroups] = useState<DynamicCommandGroup[]>([]);
+  const [runningCmd, setRunningCmd] = useState<string | null>(null);
+  const { success, error } = useToast();
 
   const loadCommands = async () => {
     try {
@@ -56,49 +61,90 @@ export default function CommandsPage() {
     loadCommands();
   }, []);
 
-  if (loading && commandGroups.length === 0) {
+  const handleExecuteSimulation = async (cmdStr: string, title?: string) => {
+    try {
+      setRunningCmd(cmdStr);
+      let simType: "atomic" | "web" | "baseline" = "atomic";
+      let simId = "T1082";
+
+      if (cmdStr.includes("--technique")) {
+        const match = cmdStr.match(/--technique\s+([A-Za-z0-9.]+)/);
+        if (match) simId = match[1];
+        simType = "atomic";
+      } else if (cmdStr.includes("--scenario")) {
+        const match = cmdStr.match(/--scenario\s+([A-Za-z0-9-]+)/);
+        if (match) simId = match[1];
+        simType = "web";
+      } else if (cmdStr.includes("--baseline")) {
+        simType = "baseline";
+        simId = "BASELINE-AUTH";
+      }
+
+      const res = await simulationsApi.runSimulation(simType, simId, true);
+      if (res.status === "COMPLETED") {
+        success("Execution Succeeded", `${res.name || simId} triggered on Attack host.`);
+      } else {
+        error("Execution Notice", `Command exited with code ${res.exit_code}`);
+      }
+    } catch (err: any) {
+      error("Execution Failed", err.message || "Could not execute command.");
+    } finally {
+      setRunningCmd(null);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <CardSkeleton className="h-32" />
-        <CardSkeleton className="h-64" />
-        <CardSkeleton className="h-64" />
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3">
+          <CardSkeleton />
+        </div>
+        <div className="space-y-4">
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
       </div>
     );
   }
 
-  if (errorMsg && commandGroups.length === 0) {
+  if (errorMsg) {
     return (
-      <ErrorState
-        title="Failed to Load Dynamic Commands"
-        message={errorMsg}
-        onRetry={loadCommands}
-      />
+      <div className="p-6 max-w-7xl mx-auto">
+        <ErrorState
+          title="Command Loading Error"
+          message={errorMsg}
+          onRetry={loadCommands}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="space-y-2">
-        <Link
-          href="/infrastructure"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Fleet Inventory</span>
-        </Link>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/infrastructure"
+            className="p-2 rounded bg-surface hover:bg-panel text-text-secondary hover:text-text-primary transition-colors border border-border-subtle"
+            title="Back to Infrastructure"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
           <div>
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Terminal className="w-5 h-5 text-primary" />
-              <span>Dynamic Operator Command Center</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              All commands dynamically derive live Bastion and private subnet IP addresses from current Terraform/AWS state.
+              <h1 className="text-lg sm:text-xl font-bold text-text-primary font-mono">
+                Operator Command Matrix
+              </h1>
+            </div>
+            <p className="text-xs text-text-muted mt-0.5">
+              Live, dynamically-generated SSH, WinRM, and adversary simulation command strings.
             </p>
           </div>
+        </div>
 
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={loadCommands}
             disabled={loading}
@@ -114,7 +160,7 @@ export default function CommandsPage() {
       <div className="p-3.5 rounded bg-surface border border-border-subtle flex items-start gap-3 text-xs text-slate-300">
         <Info className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <strong>Secure SSH ProxyJump Ingress:</strong> Private nodes (Wazuh, Web Target, Windows, Attack) do not have public IPs. All commands route through the Bastion jumpbox using <code className="font-mono text-slate-200">~/.ssh/thedal_key</code>.
+          <strong>Secure SSH ProxyJump Ingress:</strong> Private nodes (Wazuh, Web Target, Windows, Attack) do not have public IPs. All commands route through the Bastion jumpbox using <code className="font-mono text-slate-200">~/.ssh/thedal_key</code>. Use the <strong>RUN</strong> button to trigger simulations instantly from the control plane or <strong>COPY</strong> to execute manually.
         </div>
       </div>
 
@@ -135,14 +181,21 @@ export default function CommandsPage() {
             </div>
 
             <div className="space-y-3">
-              {group.commands.map((cmd) => (
-                <CommandBlock
-                  key={cmd.title || cmd.command}
-                  title={cmd.title || cmd.target || "Command"}
-                  description={cmd.description}
-                  command={cmd.command}
-                />
-              ))}
+              {group.commands.map((cmd) => {
+                const isSim = cmd.command.includes("run-atomic-test") || cmd.command.includes("run-web-test");
+                return (
+                  <CommandBlock
+                    key={cmd.title || cmd.command}
+                    title={cmd.title || cmd.target || "Command"}
+                    description={cmd.description}
+                    command={cmd.command}
+                    onRun={isSim ? () => handleExecuteSimulation(cmd.command, cmd.title) : undefined}
+                    isRunning={runningCmd === cmd.command}
+                    runLabel="RUN"
+                    runTitle="Execute this simulation directly on the Attack host"
+                  />
+                );
+              })}
             </div>
           </div>
         ))}

@@ -25,11 +25,12 @@ import {
   Layers,
   FileText,
 } from "lucide-react";
-import { LabWorkspaceData, LabPhase, LabQuestion } from "../../lib/types/api";
+import { LabWorkspaceData, LabPhase, LabQuestion, SimulationRunResult } from "../../lib/types/api";
 import { StatusBadge } from "../ui/StatusBadge";
 import { CommandBlock } from "../ui/CommandBlock";
 import { copyToClipboard } from "../../lib/clipboard";
 import { useToast } from "../ui/Toast";
+import { simulationsApi } from "../../lib/api/simulations";
 
 interface InvestigationWorkspaceProps {
   workspace: LabWorkspaceData;
@@ -69,7 +70,41 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
   const [preRevealChecked, setPreRevealChecked] = useState<Record<string, boolean>>({});
   const [copiedQuery, setCopiedQuery] = useState<string | null>(null);
 
+  // Simulation execution state
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<SimulationRunResult | null>(null);
+  const [showSimulationOutput, setShowSimulationOutput] = useState(true);
+
   const currentPhase: LabPhase = phases[activeStep] || phases[0];
+
+  const handleRunSimulation = async () => {
+    if (!currentPhase.command || isSimulating) return;
+    try {
+      setIsSimulating(true);
+      const simType = currentPhase.simulation_type || (lab.mitre?.startsWith("T") ? "atomic" : "web");
+      const simId = currentPhase.simulation_identifier || lab.mitre || "T1082";
+
+      const res = await simulationsApi.runSimulation(simType as any, simId, true);
+      setSimulationResult(res);
+      setShowSimulationOutput(true);
+
+      if (res.status === "COMPLETED") {
+        success(
+          "Simulation Fired Successfully",
+          `${res.name || simId} was executed on the Attack host. Telemetry is now streaming to Wazuh!`
+        );
+      } else {
+        error(
+          "Simulation Alert",
+          `Attack command exited with code ${res.exit_code}. Check execution log below.`
+        );
+      }
+    } catch (err: any) {
+      error("Simulation Failed", err.message || "Could not execute simulation.");
+    } finally {
+      setIsSimulating(false);
+    }
+  };
 
   const handleStepChange = async (nextStep: number) => {
     if (nextStep < 0 || nextStep >= phases.length) return;
@@ -344,18 +379,80 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Dynamic Command Block */}
+            {/* Dynamic Command Block with 1-Click Run & Copy */}
             <div className="space-y-2">
-              <div className="text-xs font-mono text-slate-300 font-semibold flex items-center gap-1.5">
-                <Terminal className="w-3.5 h-3.5 text-primary" />
-                <span>Simulation Command (1-Click Copy)</span>
+              <div className="text-xs font-mono text-slate-300 font-semibold flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-primary" />
+                  <span>Adversary Emulation Command (1-Click Run & Copy)</span>
+                </div>
+                <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                  Click RUN to trigger alerts instantly
+                </span>
               </div>
               <CommandBlock
                 title="Trigger Adversary Simulation"
                 description="Connects through Bastion jumpbox and executes the technique payload"
                 command={currentPhase.command || ""}
+                onRun={handleRunSimulation}
+                isRunning={isSimulating}
+                runLabel="RUN ATTACK"
+                runTitle="Directly dispatch and execute this adversary technique on the Attack node"
               />
             </div>
+
+            {/* Live Execution Output & Status */}
+            {simulationResult && (
+              <div className="rounded-md border border-emerald-500/30 bg-[#06121a] overflow-hidden text-xs shadow-md animate-in fade-in duration-300">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-emerald-500/20 bg-emerald-500/10">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="font-mono font-bold text-emerald-300 text-xs">
+                      Simulation Execution: {simulationResult.status} (Exit Code: {simulationResult.exit_code})
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowSimulationOutput(!showSimulationOutput)}
+                    className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                  >
+                    {showSimulationOutput ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    <span>{showSimulationOutput ? "Hide Output" : "View Output"}</span>
+                  </button>
+                </div>
+
+                {showSimulationOutput && (
+                  <div className="p-3 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-mono">
+                      <div className="p-1.5 rounded bg-surface/80 border border-border-subtle">
+                        <span className="text-text-muted">ID:</span>{" "}
+                        <strong className="text-slate-200">{simulationResult.simulation_id}</strong>
+                      </div>
+                      <div className="p-1.5 rounded bg-surface/80 border border-border-subtle">
+                        <span className="text-text-muted">Target:</span>{" "}
+                        <strong className="text-slate-200">{simulationResult.target}</strong>
+                      </div>
+                      <div className="p-1.5 rounded bg-surface/80 border border-border-subtle">
+                        <span className="text-text-muted">Expected Index:</span>{" "}
+                        <strong className="text-emerald-400">{simulationResult.expected_index || "wazuh-alerts-*"}</strong>
+                      </div>
+                    </div>
+
+                    {simulationResult.output_preview && (
+                      <div className="mt-2">
+                        <div className="text-[10px] font-mono text-slate-400 mb-1 flex items-center gap-1">
+                          <Terminal className="w-3 h-3 text-slate-400" />
+                          <span>Standard Output / Telemetry Log Stream:</span>
+                        </div>
+                        <pre className="p-2.5 rounded bg-[#03070b] border border-border-subtle text-[11px] font-mono text-emerald-300 overflow-x-auto max-h-48 leading-relaxed whitespace-pre-wrap">
+                          {simulationResult.output_preview}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="p-3 rounded bg-surface/50 border border-border-subtle text-xs text-slate-400 flex items-start gap-2.5">
               <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -364,13 +461,13 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               </div>
             </div>
 
-            <div className="pt-2 flex items-center gap-3">
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => handleStepChange(2)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-semibold font-mono text-xs transition-all shadow-md"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-black font-semibold font-mono text-xs transition-all shadow-md"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>✓ I Generated the Telemetry</span>
+                <span>✓ Telemetry Ingesting — Proceed to Step 3</span>
               </button>
             </div>
           </div>

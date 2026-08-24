@@ -39,29 +39,29 @@ The THEDAL environment is partitioned into three security tiers inside a dedicat
                                AWS CLOUD (VPC 10.10.0.0/16)
                +-------------------------------------------------------------+
                |                  PUBLIC SUBNET (10.10.1.0/24)               |
-               |  [ Public Bastion Jumpbox (13.201.43.138 / 10.10.1.131) ]    |
+               |  [ Public Bastion Jumpbox (Static Internal IP: 10.10.1.10) ]|
                |  - SSH ProxyJump Entry Point                                |
                |  - Forward Proxy (Squid:3128) - No NAT Gateway needed       |
                +------------------------------+------------------------------+
                                               |
                +------------------------------+------------------------------+
                |                  PRIVATE SOC SUBNET (10.10.10.0/24)         |
-               |  [ Wazuh SIEM Host (10.10.10.33) ]                          |
+               |  [ Wazuh SIEM Host (10.10.10.10) ]                          |
                |  - Manager, Indexer, OpenSearch Dashboards, Filebeat        |
                |                                                             |
-               |  [ Windows Server 2022 Endpoint (10.10.10.254) ]            |
+               |  [ Windows Server 2022 Endpoint (10.10.10.20) ]             |
                |  - Wazuh Agent, Sysmon, PowerShell ScriptBlock Logging      |
                +------------------------------+------------------------------+
                                               |
                +------------------------------+------------------------------+
                |                 PRIVATE TARGET SUBNET (10.10.30.0/24)       |
-               |  [ Linux Web Target (10.10.30.148) ]                        |
+               |  [ Linux Web Target (10.10.30.10) ]                         |
                |  - Wazuh Agent, Nginx, DVWA (:8000), Juice Shop (:3000)     |
                +------------------------------+------------------------------+
                                               |
                +------------------------------+------------------------------+
                |                 PRIVATE ATTACK SUBNET (10.10.20.0/24)       |
-               |  [ Linux Attack Host (10.10.20.114) ]                       |
+               |  [ Linux Attack Host (10.10.20.10) ]                        |
                |  - Atomic Red Team Engine, Web Test Suites                  |
                +-------------------------------------------------------------+
 ```
@@ -102,26 +102,26 @@ The THEDAL environment is partitioned into three security tiers inside a dedicat
 ### A. SSH Access via Bastion Jumpbox
 All internal Linux nodes are accessible from your local machine using the Bastion ProxyJump configuration:
 ```bash
-# Connect to Bastion (using thedal_key or socforge_key)
+# Connect to Bastion (using thedal_key)
 ssh -i ~/.ssh/thedal_key ubuntu@<BASTION_PUBLIC_IP>
 
 # Connect directly to Wazuh SIEM Host
-ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.10.33
+ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.10.10
 
 # Connect directly to Web Target Host
-ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.30.148
+ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.30.10
 
 # Connect directly to Attack Host
-ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.20.114
+ssh -i ~/.ssh/thedal_key -o ProxyJump=ubuntu@<BASTION_PUBLIC_IP> ubuntu@10.10.20.10
 ```
 
 ### B. Accessing OpenSearch Dashboards (Web UI)
 To access the Wazuh / OpenSearch Dashboards UI in your local web browser:
 1. Establish an SSH tunnel through the Bastion:
    ```bash
-   ssh -i ~/.ssh/thedal_key -N -L 8443:10.10.10.33:443 ubuntu@<BASTION_PUBLIC_IP>
+   ssh -i ~/.ssh/thedal_key -N -L 8443:10.10.10.10:443 ubuntu@<BASTION_PUBLIC_IP>
    ```
-2. Open your browser and navigate to: `https://localhost:8443`
+2. Open your browser and navigate to: `https://localhost:8443` (redirects automatically to `/app/wz-home`)
 3. Accept the self-signed TLS certificate.
 4. Log in using your configured administrative credentials (or default lab credentials `admin / SOCForge_Adm1n_Lab2026!`).
 

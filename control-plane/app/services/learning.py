@@ -725,6 +725,23 @@ class LearningService:
             "expected_findings": f"Verified {title} telemetry ingested in OpenSearch. Identified MITRE ATT&CK technique {mitre} with correlated audit logs."
         })
 
+        # Determine simulation type and identifier for direct 1-click execution
+        if mitre.startswith("T"):
+            sim_type = "atomic"
+            sim_identifier = mitre.split(" ")[0].split("/")[0].strip()
+        elif "DVWA" in lab_id.upper() or "SQLI" in lab_id.upper() or "INJECTION" in lab_id.upper() or "LFI" in lab_id.upper():
+            sim_type = "web"
+            sim_identifier = "DVWA-03" if "SQLI" in lab_id.upper() else ("DVWA-04" if "COMMAND" in lab_id.upper() else "DVWA-05")
+        elif "JUICE" in lab_id.upper() or "API" in lab_id.upper():
+            sim_type = "web"
+            sim_identifier = "JS-05"
+        elif "BASELINE" in lab_id.upper():
+            sim_type = "baseline"
+            sim_identifier = "BASELINE-AUTH"
+        else:
+            sim_type = "atomic"
+            sim_identifier = "T1082"
+
         return [
             # Phase 1: Mission Briefing
             {
@@ -758,7 +775,9 @@ class LearningService:
                 "target_host": spec["target_host"],
                 "technique": f"{mitre} — {title}",
                 "command": spec["attack_cmd"],
-                "instructions": "Execute the following simulation command from your terminal. It will securely ProxyJump through the Bastion jumpbox and fire the adversary emulation payload."
+                "simulation_type": sim_type,
+                "simulation_identifier": sim_identifier,
+                "instructions": "Execute the simulation command directly using the 1-Click Run button or copy and run from your local terminal. It will securely ProxyJump through the Bastion jumpbox and fire the adversary emulation payload."
             },
             # Phase 3: Locate Event & OpenSearch Discovery
             {

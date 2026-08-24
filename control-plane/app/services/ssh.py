@@ -31,6 +31,7 @@ class SSHService:
         web_ip = next((i.private_ip for i in instances if "web" in i.name.lower() and i.private_ip), outputs.get("web_private_ip", "10.10.30.10"))
         attack_ip = next((i.private_ip for i in instances if "attack" in i.name.lower() and i.private_ip), outputs.get("attack_private_ip", "10.10.20.10"))
         windows_ip = next((i.private_ip for i in instances if "windows" in i.name.lower() and i.private_ip), outputs.get("windows_private_ip", "10.10.10.20"))
+        key_path = str(settings.SSH_KEY_PATH)
 
         nodes = [
             {

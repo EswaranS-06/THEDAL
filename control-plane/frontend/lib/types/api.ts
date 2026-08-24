@@ -157,6 +157,8 @@ export interface LabPhase {
   target_host?: string;
   technique?: string;
   command?: string;
+  simulation_type?: "atomic" | "web" | "baseline";
+  simulation_identifier?: string;
   instructions?: string;
   data_source?: string;
   query?: string;

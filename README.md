@@ -85,10 +85,10 @@ Traditional cybersecurity training often relies on **static capture-the-flag (CT
 ```mermaid
 graph TD
     User["👨‍💻 Security Analyst / Student"] -->|"Accesses Control Plane (127.0.0.1:8080)"| ControlVM["🖥️ Local Control Machine (Linux / Docker)"]
-    User -->|"SSH Tunnel (8443:10.10.10.33:443)"| WazuhUI["📊 OpenSearch Dashboards (Wazuh UI)"]
+    User -->|"SSH Tunnel (8443:10.10.10.10:443)"| WazuhUI["📊 OpenSearch Dashboards (Wazuh UI)"]
 
     subgraph Control_Environment["Local Control Environment"]
-        ControlVM -->|"FastAPI & Jinja2"| ControlPlane["🛡️ THEDAL Control Plane"]
+        ControlVM -->|"FastAPI & Next.js"| ControlPlane["🛡️ THEDAL Control Plane"]
         ControlVM -->|"Terraform CLI"| TF["Terraform (IaC Engine)"]
         ControlVM -->|"Ansible Playbooks"| Ansible["Ansible (Provisioning Engine)"]
     end
@@ -97,20 +97,20 @@ graph TD
 
     subgraph AWS_VPC["AWS VPC (10.10.0.0/16)"]
         subgraph Public_Tier["Management Subnet (10.10.1.0/24)"]
-            Bastion["🌐 THEDAL-bastion<br/>(Public IP / Squid Proxy / SSH Jump)"]
+            Bastion["🌐 THEDAL-bastion (10.10.1.10)<br/>(Public IP / Squid Proxy / SSH Jump)"]
         end
 
         subgraph Private_SOC_Tier["SOC Subnet (10.10.10.0/24)"]
-            WazuhHost["🛡️ THEDAL-wazuh (10.10.10.33)<br/>Wazuh Manager | Indexer | Dashboards"]
-            WinHost["💻 THEDAL-windows (10.10.10.254)<br/>Windows Server 2022 + Sysmon v15"]
+            WazuhHost["🛡️ THEDAL-wazuh (10.10.10.10)<br/>Wazuh Manager | Indexer | Dashboards"]
+            WinHost["💻 THEDAL-windows (10.10.10.20)<br/>Windows Server 2022 + Sysmon v15"]
         end
 
         subgraph Private_Attack_Tier["Attack Subnet (10.10.20.0/24)"]
-            AttackHost["⚔️ THEDAL-attack (10.10.20.114)<br/>Atomic Red Team + Web Test Suite"]
+            AttackHost["⚔️ THEDAL-attack (10.10.20.10)<br/>Atomic Red Team + Web Test Suite"]
         end
 
         subgraph Private_Web_Tier["Web Subnet (10.10.30.0/24)"]
-            WebHost["🎯 THEDAL-web (10.10.30.148)<br/>Nginx :8000 (DVWA) | Docker :3000 (Juice Shop)"]
+            WebHost["🎯 THEDAL-web (10.10.30.10)<br/>Nginx :8000 (DVWA) | Docker :3000 (Juice Shop)"]
         end
     end
 
@@ -122,7 +122,7 @@ graph TD
 
     WinHost -->|"Sysmon & EventLogs (Port 1514)"| WazuhHost
     WebHost -->|"Nginx & Auditd (Port 1514)"| WazuhHost
-    AttackHost -->|"Simulates Attacks (T1082, T1190, SQLi)"| WinHost
+    AttackHost -->|"Simulates Attacks (T1082, T1059, SQLi)"| WinHost
     AttackHost -->|"Simulates Web Exploits (Ports 8000, 3000)"| WebHost
 ```
 
@@ -143,15 +143,15 @@ THEDAL provides a progressive 3-level curriculum plus mystery challenges:
 
 ## 6. Infrastructure Specifications
 
-All infrastructure is provisioned inside a single AWS Virtual Private Cloud (`10.10.0.0/16`):
+All infrastructure is provisioned inside a single AWS Virtual Private Cloud (`10.10.0.0/16`) with static private IP assignments:
 
-| Node Identifier | Private IP | Instance Type | OS / Image | Role & Installed Telemetry |
+| Node Identifier | Static Private IP | Instance Type | OS / Image | Role & Installed Telemetry |
 | :--- | :--- | :--- | :--- | :--- |
-| **THEDAL-bastion** | `10.10.1.131` | `t3.micro` | Ubuntu 22.04 LTS | SSH ProxyJump entry point, Squid Forward Proxy (`:3128`), Public Elastic IPv4 |
-| **THEDAL-wazuh** | `10.10.10.33` | `t3.xlarge` | Ubuntu 22.04 LTS | Wazuh Manager, Indexer, OpenSearch Dashboards, Filebeat |
-| **THEDAL-windows** | `10.10.10.254` | `t3.small` | Windows Server 2022 | Microsoft Sysmon v15, PowerShell ScriptBlock logging, Wazuh Windows Agent |
-| **THEDAL-web** | `10.10.30.148` | `t3.micro` | Ubuntu 22.04 LTS | Nginx Reverse Proxy, DVWA (`:8000`), OWASP Juice Shop (`:3000`), Linux `auditd` |
-| **THEDAL-attack** | `10.10.20.114` | `t3.micro` | Ubuntu 22.04 LTS | Atomic Red Team framework, automated web attack engines |
+| **THEDAL-bastion** | `10.10.1.10` | `t3.micro` | Ubuntu 22.04 LTS | SSH ProxyJump entry point, Squid Forward Proxy (`:3128`), Public Elastic IPv4 |
+| **THEDAL-wazuh** | `10.10.10.10` | `t3.xlarge` | Ubuntu 22.04 LTS | Wazuh Manager, Indexer, OpenSearch Dashboards (`/app/wz-home`), Filebeat |
+| **THEDAL-windows** | `10.10.10.20` | `t3.small` | Windows Server 2022 | Microsoft Sysmon v15, PowerShell ScriptBlock logging, Wazuh Windows Agent |
+| **THEDAL-web** | `10.10.30.10` | `t3.micro` | Ubuntu 22.04 LTS | Nginx Reverse Proxy, DVWA (`:8000`), OWASP Juice Shop (`:3000`), Linux `auditd` |
+| **THEDAL-attack** | `10.10.20.10` | `t3.micro` | Ubuntu 22.04 LTS | Atomic Red Team framework, automated web attack engines |
 
 ---
 

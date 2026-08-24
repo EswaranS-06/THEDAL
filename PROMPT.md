@@ -1,723 +1,1244 @@
-THEDAL — Phase 20: Public GitHub Pages Website
+Below is a **single implementation prompt** you can give to your coding agent for the THEDAL project.
 
-Create a completely separate static project website.
+---
 
-Technology:
+# THEDAL — Authentication, Credential Single Source of Truth, Provisioning Validation & Wazuh Zero-Error Fix
 
-HTML
-CSS
-Vanilla JavaScript
+You are working on the **THEDAL** project. The previous project name **SOCForge** has been replaced by **THEDAL**. Audit the entire codebase and replace legacy project naming where appropriate, while being careful not to rename AWS resources, existing identifiers, indexes, or data that would break compatibility unless migration is handled safely.
 
-No React.
-No Next.js.
-No backend.
-No database.
-No build system unless absolutely necessary.
+Your task is to redesign the credential/configuration architecture and audit the Terraform + Ansible + Wazuh deployment so that a new student can install THEDAL and have an **error-free, reproducible experience**.
 
-The website must work directly through GitHub Pages.
+Do not make superficial UI-only changes. Trace credentials from the initial application setup through the Control Plane, backend, Terraform, Ansible, AWS resources, Wazuh, SSH/tunneling, and validation.
 
-Use the THEDAL design identity but create a separate public-facing design.
+---
 
-Use UI UX Pro Max.
+## 1. Core Requirement: Single Source of Truth for User Credentials
 
-Design direction:
+THEDAL must have one central credential/configuration source.
 
-Minimal & Direct
-+
-Technical Editorial
-+
-Open Source Project Showcase
+On the **first-ever launch after a fresh installation**, before the user can access the Control Plane, show a one-time initial setup page.
 
-Do NOT make it look like the Control Plane.
+The page should collect:
 
-==================================================
-PAGES / SECTIONS
-==================================================
+```text
+Display Name
+Username
+Password
+```
 
-Home
+### Display Name
 
-What is THEDAL?
+The Display Name is used for the THEDAL UI.
 
-Why THEDAL exists
+For example:
 
-Architecture
+```text
+Welcome, Rex
+```
 
-What you learn
+or show the name in the top-right profile area.
 
-Learning path
+This does not necessarily need to be the Linux username, AWS username, or Wazuh internal username.
 
-Infrastructure
+### Username and Password
 
-Telemetry
+The user enters one primary:
 
-Detection engineering
+```text
+username
+password
+```
 
-Installation
+These credentials become the **central credential source for THEDAL-controlled services wherever technically compatible**.
 
-Linux VM
+The architecture should conceptually be:
 
-Docker
+```text
+                    THEDAL Initial Setup
+                            │
+                            ▼
+                 Central Credential Store
+                            │
+          ┌─────────────────┼──────────────────┐
+          │                 │                  │
+          ▼                 ▼                  ▼
+      App Login         Terraform         Ansible
+          │                 │                  │
+          └─────────────────┼──────────────────┘
+                            │
+                            ▼
+                  Provisioned Services
+```
 
-Control Plane
+Do not hardcode passwords independently in:
 
-Safety & AWS cost
+* Terraform files
+* Ansible playbooks
+* Ansible variables
+* shell scripts
+* Wazuh configuration
+* Docker configuration
+* backend source code
+* frontend source code
 
-Repository
+The central credential configuration must be injected securely into the provisioning workflow.
 
-Contributing
+---
 
-==================================================
-HERO
-==================================================
+# 2. First-Run Setup Must Only Appear Once
 
-THEDAL
+Implement persistent first-run detection.
 
-Threat Hunting, Exploration, Detection, Analysis and Learn
+Expected behavior:
 
-"An open-source SOC learning environment built to turn cybersecurity theory into hands-on investigation."
+### Fresh THEDAL installation
 
-Primary CTA:
+```text
+Open THEDAL
+      ↓
+No setup state exists
+      ↓
+Show Initial Setup Wizard
+      ↓
+User enters:
+    • Display Name
+    • Username
+    • Password
+      ↓
+Validate
+      ↓
+Securely save configuration
+      ↓
+Mark setup_complete = true
+      ↓
+Redirect to THEDAL Control Plane
+```
 
-Get Started
+### Every future application launch
 
-Secondary:
+```text
+Open THEDAL
+      ↓
+Setup state exists
+      ↓
+Skip setup wizard
+      ↓
+Go directly to Login / Control Plane
+```
 
-View on GitHub
+The setup page must **not repeatedly appear**.
 
-Do not use exaggerated marketing language.
+If the application is deliberately reset or the configuration is deleted, then the setup wizard may appear again.
 
-==================================================
-ARCHITECTURE
-==================================================
+---
 
-Create a clear architecture visualization.
+# 3. Central Credential Architecture
 
-Show:
+Create a clear credential/configuration abstraction.
 
-Terraform
-AWS
-Ansible
-Wazuh
-Windows
-Sysmon
-Nginx
-DVWA
-Juice Shop
-Atomic Red Team
-Learning Labs
+For example:
 
-==================================================
-LEARNING
-==================================================
+```text
+THEDAL Configuration
+│
+├── profile
+│   └── display_name
+│
+├── application
+│   ├── username
+│   └── password_reference
+│
+├── provisioning
+│   └── credential variables
+│
+└── generated_service_credentials
+```
 
-Show:
+Do **not** blindly force the same username/password into every service.
 
-Level 1
-SOC Foundations
+This is extremely important.
 
-Level 2
-Investigation
+Some components, including Wazuh and OpenSearch, may require:
 
-Level 3
-Advanced Investigation
+* predefined usernames
+* system accounts
+* reserved account names
+* specific password policies
+* credentials that are created or hashed internally
+* service-specific authentication mechanisms
 
-Challenge Mode
+Therefore:
 
-Explain what the learner actually gains.
+> Use the user's initial username/password as the central source wherever compatible, but preserve mandatory service usernames or authentication requirements where changing them would break the installation.
 
-==================================================
-INSTALLATION
-==================================================
+For example, if Wazuh requires a specific API account such as:
 
-Clearly explain:
+```text
+wazuh-wui
+```
 
-Linux VM — recommended
+then do not rename that account merely to force the user's username everywhere.
 
-Docker — alternative
+Instead, derive or configure its password from the central credential source if supported and safe.
 
-Prerequisites
+The goal is:
 
-AWS credentials
+```text
+ONE CENTRAL CREDENTIAL SOURCE
+```
 
-Deployment
+not:
 
-Control Plane
+```text
+BLINDLY CHANGE EVERY SYSTEM ACCOUNT NAME
+```
 
-Cleanup
+The student must receive a working deployment.
 
-==================================================
-DESIGN
-==================================================
+---
 
-Avoid:
+# 4. Credentials Must Be Available in Settings
 
-AI gradients
-huge animations
-fake dashboards
-stock images
-excessive cards
-fake testimonials
-fake metrics
+Add a **Settings → Profile / Credentials** section.
 
-The site should look like an excellent open-source GitHub project.
+The user must be able to see:
 
-==================================================
-GITHUB PAGES
-==================================================
+```text
+Display Name
+Username
+Password
+```
 
-Ensure:
+Because this is a local educational lab and the user explicitly wants password recovery/viewing.
 
-relative paths
-no backend dependencies
-no API calls required for basic content
-works from a GitHub Pages subpath
+However, do not expose passwords accidentally in:
 
-Create:
+* logs
+* browser console
+* API responses unnecessarily
+* Terraform output
+* Ansible stdout
+* Git repositories
+* process lists
 
-index.html
-css/style.css
-js/app.js
+The password should normally be masked:
 
-==================================================
-VALIDATION
-==================================================
+```text
+Password: ••••••••••••
+```
 
-Test:
+Provide an explicit:
 
-desktop
-tablet
-mobile
+```text
+Show Password
+```
 
-375px
-768px
-1024px
-1440px
+control that requires deliberate user interaction.
 
-Commit:
+If appropriate for the application's architecture, require the current application session/authentication before revealing it.
 
-feat: add THEDAL public project website
+Also provide:
 
-Do push it.
+```text
+Change Password
+```
 
-THEDAL — Phase 21: Open Source Developer README
+When the password changes, clearly define whether it updates:
 
-Rewrite the root README.md as a professional open-source project README.
+1. only the THEDAL application login, or
+2. future infrastructure deployments, or
+3. existing provisioned services.
 
-Do not write it like a development phase report.
+Do not silently claim that changing the password automatically updates already-deployed AWS/Wazuh infrastructure unless that synchronization is actually implemented.
 
-It must be written for:
+Prefer an explicit model such as:
 
-students
-SOC analysts
-cybersecurity learners
-developers
-contributors
+```text
+Change Credential
+        ↓
+Update Central Source
+        ↓
+Choose:
+[ Update THEDAL Login Only ]
+[ Apply to Future Deployments ]
+[ Rotate Existing Lab Credentials ]
+```
 
-Structure:
+Only implement options that can actually work reliably.
 
-# THEDAL
+---
 
-Full name
+# 5. Remove Existing Hardcoded Credentials
 
-One-line description
-
-Badges
-
-Quick Start
-
-Why THEDAL
-
-Features
-
-Architecture
-
-Learning Path
-
-Infrastructure
-
-Telemetry Architecture
-
-Detection Engineering
-
-Installation
-
-Linux VM
-
-Docker
-
-Control Plane
-
-AWS Cost & Safety
-
-Repository Structure
-
-Development
-
-Testing
-
-Troubleshooting
-
-Contributing
-
-Security
-
-License
-
-The README must contain:
-
-- prerequisites
-- quick install
-- manual installation
-- AWS credential setup
-- SSH key setup
-- deployment
-- cleanup
-- learning workflow
-
-Avoid marketing fluff.
-
-Include architecture diagrams.
-
-Use Mermaid where appropriate.
-
-Make the README understandable to a developer who has never seen THEDAL.
-
-Commit:
-
-docs: rewrite THEDAL developer README
-
-THEDAL — Phase 22: Universal Linux Installer
-
-Create:
-
-install.sh
-
-The installer must:
-
-1. Detect operating system.
-2. Detect package manager.
-3. Detect architecture.
-4. Check:
-
-Python
-uv
-Terraform
-Ansible
-AWS CLI
-Git
-SSH
-Node/npm where required for UI development
-
-5. Display a clear table:
-
-Dependency | Installed | Required | Status
-
-6. Do NOT install anything automatically.
-
-Ask:
-
-"Missing dependencies were detected. Install them now? [y/N]"
-
-7. Install only after confirmation.
-
-8. Re-check everything.
-
-9. Validate AWS credentials.
-
-10. Ask for AWS profile/region if required.
-
-11. Generate local SSH key if missing.
-
-12. Set correct permissions.
-
-13. Configure control plane.
-
-14. Ask:
-
-Control Plane Bind Address
-
-127.0.0.1
-0.0.0.0
-
-Default:
-
-127.0.0.1
-
-15. Explain security implications of 0.0.0.0.
-
-16. Start the control plane after successful setup.
-
-17. Print:
-
-THEDAL is ready.
-
-Dashboard:
-
-http://127.0.0.1:8080
-
-Do not store AWS secrets.
-
-Do not store private SSH keys in the repository.
-
-Do not use curl | bash internally.
-
-Support:
-
-./install.sh
-./install.sh --check
-./install.sh --non-interactive
-
-Non-interactive mode must NEVER silently install missing packages.
-
-Commit:
-
-feat: add THEDAL universal installer
-
-THEDAL — Phase 23: Cross-Platform Installation
-
-Create two supported installation paths.
-
-==================================================
-PATH A — LINUX VM
-==================================================
-
-Recommended.
-
-Document:
-
-Windows
-↓
-VMware / VirtualBox / Hyper-V
-↓
-Debian 13
-↓
-THEDAL
-↓
-AWS
-
-Provide exact setup instructions.
-
-==================================================
-PATH B — DOCKER
-==================================================
-
-Provide a Docker-based THEDAL Control Plane.
-
-Create:
-
-Dockerfile
-docker-compose.yml
-
-The container must manage the control-plane UI.
-
-Clearly document limitations.
-
-Do not claim Docker replaces the complete Debian environment unless it actually does.
-
-AWS credentials must be provided securely.
-
-SSH key handling must be explicit.
-
-Do not bake credentials into the image.
-
-==================================================
-NETWORKING
-==================================================
-
-Ask during setup:
-
-127.0.0.1
-or
-0.0.0.0
-
-Docker mode must document:
-
--p 8080:8080
-
-and the security implications.
-
-Commit:
-
-feat: add Docker deployment path
-docs: add Windows VM installation guide
-
-THEDAL — Phase 24: Learning Portal
-
-Create a Learning section inside the Control Plane.
-
-IMPORTANT:
-
-DO NOT MODIFY THE EXISTING:
-
-docs/labs/
-docs/runbooks/
-docs/learning-path.md
-
-Treat Markdown as the canonical learning source.
-
-Create a separate presentation layer.
-
-Add:
-
-control-plane/learning/
-
-The UI should provide:
-
-Learning Path
-Labs
-Challenges
-Progress
-Bookmarks
-Notes
-
-Use SQLite only for learner state.
-
-Store:
-
-lab_id
-status
-started_at
-completed_at
-notes
-attempts
-
-Statuses:
-
-Not Started
-In Progress
-Completed
-
-The learner should be able to:
-
-open a lab
-read it
-mark progress
-record notes
-continue later
-
-Do not duplicate the actual curriculum unnecessarily.
-
-Render Markdown safely.
-
-Do not allow arbitrary HTML execution from Markdown.
-
-Create a clean educational UI following the THEDAL design system.
-
-Commit:
-
-feat: add THEDAL learning portal
-
-THEDAL — Phase 25: Dynamic Operator Commands & Credential Profiles
-
-Add a dynamic Commands section to the Control Plane.
-
-Never hardcode:
-
-public IPs
-private IPs
-instance IDs
-
-Retrieve current values from:
-
-Terraform outputs
-AWS EC2 API
-
-Generate commands automatically.
-
-Examples:
-
-Bastion SSH
-Wazuh SSH
-Wazuh tunnel
-Attack host SSH
-Web SSH
-Windows WinRM
-Ansible commands
-
-Display commands in copyable code blocks.
-
-==================================================
-AWS CREDENTIAL MANAGEMENT
-==================================================
-
-Provide a credential/profile management UI.
-
-IMPORTANT:
-
-Never store:
-
-AWS secret key
-AWS session token
-private keys
-
-in:
-
-SQLite
-browser localStorage
-logs
-application database
-
-Use the standard AWS credential/profile mechanism.
-
-Allow:
-
-create/update AWS profile
-select profile
-validate with:
-
-aws sts get-caller-identity
-
-Display only:
-
-profile name
-account ID
-region
-
-Never display secret values after saving.
-
-Commit:
-
-feat: add dynamic operator commands
-feat: add AWS profile management
-
-THEDAL — Phase 26: SSH Key Lifecycle & Safe Auto-Stop
-
-==================================================
-SSH
-==================================================
-
-If SSH key does not exist:
-
-Generate:
-
-Ed25519
-
-Store locally with restrictive permissions.
-
-Example:
-
-~/.ssh/thedal_key
-
-Register public key with AWS.
-
-Private key must NEVER:
-
-enter Terraform state
-enter Git
-enter SQLite
-enter logs
-appear in dashboard output
-
-==================================================
-AUTO-STOP
-==================================================
-
-Create configurable health monitoring.
-
-Detect:
-
-Docker stopped
-Juice Shop stopped
-Wazuh service failure
-critical process failure
-
-Do NOT destroy infrastructure.
-
-Optional response:
-
-STOP EC2
-
-Default:
-
-DISABLED
-
-If enabled:
-
-require clear user confirmation during setup.
-
-Provide:
-
-Auto-stop enabled/disabled
-Grace period
-Monitored services
-Last action
-
-Never automatically run:
-
-terraform destroy
-
-==================================================
-COMMIT
-==================================================
-
-feat: add SSH key lifecycle management
-feat: add configurable EC2 auto-stop safety
-
-THEDAL — Phase 27: Product Integration & Release QA
-
-Integrate:
-
-THEDAL branding
-Premium Control Plane
-Public website
-README
-install.sh
-VM installation
-Docker installation
-Learning portal
-SQLite progress
-Dynamic commands
-AWS profiles
-SSH key lifecycle
-EC2 auto-stop
-
-Run:
-
-make lint
-make test-control-plane
-
-Test:
-
-fresh installation
-control plane
-dashboard
-learning
-Terraform plan
-Ansible
-AWS credentials
-SSH
-dynamic IPs
-health checks
-Docker
-mobile website
-GitHub Pages paths
-
-Perform a security audit.
+Perform a complete repository audit.
 
 Search for:
 
-AWS secrets
-private keys
-hardcoded IPs
-hardcoded credentials
-user-specific paths
-unsafe shell execution
+```text
+SOCForge
+SOCForgeWuiPass2026
+SOCForge_Adm1n_Lab2026
+wazuh-wui
+password
+passwd
+secret
+username
+admin
+credential
+55000
+9200
+```
 
-Verify:
+Also inspect:
 
-no arbitrary command endpoint
-no credential persistence
-no automatic Terraform destroy
-no accidental AWS resource modification
+```text
+*.tf
+*.tfvars
+*.yml
+*.yaml
+*.json
+*.env
+*.sh
+Dockerfile
+docker-compose.yml
+backend source
+frontend source
+installation scripts
+templates
+systemd files
+```
 
-Create:
+Identify all credential definitions.
 
-docs/release/thdal-v1-readiness.md
+Create a credential flow map.
 
-Status:
+Example:
 
-READY
-or
-BLOCKED
+```text
+Initial Setup
+    ↓
+THEDAL Secure Config
+    ↓
+Provisioning Variables
+    ↓
+Terraform / Ansible Runtime Variables
+    ↓
+Service Configuration
+```
 
-Do not push to GitHub.
+There must not be multiple unrelated passwords silently defined in different files.
+
+---
+
+# 6. Fix the Wazuh Credential Mismatch
+
+A previously identified issue occurred during deployment.
+
+The Dashboard configuration contained:
+
+```yaml
+hosts:
+  - default:
+      url: https://127.0.0.1
+      port: 55000
+      user: wazuh-wui
+      password: SOCForgeWuiPass2026!
+      run_as: true
+```
+
+But the actual Wazuh API accepted:
+
+```text
+Username: wazuh-wui
+Password: wazuh-wui
+```
+
+Testing showed:
+
+```bash
+curl -k \
+-u wazuh-wui:wazuh-wui \
+https://127.0.0.1:55000/security/user/authenticate
+```
+
+successfully returned:
+
+```json
+{
+  "error": 0
+}
+```
+
+While the configured custom password caused:
+
+```text
+401 Unauthorized
+ERROR3099 - Invalid credentials
+```
+
+This mismatch must be eliminated.
+
+### Required implementation
+
+Before the deployment is marked successful:
+
+1. Configure the Wazuh API credentials correctly.
+2. Configure the Wazuh Dashboard plugin with the exact credentials that actually exist in the Wazuh API.
+3. Restart the necessary service.
+4. Test authentication programmatically.
+
+For example:
+
+```bash
+curl -sk \
+-u "${WAZUH_API_USER}:${WAZUH_API_PASSWORD}" \
+https://127.0.0.1:55000/security/user/authenticate
+```
+
+The validation must verify that:
+
+```json
+"error": 0
+```
+
+If authentication fails:
+
+```text
+THEDAL deployment = FAILED
+```
+
+Do not report a successful installation.
+
+### Important
+
+Investigate the correct supported method for changing Wazuh API credentials for the installed Wazuh version.
+
+Do not merely:
+
+```yaml
+password: SOME_PASSWORD
+```
+
+inside the Dashboard configuration and assume that this changes the actual Wazuh API password.
+
+The provisioning must either:
+
+* correctly change the Wazuh API credential using the supported mechanism, then configure the Dashboard with it,
+
+or:
+
+* retain the required working Wazuh credential and use that consistently.
+
+The final state must be tested, not assumed.
+
+---
+
+# 7. Fix and Validate the Wazuh API Connection
+
+The Wazuh Dashboard showed:
+
+```text
+The API connections could be down or inaccessible
+```
+
+and:
+
+```text
+ERROR3099 - Invalid credentials
+```
+
+However, the API itself was proven reachable:
+
+```bash
+curl -k \
+-u wazuh-wui:wazuh-wui \
+https://127.0.0.1:55000/security/user/authenticate
+```
+
+Therefore THEDAL must distinguish between:
+
+```text
+API service is down
+```
+
+and:
+
+```text
+API is running but Dashboard credentials are incorrect
+```
+
+Implement automated diagnostics.
+
+Example logic:
+
+```text
+Check TCP/API reachability
+        │
+        ├── FAIL
+        │     └── API unavailable / network issue
+        │
+        └── PASS
+              ↓
+       Test authentication
+              │
+              ├── FAIL
+              │     └── Invalid credentials / credential mismatch
+              │
+              └── PASS
+                    ↓
+             API connection healthy
+```
+
+The Control Plane should show a meaningful diagnostic rather than only a generic error.
+
+---
+
+# 8. Wazuh Dashboard Port Must Be Correct
+
+A previous troubleshooting attempt incorrectly tested:
+
+```text
+127.0.0.1:5601
+```
+
+but the Wazuh Dashboard configuration actually uses:
+
+```yaml
+server.port: 443
+server.host: 0.0.0.0
+```
+
+Therefore, THEDAL must not assume port `5601`.
+
+Detect or define the actual configured Dashboard port and use it consistently.
+
+Current architecture:
+
+```text
+Wazuh Dashboard on AWS
+        │
+        │ :443
+        ▼
+Bastion SSH tunnel
+        │
+        │ local port 8443
+        ▼
+https://localhost:8443
+```
+
+The Control Plane tunnel should correctly create:
+
+```bash
+ssh -N \
+-L 8443:WAZUH_PRIVATE_IP:443 \
+ubuntu@BASTION_PUBLIC_IP
+```
+
+Do not hardcode a Wazuh internal IP such as:
+
+```text
+10.10.10.33
+```
+
+unless it is dynamically discovered from Terraform state or the AWS API.
+
+The Control Plane must determine:
+
+```text
+Current Bastion Public IP
+Current Wazuh Private IP
+Dashboard Port
+```
+
+dynamically.
+
+---
+
+# 9. Wazuh Dashboard Launch Validation
+
+After provisioning, THEDAL must perform an end-to-end validation.
+
+The validation sequence should be:
+
+```text
+Terraform Infrastructure
+        ↓
+Wait for EC2
+        ↓
+Ansible Provisioning
+        ↓
+Wazuh Manager
+        ↓
+Wazuh Indexer
+        ↓
+Wazuh Dashboard
+        ↓
+API Authentication Test
+        ↓
+Indexer Health Test
+        ↓
+Create/Verify SSH Tunnel
+        ↓
+Open/Test Dashboard
+        ↓
+Check Logs
+        ↓
+Deployment Result
+```
+
+Validate:
+
+### Services
+
+```bash
+systemctl is-active wazuh-manager
+systemctl is-active wazuh-indexer
+systemctl is-active wazuh-dashboard
+```
+
+All expected services must be:
+
+```text
+active
+```
+
+### Wazuh API
+
+Test authentication against:
+
+```text
+https://127.0.0.1:55000
+```
+
+### Indexer
+
+Test:
+
+```text
+https://127.0.0.1:9200
+```
+
+Validate cluster health appropriately for the deployment topology.
+
+Do not blindly require `green` if the supported single-node configuration can legitimately show `yellow` due to replicas.
+
+### Dashboard
+
+Validate the actual configured port.
+
+For the current configuration:
+
+```text
+https://127.0.0.1:443
+```
+
+Do not test `5601` unless the configuration actually uses that port.
+
+---
+
+# 10. Automated SSH Tunnel Testing
+
+THEDAL must automatically manage SSH tunneling.
+
+The user should not have to manually type:
+
+```bash
+ssh -i ~/.ssh/socforge_key \
+-N \
+-L 8443:10.10.10.33:443 \
+ubuntu@13.232.202.163
+```
+
+The Control Plane should:
+
+1. obtain the current bastion public IP
+2. obtain the current Wazuh private IP
+3. identify the SSH key
+4. check whether a tunnel already exists
+5. terminate or reuse stale tunnels safely
+6. create the required tunnel
+7. verify local port availability
+8. test connectivity
+9. launch or provide access to:
+
+```text
+https://localhost:8443
+```
+
+The implementation must work for:
+
+* Native Linux
+* Virtual Machines
+* Docker deployment
+
+The Docker user must not be required to open a terminal and manually run SSH tunnel commands.
+
+---
+
+# 11. Docker Compatibility
+
+THEDAL's Control Plane must manage operations through the UI/API.
+
+The target experience is:
+
+| Feature              | VM / Native Linux | Docker   |
+| -------------------- | ----------------- | -------- |
+| Control Plane        | Yes               | Yes      |
+| Terminal commands    | Yes               | Optional |
+| Terraform operations | CLI + UI          | UI       |
+| AWS start/stop       | CLI + UI          | UI       |
+| IP synchronization   | CLI + UI          | UI       |
+| SSH tunnel           | CLI + UI          | UI       |
+| Wazuh access         | Browser           | Browser  |
+| Lab simulations      | CLI + UI          | UI       |
+
+The Docker architecture must correctly handle the difference between:
+
+```text
+localhost on host
+```
+
+and:
+
+```text
+localhost inside the container
+```
+
+Do not assume that:
+
+```text
+localhost:8443
+```
+
+inside a Docker container refers to the user's host.
+
+Design the tunnel/control-plane architecture correctly.
+
+Possible valid architectures include:
+
+```text
+Host-managed tunnel
+```
+
+or:
+
+```text
+Container-managed tunnel with published ports
+```
+
+Choose the architecture that provides the simplest reliable experience for students.
+
+Document the networking model clearly.
+
+---
+
+# 12. IP Synchronization and Dynamic AWS State
+
+THEDAL must not depend on hardcoded public IP addresses.
+
+A student's public IP can change between sessions.
+
+Implement an IP synchronization feature.
+
+The Control Plane should:
+
+1. detect the current public IPv4
+2. read the configured management CIDR
+3. compare the detected IP with the existing AWS Security Group rule
+4. show the mismatch
+5. allow the user to synchronize/update it
+
+Default:
+
+```text
+CURRENT_PUBLIC_IP/32
+```
+
+The user may manually change the CIDR.
+
+For beginner-friendly use, allow:
+
+```text
+0.0.0.0/0
+```
+
+but show a clear security warning.
+
+Example:
+
+```text
+⚠ This allows SSH access from any IPv4 address.
+Recommended for temporary learning labs only.
+```
+
+The Control Plane must dynamically update the AWS Security Group.
+
+Do not leave old temporary IP rules accumulating indefinitely.
+
+Implement safe rule reconciliation.
+
+---
+
+# 13. Terraform Audit
+
+Perform a full Terraform review.
+
+Check for:
+
+* hardcoded IP addresses
+* hardcoded credentials
+* dependency problems
+* incorrect subnet routing
+* security group mistakes
+* missing egress
+* stale instance IP assumptions
+* race conditions
+* remote-exec dependency problems
+* key path assumptions
+* hardcoded AWS region where unnecessary
+* resources not destroyed correctly
+* missing outputs
+* incorrect instance references
+
+Ensure Terraform exposes required dynamic outputs such as:
+
+```text
+bastion_public_ip
+bastion_instance_id
+wazuh_private_ip
+wazuh_instance_id
+management_security_group_id
+dashboard_port
+```
+
+The Control Plane should use these outputs or AWS API discovery rather than duplicate values manually.
+
+---
+
+# 14. Ansible Audit
+
+Perform a full Ansible review.
+
+Check for:
+
+* credential mismatch
+* variables defined in multiple places
+* hardcoded service passwords
+* wrong file paths
+* incorrect service ordering
+* missing retries
+* missing waits
+* tasks that succeed even though the resulting service is broken
+* incorrect ownership or permissions
+* wrong Wazuh configuration
+* restart timing problems
+* lack of post-configuration verification
+
+Ansible tasks must be idempotent.
+
+Do not consider:
+
+```text
+TASK SUCCESS
+```
+
+equivalent to:
+
+```text
+SYSTEM WORKING
+```
+
+After configuration, explicitly validate the resulting system.
+
+---
+
+# 15. Fix the Update Check / Network Error
+
+A browser error was observed:
+
+```text
+Error checking available updates:
+NetworkError when attempting to fetch resource.
+```
+
+Also:
+
+```text
+NetworkError when attempting to fetch resource.
+```
+
+Investigate the exact Wazuh Dashboard update-check mechanism for the installed Wazuh version.
+
+Determine whether the failure is caused by:
+
+* no outbound internet access
+* private subnet routing
+* missing NAT
+* proxy configuration
+* DNS failure
+* TLS/certificate problems
+* browser/CORS behavior
+* Wazuh Dashboard plugin behavior
+* upstream update service failure
+
+The Wazuh server is deployed in a private network architecture.
+
+Terraform networking must allow the connectivity actually required by the lab.
+
+If internet access is intentionally restricted, then the UI must not falsely present update checking as a deployment failure.
+
+Either:
+
+1. provide the required controlled outbound connectivity,
+
+or:
+
+2. disable/suppress the update check using a supported configuration if external update checking is not required.
+
+Do not weaken inbound security merely to fix outbound update checks.
+
+---
+
+# 16. Known Errors That Must Be Included in Automated Diagnostics
+
+THEDAL must specifically recognize and diagnose these previously encountered failures.
+
+### Invalid Wazuh API credentials
+
+```text
+ERROR3099 - Invalid credentials
+```
+
+Diagnosis:
+
+```text
+Wazuh API reachable
+Authentication failed
+Likely Dashboard/API credential mismatch
+```
+
+### Dashboard plugin background 401
+
+Logs contained:
+
+```text
+AxiosError: Request failed with status code 401
+```
+
+under:
+
+```text
+plugins/wazuh/cron-scheduler
+plugins/wazuh/monitoring
+```
+
+The validator should inspect this condition after deployment.
+
+### API connections inaccessible warning
+
+```text
+The API connections could be down or inaccessible
+```
+
+The diagnostic must differentiate:
+
+```text
+API DOWN
+```
+
+from:
+
+```text
+API reachable but authentication/configuration failed
+```
+
+### Update check error
+
+```text
+Error checking available updates:
+NetworkError when attempting to fetch resource
+```
+
+### Wrong Dashboard port assumption
+
+Do not test:
+
+```text
+5601
+```
+
+when the deployed configuration uses:
+
+```text
+443
+```
+
+### Legacy project naming
+
+Replace inappropriate references to:
+
+```text
+SOCForge
+```
+
+with:
+
+```text
+THEDAL
+```
+
+Examples requiring review:
+
+```text
+comments
+UI labels
+configuration headers
+documentation
+deployment names
+resource tags
+generated filenames
+index prefixes
+credentials
+```
+
+However, do not blindly rename existing deployed AWS resources or OpenSearch indexes if doing so would break compatibility. Provide migration logic where required.
+
+---
+
+# 17. Build a THEDAL Health Validator
+
+Implement a dedicated validation module.
+
+Example:
+
+```text
+THEDAL Health Validator
+│
+├── Infrastructure
+│   ├── AWS connectivity
+│   ├── Bastion reachable
+│   └── Wazuh instance reachable
+│
+├── Network
+│   ├── Security Group
+│   ├── SSH connectivity
+│   ├── Private connectivity
+│   └── Required outbound connectivity
+│
+├── Wazuh
+│   ├── Manager active
+│   ├── Indexer active
+│   ├── Dashboard active
+│   └── API reachable
+│
+├── Authentication
+│   ├── API credential test
+│   └── Dashboard/API integration
+│
+├── Indexer
+│   └── Cluster health
+│
+├── Tunnel
+│   ├── Tunnel exists
+│   ├── Local port listening
+│   └── Dashboard reachable
+│
+└── Logs
+    ├── 401 errors
+    ├── authentication failures
+    ├── fatal errors
+    └── repeated startup failures
+```
+
+The Control Plane should display:
+
+```text
+THEDAL Lab Health
+
+Infrastructure      ✓ Healthy
+AWS Connectivity    ✓ Healthy
+Security Group      ✓ Healthy
+Wazuh Manager       ✓ Running
+Wazuh Indexer       ✓ Running
+Wazuh API           ✓ Authenticated
+Wazuh Dashboard     ✓ Running
+SSH Tunnel          ✓ Connected
+Dashboard Access    ✓ Available
+
+Warnings:
+Update check unavailable due to restricted outbound connectivity
+```
+
+Do not show a green/healthy result when authentication is actually failing.
+
+---
+
+# 18. Required End-to-End Test
+
+After implementing the changes, perform an actual end-to-end test.
+
+The test should simulate a fresh student installation.
+
+### Test flow
+
+```text
+1. Fresh THEDAL installation
+
+2. Open THEDAL
+
+3. Verify Initial Setup Wizard appears
+
+4. Enter:
+   Display Name
+   Username
+   Password
+
+5. Complete setup
+
+6. Restart THEDAL
+
+7. Verify setup wizard does NOT appear again
+
+8. Verify Display Name appears in profile UI
+
+9. Verify credentials are available in Settings
+
+10. Verify Terraform receives the required configuration
+
+11. Verify Ansible receives the correct configuration
+
+12. Deploy infrastructure
+
+13. Verify no credential mismatch occurs
+
+14. Verify:
+      wazuh-manager active
+
+15. Verify:
+      wazuh-indexer active
+
+16. Verify:
+      wazuh-dashboard active
+
+17. Authenticate to Wazuh API
+
+18. Verify Dashboard → API integration
+
+19. Create SSH tunnel automatically
+
+20. Access Wazuh Dashboard through:
+      https://localhost:8443
+
+21. Launch the Wazuh Dashboard in a browser
+
+22. Verify the Wazuh application loads
+
+23. Check Dashboard logs
+
+24. Check Wazuh API logs
+
+25. Confirm there are no unresolved:
+      401
+      ERROR3099
+      Invalid credentials
+      API inaccessible
+      repeated service failures
+
+26. Test stop/start of AWS instances.
+
+27. Verify changed public/private IP addresses are dynamically rediscovered.
+
+28. Test Security Group IP synchronization.
+
+29. Verify Docker deployment works without requiring manual SSH commands.
+```
+
+---
+
+# 19. Definition of Done
+
+Do not mark this task complete until all of the following are true:
+
+```text
+[ ] THEDAL branding replaces inappropriate SOCForge references
+
+[ ] Initial Setup Wizard appears only on first launch
+
+[ ] Display Name appears in the profile area
+
+[ ] One central credential source exists
+
+[ ] Credentials are not independently hardcoded across the project
+
+[ ] Mandatory service-specific usernames are preserved where required
+
+[ ] Credential mappings are documented
+
+[ ] Wazuh API credentials are actually validated
+
+[ ] No Dashboard/API credential mismatch exists
+
+[ ] ERROR3099 is resolved
+
+[ ] Dashboard plugin does not produce unresolved authentication errors
+
+[ ] Correct Wazuh Dashboard port is dynamically respected
+
+[ ] SSH tunnel is dynamically created
+
+[ ] No hardcoded Bastion public IP is required
+
+[ ] No hardcoded Wazuh private IP is required
+
+[ ] Terraform has been audited
+
+[ ] Ansible has been audited
+
+[ ] Post-deployment validation exists
+
+[ ] THEDAL does not report deployment success until validation passes
+
+[ ] Wazuh Dashboard is successfully opened through the Control Plane
+
+[ ] Docker users do not need to manually run SSH tunnel commands
+
+[ ] AWS stop/start and IP changes are handled dynamically
+
+[ ] Security Group IP synchronization works
+
+[ ] Update-check NetworkError has been investigated and either fixed or intentionally handled
+
+[ ] All sensitive values are prevented from leaking into logs or repository files
+
+[ ] A fresh student installation has been tested end-to-end
+```
+
+## Final implementation principle
+
+The goal is not merely to make Terraform and Ansible execute successfully.
+
+The required success condition is:
+
+```text
+Terraform succeeds
+        +
+Ansible succeeds
+        +
+AWS networking works
+        +
+Credentials are consistent
+        +
+Wazuh API authenticates
+        +
+Dashboard connects to API
+        +
+SSH tunnel works
+        +
+Dashboard actually opens
+        +
+Logs show no unresolved critical errors
+        =
+THEDAL DEPLOYMENT SUCCESS
+```
+
+Implement this as a robust student-friendly system. Before changing any mandatory Wazuh, OpenSearch, Linux, or AWS credentials, verify the component's requirements and preserve required internal usernames. The priority is **single-source configuration without sacrificing a reliable, error-free deployment**.
